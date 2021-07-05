@@ -1483,7 +1483,9 @@ filterCheckbox.checked = false;
 updateFilterUI();
 updateFilterLabel();
 
-if (!navigator.usb) {
+const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+
+if (!isChrome) {
 
     browserErrorDisplay.style.display = '';
     fileButton.disabled = true;
