@@ -141,70 +141,77 @@ function checkHeader (header, fileSize) {
 
     if (header.riff.id !== 'RIFF') {
 
+        console.error('Could not find RIFF chunk in the input file.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'Could not find RIFF chunk in the input file.'
         };
 
     }
 
     if (header.riff.size + RIFF_ID_LENGTH + UINT32_LENGTH !== fileSize) {
 
+        console.error('RIFF chunk file size is incorrect.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'RIFF chunk file size is incorrect.'
         };
 
     }
 
     if (header.format !== 'WAVE') {
 
+        console.error('Could not find WAVE format indicator in the input file.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'Could not find WAVE format indicator in the input file.'
         };
 
     }
 
     if (header.fmt.id !== 'fmt ') {
 
+        console.error('Could not find fmt segment in the input file.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'Could not find fmt segment in the input file.'
         };
 
     }
 
     if (header.icmt.id !== 'ICMT') {
 
+        console.error('Could not find comment segment in the input file.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'Could not find comment segment in the input file.'
         };
 
     }
 
     if (header.data.id !== 'data') {
 
+        console.error('Could not find data segment in the input file.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'Could not find data segment in the input file.'
         };
 
     }
 
     if (header.data.size + LENGTH_OF_WAV_HEADER !== fileSize) {
 
+        console.error('DATA chunk file size is incorrect.');
+
         return {
             success: false,
             error: 'Could not read input file.'
-            // error: 'DATA chunk file size is incorrect.'
         };
 
     }
