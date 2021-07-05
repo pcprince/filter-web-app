@@ -1293,8 +1293,8 @@ fileButton.addEventListener('click', async () => {
 
     } catch (error) {
 
-        console.error('Request was aborted');
-        console.log(error);
+        console.error('Request was aborted.');
+        console.error(error);
         return;
 
     }
