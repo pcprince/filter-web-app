@@ -1354,7 +1354,8 @@ fileButton.addEventListener('click', async () => {
 
         // Clear plots
 
-        
+        resetCanvas(spectrogramCanvas);
+        resetCanvas(waveformCanvas);
 
         return;
 
