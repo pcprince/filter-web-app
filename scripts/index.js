@@ -6,10 +6,6 @@
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold */
 
-// TODO: Deal with memory
-// TODO: Implement amplitude thresholding with minimum trigger durations
-// TODO: Learn WebGL? Might not be worth it if canvas drawing is fast enough
-
 // Use these values to fill in the axis labels before samples have been loaded
 
 const FILLER_SAMPLE_COUNT = 1440000;
@@ -50,18 +46,14 @@ const offsetIncrement = 1;
 
 // Plot canvases
 
+const spectrogramOverlayCanvas = document.getElementById('spectrogram-overlay-canvas');
 const spectrogramCanvas = document.getElementById('spectrogram-canvas');
+const waveformOverlayCanvas = document.getElementById('waveform-overlay-canvas');
 const waveformCanvas = document.getElementById('waveform-canvas');
 const timeLabelCanvas = document.getElementById('time-label-canvas');
 
-// Create staging canvases to draw the spectrogram and waveform to before resizing for the page
+// Create staging canvas for labels which can be reused so labels still match after panning
 
-const prepSpectrogramCanvas = document.createElement('canvas');
-prepSpectrogramCanvas.width = spectrogramCanvas.width;
-prepSpectrogramCanvas.height = spectrogramCanvas.height;
-const prepWaveformCanvas = document.createElement('canvas');
-prepWaveformCanvas.width = waveformCanvas.width * 2;
-prepWaveformCanvas.height = waveformCanvas.height * 2;
 const prepLabelCanvas = document.createElement('canvas');
 prepLabelCanvas.width = timeLabelCanvas.width * zoomMax;
 prepLabelCanvas.height = timeLabelCanvas.height;
@@ -70,9 +62,11 @@ const spectrogramLabelCanvas = document.getElementById('spectrogram-label-canvas
 const Y_LABEL_COUNT = 4;
 const waveformLabelCanvas = document.getElementById('waveform-label-canvas');
 
-// Data storage
+// File variables
 
-let unfilteredSamples, sampleRate;
+let fileHandler;
+let sampleCount = 0;
+let sampleRate, processedSpectrumFrames;
 
 // Drawing/processing flag
 
@@ -609,7 +603,7 @@ function updateFilterSliders () {
 
 function timeToPixel (seconds) {
 
-    const totalLength = (unfilteredSamples) ? unfilteredSamples.length / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
+    const totalLength = (sampleCount !== 0) ? sampleCount / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
     const pixels = (seconds / totalLength) * spectrogramCanvas.width * zoom;
 
     return pixels;
@@ -625,7 +619,7 @@ function drawAxisLabels () {
     xCtx.clearRect(0, 0, prepLabelCanvas.width, prepLabelCanvas.height);
 
     let label = 0;
-    const totalLength = (unfilteredSamples) ? unfilteredSamples.length / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
+    const totalLength = (sampleCount !== 0) ? sampleCount / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
 
     // Widen gap between labels as more audio is viewable to prevent squashed labels
     const displayedTime = totalLength / zoom;
@@ -660,7 +654,7 @@ function drawAxisLabels () {
     ySpecCtx.font = '10px monospace';
     ySpecCtx.textBaseline = 'middle';
 
-    const ySpecLabelIncrement = (unfilteredSamples) ? sampleRate / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
+    const ySpecLabelIncrement = (sampleCount !== 0) ? sampleRate / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
     const ySpecIncrement = spectrogramLabelCanvas.height / Y_LABEL_COUNT;
 
     for (let i = 0; i <= Y_LABEL_COUNT; i++) {
@@ -696,11 +690,30 @@ function drawAxisLabels () {
     yWaveformCtx.font = '10px monospace';
     yWaveformCtx.textBaseline = 'middle';
 
-    const waveformLabelTexts = [];
+    let waveformLabelTexts = [];
 
-    for (let i = 1.0; i >= -1.0; i -= 0.25) {
+    // for (let i = 1.0; i >= -1.0; i -= 0.25) {
 
-        waveformLabelTexts.push(i);
+    //     waveformLabelTexts.push(i);
+
+    // }
+
+    switch (amplitudeThresholdingScaleIndex) {
+
+    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+
+        waveformLabelTexts = ['100%', '75%', '50%', '25%', '0%', '25%', '50%', '75%', '100%'];
+        break;
+
+    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+
+        waveformLabelTexts = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
+        break;
+
+    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+
+        waveformLabelTexts = ['0 dB', '-100 db', '0 dB'];
+        break;
 
     }
 
@@ -730,16 +743,29 @@ function drawAxisLabels () {
 
 }
 
-function resetCanvas (canvas) {
+function resetCanvas (canvas, isWebGL) {
 
     // Setting the width/height of a canvas in any way wipes it clean and resets the context's transformations
     canvas.width = canvas.width;
+
+    if (isWebGL) {
+
+        /** @type {WebGLRenderingContext} */
+        const gl = canvas.getContext('webgl');
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    } else {
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    }
 
 }
 
 function updateZoomUI () {
 
-    if (!unfilteredSamples) {
+    if (sampleCount === 0) {
 
         zoomInButton.disabled = true;
         zoomOutButton.disabled = true;
@@ -773,7 +799,7 @@ function updateZoomUI () {
 
 function updatePanUI () {
 
-    if (!unfilteredSamples) {
+    if (sampleCount === 0) {
 
         panLeftButton.disabled = true;
         panRightButton.disabled = true;
@@ -791,9 +817,17 @@ function updatePanUI () {
 
     }
 
-    const totalLength = unfilteredSamples.length / sampleRate;
+    const totalLength = sampleCount / sampleRate;
+    const displayedTime = totalLength / zoom;
 
-    if (Math.abs(offset - offsetIncrement) > totalLength) {
+    let sampleEnd = Math.floor((Math.abs(offset) + displayedTime) * sampleRate);
+
+    // Gap at the end of the plot in samples
+    const gapLength = sampleEnd - sampleCount;
+
+    sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
+
+    if (gapLength >= 0) {
 
         panLeftButton.disabled = true;
 
@@ -807,11 +841,17 @@ function updatePanUI () {
 
 function drawThresholdedPeriods () {
 
-    const waveformCtx = waveformCanvas.getContext('2d');
-    const waveformH = waveformCanvas.height;
+    const waveformCtx = waveformOverlayCanvas.getContext('2d');
+    const waveformW = waveformOverlayCanvas.width;
+    const waveformH = waveformOverlayCanvas.height;
 
-    const spectrogramCtx = spectrogramCanvas.getContext('2d');
+    waveformCtx.clearRect(0, 0, waveformW, waveformH);
+
+    const spectrogramCtx = spectrogramOverlayCanvas.getContext('2d');
+    const spectrogramW = spectrogramCanvas.width;
     const spectrogramH = spectrogramCanvas.height;
+
+    spectrogramCtx.clearRect(0, 0, spectrogramW, spectrogramH);
 
     const pixelOffset = Math.abs(timeToPixel(offset));
 
@@ -866,7 +906,7 @@ function drawLoadingImage (canvas) {
     const w = canvas.width;
     const h = canvas.height;
 
-    resetCanvas(canvas);
+    resetCanvas(canvas, false);
 
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
@@ -876,45 +916,10 @@ function drawLoadingImage (canvas) {
 
 function drawLoadingImages () {
 
-    drawLoadingImage(spectrogramCanvas);
-    drawLoadingImage(waveformCanvas);
-    resetCanvas(timeLabelCanvas);
-
-}
-
-function copySpectrogramToCanvas () {
-
-    const ctx = spectrogramCanvas.getContext('2d');
-    const w = spectrogramCanvas.width;
-    const h = spectrogramCanvas.height;
-
-    resetCanvas(spectrogramCanvas);
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.scale(zoom, 1.0);
-
-    const pixelOffset = timeToPixel(offset);
-
-    ctx.drawImage(prepSpectrogramCanvas, pixelOffset / zoom, 0);
-
-}
-
-function copyWaveformToCanvas () {
-
-    const ctx = waveformCanvas.getContext('2d');
-    const w = waveformCanvas.width;
-    const h = waveformCanvas.height;
-
-    resetCanvas(waveformCanvas);
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.scale(zoom, 1.0);
-
-    const pixelOffset = timeToPixel(offset);
-
-    ctx.drawImage(prepWaveformCanvas, pixelOffset / zoom, 0, w, h);
+    resetCanvas(spectrogramCanvas, true);
+    drawLoadingImage(spectrogramOverlayCanvas);
+    resetCanvas(waveformCanvas, true);
+    drawLoadingImage(waveformOverlayCanvas);
 
 }
 
@@ -924,7 +929,7 @@ function copyLabelsToCanvas () {
     const w = timeLabelCanvas.width;
     const h = timeLabelCanvas.height;
 
-    resetCanvas(timeLabelCanvas);
+    resetCanvas(timeLabelCanvas, false);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -936,17 +941,39 @@ function copyLabelsToCanvas () {
 
 function drawPlots () {
 
-    copySpectrogramToCanvas();
-    copyWaveformToCanvas();
+    const pixelOffset = timeToPixel(offset);
 
-    if (amplitudeThresholdingCheckbox.checked) {
+    drawSpectrogram(processedSpectrumFrames, spectrogramCanvas, pixelOffset, zoom, async () => {
 
-        drawThresholdedPeriods();
+        const unfilteredSamples = await readFromFile();
 
-    }
+        const totalLength = sampleCount / sampleRate;
+        const displayedTime = totalLength / zoom;
 
-    drawAxisLabels();
-    copyLabelsToCanvas();
+        const sampleStart = Math.floor(Math.abs(offset) * sampleRate);
+        let sampleEnd = Math.floor((Math.abs(offset) + displayedTime) * sampleRate);
+
+        // Gap at the end of the plot in samples
+        let gapLength = sampleEnd - sampleCount;
+        gapLength = gapLength < 0 ? 0 : gapLength;
+
+        sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
+
+        console.log('Drawing waveform');
+        drawWaveform(unfilteredSamples.slice(sampleStart, sampleEnd), waveformCanvas, gapLength, () => {
+
+            if (amplitudeThresholdingCheckbox.checked) {
+
+                drawThresholdedPeriods();
+
+            }
+
+            drawAxisLabels();
+            copyLabelsToCanvas();
+
+        });
+
+    });
 
 }
 
@@ -1032,17 +1059,33 @@ function processContents (samples, sampleRate) {
 
         console.log('Calculating spectrogram frames');
 
-        const processedSpectrumFrames = calculateSpectrogramFrames(samples, sampleRate);
+        processedSpectrumFrames = calculateSpectrogramFrames(samples, sampleRate);
+
+        const pixelOffset = timeToPixel(offset);
 
         console.log('Drawing spectrogram');
-        drawSpectrogram(processedSpectrumFrames, prepSpectrogramCanvas, () => {
+        drawSpectrogram(processedSpectrumFrames, spectrogramCanvas, pixelOffset, zoom, async () => {
 
-            copySpectrogramToCanvas();
+            const unfilteredSamples = await readFromFile();
+
+            resetCanvas(spectrogramOverlayCanvas, false);
+
+            const totalLength = sampleCount / sampleRate;
+            const displayedTime = totalLength / zoom;
+
+            const sampleStart = Math.floor(Math.abs(offset) * sampleRate);
+            let sampleEnd = Math.floor((Math.abs(offset) + displayedTime) * sampleRate);
+
+            // Gap at the end of the plot in samples
+            let overflow = sampleEnd - sampleCount;
+            overflow = overflow < 0 ? 0 : overflow;
+
+            sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
 
             console.log('Drawing waveform');
-            drawWaveform(samples, prepWaveformCanvas, () => {
+            drawWaveform(unfilteredSamples.slice(sampleStart, sampleEnd), waveformCanvas, overflow, () => {
 
-                copyWaveformToCanvas();
+                resetCanvas(waveformOverlayCanvas, false);
 
                 if (amplitudeThresholdingCheckbox.checked) {
 
@@ -1053,9 +1096,6 @@ function processContents (samples, sampleRate) {
                 console.log('Drawing axis labels');
                 drawAxisLabels();
                 copyLabelsToCanvas();
-
-                updatePanUI();
-                updateZoomUI();
 
                 drawing = false;
 
@@ -1098,9 +1138,9 @@ function resetTransformations () {
 
 function panLeft () {
 
-    if (unfilteredSamples && !drawing) {
+    if (sampleCount !== 0 && !drawing) {
 
-        const totalLength = unfilteredSamples.length / sampleRate;
+        const totalLength = sampleCount / sampleRate;
 
         if (Math.abs(offset - offsetIncrement) <= totalLength) {
 
@@ -1122,7 +1162,7 @@ function panLeft () {
 
 function panRight () {
 
-    if (unfilteredSamples && !drawing) {
+    if (sampleCount !== 0 && !drawing) {
 
         if (offset + offsetIncrement <= 0) {
 
@@ -1144,7 +1184,7 @@ function panRight () {
 
 function zoomIn () {
 
-    if (unfilteredSamples && !drawing) {
+    if (sampleCount !== 0 && !drawing) {
 
         if (zoom < zoomMax) {
 
@@ -1157,6 +1197,7 @@ function zoomIn () {
             }, 10);
 
             updateZoomUI();
+            updatePanUI();
 
         }
 
@@ -1166,7 +1207,7 @@ function zoomIn () {
 
 function zoomOut () {
 
-    if (unfilteredSamples && !drawing) {
+    if (sampleCount !== 0 && !drawing) {
 
         if (zoom - zoomIncrement >= 1.0) {
 
@@ -1185,12 +1226,13 @@ function zoomOut () {
         }
 
         updateZoomUI();
+        updatePanUI();
 
     }
 
 }
 
-function updatePlots () {
+async function updatePlots () {
 
     if (!settingsHaveChanged()) {
 
@@ -1200,6 +1242,8 @@ function updatePlots () {
     }
 
     drawLoadingImages();
+
+    const unfilteredSamples = await readFromFile();
 
     if (!filterCheckbox.checked && !amplitudeThresholdingCheckbox.checked) {
 
@@ -1236,12 +1280,14 @@ function updatePlots () {
 
         let filter = createFilter();
 
-        for (let i = 0; i < unfilteredSamples.length; i++) {
+        filteredSamples = new Array(sampleCount);
+
+        for (let i = 0; i < sampleCount; i++) {
 
             const response = applyFilter(unfilteredSamples[i], filter, filterCoeffs, filterIndex);
 
             filter = response.filter;
-            filteredSamples.push(response.filteredSample);
+            filteredSamples[i] = response.filteredSample;
 
         }
 
@@ -1261,12 +1307,48 @@ function updatePlots () {
         console.log('Threshold:', threshold);
         console.log('Minimum trigger duration: %i (%i samples)', minimumTriggerDurationSecs, minimumTriggerDurationSamples);
 
-        // thresholdPeriods = [{startPixels: 50, length: 10}, {startPixels: 100, length: 20}, {startPixels: 130, length: 20}, {startPixels: 200, length: 50}];
         thresholdPeriods = applyAmplitudeThreshold(filteredSamples, threshold, minimumTriggerDurationSamples);
 
     }
 
     processContents(filteredSamples, sampleRate);
+
+}
+
+async function readFromFile () {
+
+    console.log('Reading samples');
+
+    const result = await readWav(fileHandler, MAX_FILE_SIZE);
+
+    if (!result.success) {
+
+        console.error('Failed to read file');
+
+        errorDisplay.style.display = '';
+        errorText.innerHTML = result.error;
+
+        if (result.error === 'Could not read input file.') {
+
+            errorText.innerHTML += '<br>';
+            errorText.innerHTML += 'For more information, <u><a href="#faqs" style="color: white;">click here</a></u>.';
+
+        }
+
+        // Clear plots
+
+        resetCanvas(spectrogramOverlayCanvas, false);
+        resetCanvas(spectrogramCanvas, true);
+        resetCanvas(waveformOverlayCanvas, false);
+        resetCanvas(waveformCanvas, true);
+
+        return;
+
+    }
+
+    sampleRate = result.header.wavFormat.samplesPerSecond;
+    sampleCount = result.samples.length;
+    return result.samples;
 
 }
 
@@ -1284,8 +1366,6 @@ fileButton.addEventListener('click', async () => {
         excludeAcceptAllOption: true,
         multiple: false
     };
-
-    let fileHandler;
 
     try {
 
@@ -1335,39 +1415,11 @@ fileButton.addEventListener('click', async () => {
 
     // Read samples
 
-    console.log('Reading samples');
-
-    const result = await readWav(fileHandler, MAX_FILE_SIZE);
-
-    if (!result.success) {
-
-        console.error('Failed to read file');
-
-        errorDisplay.style.display = '';
-        errorText.innerHTML = result.error;
-
-        if (result.error === 'Could not read input file.') {
-
-            errorText.innerHTML += '<br>';
-            errorText.innerHTML += 'For more information, <u><a href="#faqs" style="color: white;">click here</a></u>.';
-
-        }
-
-        // Clear plots
-
-        resetCanvas(spectrogramCanvas);
-        resetCanvas(waveformCanvas);
-
-        return;
-
-    }
-
-    sampleRate = result.header.wavFormat.samplesPerSecond;
-    unfilteredSamples = result.samples;
+    const unfilteredSamples = await readFromFile();
 
     thresholdPeriods = [];
 
-    console.log('Loaded', unfilteredSamples.length, 'samples at a sample rate of', sampleRate, 'Hz');
+    console.log('Loaded', sampleCount, 'samples at a sample rate of', sampleRate, 'Hz');
 
     sampleRateChange();
 
@@ -1445,6 +1497,8 @@ for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
         amplitudeThresholdingScaleIndex = getSelectedRadioValue('amplitude-thresholding-scale-radio');
 
         updateAmplitudeThresholdingScale();
+
+        drawAxisLabels();
 
     });
 

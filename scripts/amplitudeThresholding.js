@@ -9,8 +9,6 @@ const BUFFER_LENGTH = 16000;
 
 function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples) {
 
-    // TODO: Incorporate minTriggerDuration
-
     const minTriggerDurationBuffers = Math.ceil(minTriggerDurationSamples / BUFFER_LENGTH);
     let triggerDuration = 0;
 

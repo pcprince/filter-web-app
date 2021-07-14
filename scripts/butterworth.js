@@ -256,28 +256,6 @@ function initialiseFilter (filter) {
 
 }
 
-function applyFilter (sample, filter, filterCoefficients, filterType) {
-
-    let result;
-
-    switch (filterType) {
-
-    case LOW_PASS_FILTER:
-        result = applyLowPassFilter(sample, filter, filterCoefficients);
-        break;
-    case HIGH_PASS_FILTER:
-        result = applyHighPassFilter(sample, filter, filterCoefficients);
-        break;
-    case BAND_PASS_FILTER:
-        result = applyBandPassFilter(sample, filter, filterCoefficients);
-        break;
-
-    }
-
-    return result;
-
-}
-
 function applyLowPassFilter (sample, filter, filterCoefficients) {
 
     filter.xv[0] = filter.xv[1];
@@ -322,5 +300,27 @@ function applyHighPassFilter (sample, filter, filterCoefficients) {
         filter: filter,
         filteredSample: filter.yv[1]
     };
+
+}
+
+function applyFilter (sample, filter, filterCoefficients, filterType) {
+
+    let result;
+
+    switch (filterType) {
+
+    case LOW_PASS_FILTER:
+        result = applyLowPassFilter(sample, filter, filterCoefficients);
+        break;
+    case HIGH_PASS_FILTER:
+        result = applyHighPassFilter(sample, filter, filterCoefficients);
+        break;
+    case BAND_PASS_FILTER:
+        result = applyBandPassFilter(sample, filter, filterCoefficients);
+        break;
+
+    }
+
+    return result;
 
 }

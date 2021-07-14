@@ -33,3 +33,19 @@
 #amplitude-thresholding-slider .slider-track {
   background: rgb(173, 189, 241);
 }
+
+.wrapper {
+  position: relative;
+}
+
+.wrapper .label-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.wrapper .plot-canvas {
+  position: absolute;
+  top: 0;
+  left: 45px;
+}

@@ -6,8 +6,40 @@
 
 /* global RFFT */
 
+const NFFT = 128;
+const FRAME_LENGTH = 256;
+const FRAME_STEP = 128;
+
+const vertexShaderText =
+[
+    'precision mediump float;',
+    '',
+    'attribute vec2 vertPosition;',
+    'attribute vec3 vertColor;',
+    'varying vec3 fragColor;',
+    '',
+    'void main()',
+    '{',
+    '   gl_PointSize = 10.0;',
+    '   fragColor = vertColor;',
+    '   gl_Position = vec4(vertPosition, 0.0, 1.0);',
+    '}'
+].join('\n');
+
+const fragmentShaderText =
+[
+    'precision mediump float;',
+    '',
+    'varying vec3 fragColor;',
+    '',
+    'void main ()',
+    '{',
+    '   gl_FragColor = vec4(fragColor, 1.0);',
+    '}'
+].join('\n');
+
 // 255 colours from Jet
-const colours = ['#000083', '#000284', '#000485', '#000687', '#000888', '#000989', '#000b8a', '#000d8c', '#000f8d', '#00118e', '#00138f', '#001590', '#001792', '#001893', '#001a94', '#001c95', '#001e97', '#002098', '#002299', '#00249a', '#00269b', '#00279d', '#00299e', '#002b9f', '#002da0', '#002fa1', '#0031a3', '#0033a4', '#0035a5', '#0036a6', '#0038a8', '#003aa9', '#003caa', '#003fab', '#0042ad', '#0045ae', '#0048af', '#004bb1', '#004fb2', '#0152b3', '#0155b5', '#0158b6', '#015bb7', '#015eb9', '#0161ba', '#0164bc', '#0167bd', '#016abe', '#016ec0', '#0171c1', '#0174c2', '#0277c4', '#027ac5', '#027dc6', '#0280c8', '#0283c9', '#0286ca', '#0289cc', '#028ccd', '#0290ce', '#0293d0', '#0296d1', '#0299d2', '#029cd4', '#039fd5', '#03a2d7', '#03a5d8', '#03a8d9', '#03abdb', '#03afdc', '#03b2dd', '#03b5df', '#03b8e0', '#03bbe1', '#03bee3', '#03c1e4', '#03c4e5', '#04c7e7', '#04cae8', '#04cde9', '#04d1eb', '#04d4ec', '#04d7ed', '#04daef', '#04ddf0', '#04e0f2', '#04e3f3', '#04e6f4', '#04e9f6', '#05ecf7', '#05f0f8', '#05f3fa', '#05f6fb', '#05f9fc', '#05fcfe', '#05ffff', '#09fffb', '#0dfff7', '#11fff3', '#15ffef', '#19ffeb', '#1cffe7', '#20ffe3', '#24ffdf', '#28ffdb', '#2cffd7', '#30ffd3', '#34ffcf', '#38ffcb', '#3cffc7', '#40ffc3', '#44ffbf', '#47ffbb', '#4bffb7', '#4fffb3', '#53ffaf', '#57ffab', '#5bffa7', '#5fffa3', '#63ff9f', '#67ff9b', '#6bff97', '#6eff93', '#72ff8f', '#76ff8b', '#7aff87', '#7eff83', '#82ff80', '#86ff7c', '#8aff78', '#8eff74', '#92ff70', '#96ff6c', '#99ff68', '#9dff64', '#a1ff60', '#a5ff5c', '#a9ff58', '#adff54', '#b1ff50', '#b5ff4c', '#b9ff48', '#bdff44', '#c1ff40', '#c4ff3c', '#c8ff38', '#ccff34', '#d0ff30', '#d4ff2c', '#d8ff28', '#dcff24', '#e0ff20', '#e4ff1c', '#e8ff18', '#ebff14', '#efff10', '#f3ff0c', '#f7ff08', '#fbff04', '#ffff00', '#fffb00', '#fff700', '#fff300', '#ffef00', '#ffeb00', '#ffe700', '#fee300', '#fedf00', '#fedb00', '#fed700', '#fed200', '#fece00', '#feca00', '#fec600', '#fec200', '#febe00', '#feba00', '#feb600', '#fdb200', '#fdae00', '#fdaa00', '#fda600', '#fda200', '#fd9e00', '#fd9a00', '#fd9600', '#fd9200', '#fd8e00', '#fd8a00', '#fd8600', '#fd8200', '#fc7d00', '#fc7900', '#fc7500', '#fc7100', '#fc6d00', '#fc6900', '#fc6500', '#fc6100', '#fc5d00', '#fc5900', '#fc5500', '#fc5100', '#fc4d00', '#fb4900', '#fb4500', '#fb4100', '#fb3d00', '#fb3900', '#fb3500', '#fb3100', '#fb2d00', '#fb2800', '#fb2400', '#fb2000', '#fb1c00', '#fa1800', '#fa1400', '#fa1000', '#fa0c00', '#fa0800', '#fa0400', '#fa0000', '#f60000', '#f20000', '#ef0000', '#eb0000', '#e70000', '#e30000', '#df0000', '#dc0000', '#d80000', '#d40000', '#d00000', '#cc0000', '#c80000', '#c50000', '#c10000', '#bd0000', '#b90000', '#b50000', '#b20000', '#ae0000', '#aa0000', '#a60000', '#a20000', '#9f0000', '#9b0000', '#970000', '#930000', '#8f0000', '#8b0000', '#880000', '#840000', '#800000'];
+const rgbColours = [[0, 0, 0.5137254901960784], [0, 0.00784313725490196, 0.5176470588235295], [0, 0.01568627450980392, 0.5215686274509804], [0, 0.023529411764705882, 0.5294117647058824], [0, 0.03137254901960784, 0.5333333333333333], [0, 0.03529411764705882, 0.5372549019607843], [0, 0.043137254901960784, 0.5411764705882353], [0, 0.050980392156862744, 0.5490196078431373], [0, 0.058823529411764705, 0.5529411764705883], [0, 0.06666666666666667, 0.5568627450980392], [0, 0.07450980392156863, 0.5607843137254902], [0, 0.08235294117647059, 0.5647058823529412], [0, 0.09019607843137255, 0.5725490196078431], [0, 0.09411764705882353, 0.5764705882352941], [0, 0.10196078431372549, 0.5803921568627451], [0, 0.10980392156862745, 0.5843137254901961], [0, 0.11764705882352941, 0.592156862745098], [0, 0.12549019607843137, 0.596078431372549], [0, 0.13333333333333333, 0.6], [0, 0.1411764705882353, 0.6039215686274509], [0, 0.14901960784313725, 0.6078431372549019], [0, 0.15294117647058825, 0.615686274509804], [0, 0.1607843137254902, 0.6196078431372549], [0, 0.16862745098039217, 0.6235294117647059], [0, 0.17647058823529413, 0.6274509803921569], [0, 0.1843137254901961, 0.6313725490196078], [0, 0.19215686274509805, 0.6392156862745098], [0, 0.2, 0.6431372549019608], [0, 0.20784313725490197, 0.6470588235294118], [0, 0.21176470588235294, 0.6509803921568628], [0, 0.2196078431372549, 0.6588235294117647], [0, 0.22745098039215686, 0.6627450980392157], [0, 0.23529411764705882, 0.6666666666666666], [0, 0.24705882352941178, 0.6705882352941176], [0, 0.25882352941176473, 0.6784313725490196], [0, 0.27058823529411763, 0.6823529411764706], [0, 0.2823529411764706, 0.6862745098039216], [0, 0.29411764705882354, 0.6941176470588235], [0, 0.30980392156862746, 0.6980392156862745], [0.00392156862745098, 0.3215686274509804, 0.7019607843137254], [0.00392156862745098, 0.3333333333333333, 0.7098039215686275], [0.00392156862745098, 0.34509803921568627, 0.7137254901960784], [0.00392156862745098, 0.3568627450980392, 0.7176470588235294], [0.00392156862745098, 0.3686274509803922, 0.7254901960784313], [0.00392156862745098, 0.3803921568627451, 0.7294117647058823], [0.00392156862745098, 0.39215686274509803, 0.7372549019607844], [0.00392156862745098, 0.403921568627451, 0.7411764705882353], [0.00392156862745098, 0.41568627450980394, 0.7450980392156863], [0.00392156862745098, 0.43137254901960786, 0.7529411764705882], [0.00392156862745098, 0.44313725490196076, 0.7568627450980392], [0.00392156862745098, 0.4549019607843137, 0.7607843137254902], [0.00784313725490196, 0.4666666666666667, 0.7686274509803922], [0.00784313725490196, 0.47843137254901963, 0.7725490196078432], [0.00784313725490196, 0.49019607843137253, 0.7764705882352941], [0.00784313725490196, 0.5019607843137255, 0.7843137254901961], [0.00784313725490196, 0.5137254901960784, 0.788235294117647], [0.00784313725490196, 0.5254901960784314, 0.792156862745098], [0.00784313725490196, 0.5372549019607843, 0.8], [0.00784313725490196, 0.5490196078431373, 0.803921568627451], [0.00784313725490196, 0.5647058823529412, 0.807843137254902], [0.00784313725490196, 0.5764705882352941, 0.8156862745098039], [0.00784313725490196, 0.5882352941176471, 0.8196078431372549], [0.00784313725490196, 0.6, 0.8235294117647058], [0.00784313725490196, 0.611764705882353, 0.8313725490196079], [0.011764705882352941, 0.6235294117647059, 0.8352941176470589], [0.011764705882352941, 0.6352941176470588, 0.8431372549019608], [0.011764705882352941, 0.6470588235294118, 0.8470588235294118], [0.011764705882352941, 0.6588235294117647, 0.8509803921568627], [0.011764705882352941, 0.6705882352941176, 0.8588235294117647], [0.011764705882352941, 0.6862745098039216, 0.8627450980392157], [0.011764705882352941, 0.6980392156862745, 0.8666666666666667], [0.011764705882352941, 0.7098039215686275, 0.8745098039215686], [0.011764705882352941, 0.7215686274509804, 0.8784313725490196], [0.011764705882352941, 0.7333333333333333, 0.8823529411764706], [0.011764705882352941, 0.7450980392156863, 0.8901960784313725], [0.011764705882352941, 0.7568627450980392, 0.8941176470588236], [0.011764705882352941, 0.7686274509803922, 0.8980392156862745], [0.01568627450980392, 0.7803921568627451, 0.9058823529411765], [0.01568627450980392, 0.792156862745098, 0.9098039215686274], [0.01568627450980392, 0.803921568627451, 0.9137254901960784], [0.01568627450980392, 0.8196078431372549, 0.9215686274509803], [0.01568627450980392, 0.8313725490196079, 0.9254901960784314], [0.01568627450980392, 0.8431372549019608, 0.9294117647058824], [0.01568627450980392, 0.8549019607843137, 0.9372549019607843], [0.01568627450980392, 0.8666666666666667, 0.9411764705882353], [0.01568627450980392, 0.8784313725490196, 0.9490196078431372], [0.01568627450980392, 0.8901960784313725, 0.9529411764705882], [0.01568627450980392, 0.9019607843137255, 0.9568627450980393], [0.01568627450980392, 0.9137254901960784, 0.9647058823529412], [0.0196078431372549, 0.9254901960784314, 0.9686274509803922], [0.0196078431372549, 0.9411764705882353, 0.9725490196078431], [0.0196078431372549, 0.9529411764705882, 0.9803921568627451], [0.0196078431372549, 0.9647058823529412, 0.984313725490196], [0.0196078431372549, 0.9764705882352941, 0.9882352941176471], [0.0196078431372549, 0.9882352941176471, 0.996078431372549], [0.0196078431372549, 1, 1], [0.03529411764705882, 1, 0.984313725490196], [0.050980392156862744, 1, 0.9686274509803922], [0.06666666666666667, 1, 0.9529411764705882], [0.08235294117647059, 1, 0.9372549019607843], [0.09803921568627451, 1, 0.9215686274509803], [0.10980392156862745, 1, 0.9058823529411765], [0.12549019607843137, 1, 0.8901960784313725], [0.1411764705882353, 1, 0.8745098039215686], [0.1568627450980392, 1, 0.8588235294117647], [0.17254901960784313, 1, 0.8431372549019608], [0.18823529411764706, 1, 0.8274509803921568], [0.20392156862745098, 1, 0.8117647058823529], [0.2196078431372549, 1, 0.796078431372549], [0.23529411764705882, 1, 0.7803921568627451], [0.25098039215686274, 1, 0.7647058823529411], [0.26666666666666666, 1, 0.7490196078431373], [0.2784313725490196, 1, 0.7333333333333333], [0.29411764705882354, 1, 0.7176470588235294], [0.30980392156862746, 1, 0.7019607843137254], [0.3254901960784314, 1, 0.6862745098039216], [0.3411764705882353, 1, 0.6705882352941176], [0.3568627450980392, 1, 0.6549019607843137], [0.37254901960784315, 1, 0.6392156862745098], [0.38823529411764707, 1, 0.6235294117647059], [0.403921568627451, 1, 0.6078431372549019], [0.4196078431372549, 1, 0.592156862745098], [0.43137254901960786, 1, 0.5764705882352941], [0.4470588235294118, 1, 0.5607843137254902], [0.4627450980392157, 1, 0.5450980392156862], [0.47843137254901963, 1, 0.5294117647058824], [0.49411764705882355, 1, 0.5137254901960784], [0.5098039215686274, 1, 0.5019607843137255], [0.5254901960784314, 1, 0.48627450980392156], [0.5411764705882353, 1, 0.47058823529411764], [0.5568627450980392, 1, 0.4549019607843137], [0.5725490196078431, 1, 0.4392156862745098], [0.5882352941176471, 1, 0.4235294117647059], [0.6, 1, 0.40784313725490196], [0.615686274509804, 1, 0.39215686274509803], [0.6313725490196078, 1, 0.3764705882352941], [0.6470588235294118, 1, 0.3607843137254902], [0.6627450980392157, 1, 0.34509803921568627], [0.6784313725490196, 1, 0.32941176470588235], [0.6941176470588235, 1, 0.3137254901960784], [0.7098039215686275, 1, 0.2980392156862745], [0.7254901960784313, 1, 0.2823529411764706], [0.7411764705882353, 1, 0.26666666666666666], [0.7568627450980392, 1, 0.25098039215686274], [0.7686274509803922, 1, 0.23529411764705882], [0.7843137254901961, 1, 0.2196078431372549], [0.8, 1, 0.20392156862745098], [0.8156862745098039, 1, 0.18823529411764706], [0.8313725490196079, 1, 0.17254901960784313], [0.8470588235294118, 1, 0.1568627450980392], [0.8627450980392157, 1, 0.1411764705882353], [0.8784313725490196, 1, 0.12549019607843137], [0.8941176470588236, 1, 0.10980392156862745], [0.9098039215686274, 1, 0.09411764705882353], [0.9215686274509803, 1, 0.0784313725490196], [0.9372549019607843, 1, 0.06274509803921569], [0.9529411764705882, 1, 0.047058823529411764], [0.9686274509803922, 1, 0.03137254901960784], [0.984313725490196, 1, 0.01568627450980392], [1, 1, 0], [1, 0.984313725490196, 0], [1, 0.9686274509803922, 0], [1, 0.9529411764705882, 0], [1, 0.9372549019607843, 0], [1, 0.9215686274509803, 0], [1, 0.9058823529411765, 0], [0.996078431372549, 0.8901960784313725, 0], [0.996078431372549, 0.8745098039215686, 0], [0.996078431372549, 0.8588235294117647, 0], [0.996078431372549, 0.8431372549019608, 0], [0.996078431372549, 0.8235294117647058, 0], [0.996078431372549, 0.807843137254902, 0], [0.996078431372549, 0.792156862745098, 0], [0.996078431372549, 0.7764705882352941, 0], [0.996078431372549, 0.7607843137254902, 0], [0.996078431372549, 0.7450980392156863, 0], [0.996078431372549, 0.7294117647058823, 0], [0.996078431372549, 0.7137254901960784, 0], [0.9921568627450981, 0.6980392156862745, 0], [0.9921568627450981, 0.6823529411764706, 0], [0.9921568627450981, 0.6666666666666666, 0], [0.9921568627450981, 0.6509803921568628, 0], [0.9921568627450981, 0.6352941176470588, 0], [0.9921568627450981, 0.6196078431372549, 0], [0.9921568627450981, 0.6039215686274509, 0], [0.9921568627450981, 0.5882352941176471, 0], [0.9921568627450981, 0.5725490196078431, 0], [0.9921568627450981, 0.5568627450980392, 0], [0.9921568627450981, 0.5411764705882353, 0], [0.9921568627450981, 0.5254901960784314, 0], [0.9921568627450981, 0.5098039215686274, 0], [0.9882352941176471, 0.49019607843137253, 0], [0.9882352941176471, 0.4745098039215686, 0], [0.9882352941176471, 0.4588235294117647, 0], [0.9882352941176471, 0.44313725490196076, 0], [0.9882352941176471, 0.42745098039215684, 0], [0.9882352941176471, 0.4117647058823529, 0], [0.9882352941176471, 0.396078431372549, 0], [0.9882352941176471, 0.3803921568627451, 0], [0.9882352941176471, 0.36470588235294116, 0], [0.9882352941176471, 0.34901960784313724, 0], [0.9882352941176471, 0.3333333333333333, 0], [0.9882352941176471, 0.3176470588235294, 0], [0.9882352941176471, 0.30196078431372547, 0], [0.984313725490196, 0.28627450980392155, 0], [0.984313725490196, 0.27058823529411763, 0], [0.984313725490196, 0.2549019607843137, 0], [0.984313725490196, 0.23921568627450981, 0], [0.984313725490196, 0.2235294117647059, 0], [0.984313725490196, 0.20784313725490197, 0], [0.984313725490196, 0.19215686274509805, 0], [0.984313725490196, 0.17647058823529413, 0], [0.984313725490196, 0.1568627450980392, 0], [0.984313725490196, 0.1411764705882353, 0], [0.984313725490196, 0.12549019607843137, 0], [0.984313725490196, 0.10980392156862745, 0], [0.9803921568627451, 0.09411764705882353, 0], [0.9803921568627451, 0.0784313725490196, 0], [0.9803921568627451, 0.06274509803921569, 0], [0.9803921568627451, 0.047058823529411764, 0], [0.9803921568627451, 0.03137254901960784, 0], [0.9803921568627451, 0.01568627450980392, 0], [0.9803921568627451, 0, 0], [0.9647058823529412, 0, 0], [0.9490196078431372, 0, 0], [0.9372549019607843, 0, 0], [0.9215686274509803, 0, 0], [0.9058823529411765, 0, 0], [0.8901960784313725, 0, 0], [0.8745098039215686, 0, 0], [0.8627450980392157, 0, 0], [0.8470588235294118, 0, 0], [0.8313725490196079, 0, 0], [0.8156862745098039, 0, 0], [0.8, 0, 0], [0.7843137254901961, 0, 0], [0.7725490196078432, 0, 0], [0.7568627450980392, 0, 0], [0.7411764705882353, 0, 0], [0.7254901960784313, 0, 0], [0.7098039215686275, 0, 0], [0.6980392156862745, 0, 0], [0.6823529411764706, 0, 0], [0.6666666666666666, 0, 0], [0.6509803921568628, 0, 0], [0.6352941176470588, 0, 0], [0.6235294117647059, 0, 0], [0.6078431372549019, 0, 0], [0.592156862745098, 0, 0], [0.5764705882352941, 0, 0], [0.5607843137254902, 0, 0], [0.5450980392156862, 0, 0], [0.5333333333333333, 0, 0], [0.5176470588235295, 0, 0], [0.5019607843137255, 0, 0], [0.5019607843137255, 0, 0]];
 
 function scaleAcrossRange (x, max, min) {
 
@@ -37,24 +69,30 @@ function median (values) {
 
 function medianFilter (array) {
 
-    const filteredArray = [];
+    const filteredArray = new Array(array.length - 2);
 
     for (let i = 1; i < array.length - 1; i++) {
 
-        const filteredRow = [];
+        const filteredRow = new Array(array[i].length - 2);
 
         for (let j = 1; j < array[i].length - 1; j++) {
 
-            const values = [];
-            values.push(array[i - 1][j], array[i][j], array[i + 1][j]);
-            values.push(array[i - 1][j - 1], array[i][j - 1], array[i + 1][j - 1]);
-            values.push(array[i - 1][j + 1], array[i][j + 1], array[i + 1][j + 1]);
+            const values = new Array(9);
+            values[0] = array[i - 1][j];
+            values[1] = array[i][j];
+            values[2] = array[i + 1][j];
+            values[3] = array[i - 1][j - 1];
+            values[4] = array[i][j - 1];
+            values[5] = array[i + 1][j - 1];
+            values[6] = array[i - 1][j + 1];
+            values[7] = array[i][j + 1];
+            values[8] = array[i + 1][j + 1];
 
-            filteredRow.push(median(values));
+            filteredRow[j - 1] = median(values);
 
         }
 
-        filteredArray.push(filteredRow);
+        filteredArray[i - 1] = filteredRow;
 
     }
 
@@ -62,63 +100,65 @@ function medianFilter (array) {
 
 }
 
-function calculateSpectrogramFrames (samples, sampleRate) {
+function getFrameCount (numSamples) {
 
-    // If sample count > 60 seconds at 48 kHz, drop the spectrogram quality
-    const nfft = (samples.length > 2880000) ? 128 : 512;
-    const frameLength = 0.1 * sampleRate;
-    const frameStep = 0.005 * sampleRate;
+    return Math.ceil((numSamples - FRAME_LENGTH) / FRAME_STEP);
+
+}
+
+function calculateSpectrogramFrames (samples, sampleRate) {
 
     let sampleArray = Array.from(samples);
 
     // Pad signal to make sure that all frames have equal number of samples without truncating any samples from the original signal
-    const numFrames = Math.ceil((sampleArray.length - frameLength) / frameStep);
-    const paddedArrayLength = numFrames * frameStep + frameLength;
+    const numFrames = getFrameCount(sampleArray.length);
+
+    const paddedArrayLength = numFrames * FRAME_STEP + FRAME_LENGTH;
     sampleArray = sampleArray.concat(new Array(paddedArrayLength - sampleArray.length).fill(0));
 
-    const frames = [];
+    const frames = new Array(numFrames);
 
     for (let i = 0; i < numFrames; i++) {
 
-        const frameStart = i * frameStep;
-        const frame = [];
+        const frameStart = i * FRAME_STEP;
+        const frame = new Array(FRAME_LENGTH);
 
-        for (let j = 0; j < frameLength; j++) {
+        for (let j = 0; j < FRAME_LENGTH; j++) {
 
-            frame.push(sampleArray[j + frameStart]);
+            frame[j] = sampleArray[j + frameStart];
 
         }
 
-        frames.push(frame);
+        frames[i] = frame;
 
     }
 
-    let spectrumFrames = [];
+    let spectrumFrames = new Array(frames.length);
 
     for (let m = 0; m < frames.length; m++) {
 
         // Apply FFT
-        const fft = new RFFT(nfft, sampleRate);
+        const fft = new RFFT(NFFT, sampleRate);
         fft.forward(frames[m]);
 
-        const spectrum = [];
+        const spectrum = new Array(fft.trans.length);
 
         for (let n = 0; n < fft.trans.length; n++) {
 
             if (fft.trans[n] !== 0) {
 
-                spectrum.push(Math.log(Math.abs(fft.trans[n])));
+                spectrum[n] = Math.log(Math.abs(fft.trans[n]));
 
             } else {
 
                 // Prevent log(0) = -inf
-                spectrum.push(0);
+                spectrum[n] = 0;
 
             }
 
         }
 
-        spectrumFrames.push(spectrum);
+        spectrumFrames[m] = spectrum;
 
     }
 
@@ -129,49 +169,154 @@ function calculateSpectrogramFrames (samples, sampleRate) {
 
 }
 
-function drawSpectrogram (spectrumFrames, canvas, callback) {
+function drawSpectrogram (spectrumFrames, drawingCanvas, pixelOffset, zoom, callback) {
+
+    // Prepare WebGL
+
+    /** @type {WebGLRenderingContext} */
+    let gl = drawingCanvas.getContext('webgl');
+
+    if (!gl) {
+
+        console.log('Loading experimental WebGL context');
+        gl = drawingCanvas.getContext('experimental-webgl');
+
+    }
+
+    if (!gl) {
+
+        console.error('WebGL not supported by this browser');
+        return;
+
+    }
+
+    gl.viewport(pixelOffset, 0, zoom * drawingCanvas.width, drawingCanvas.height);
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+
+    gl.shaderSource(vertexShader, vertexShaderText);
+    gl.shaderSource(fragmentShader, fragmentShaderText);
+
+    gl.compileShader(vertexShader);
+    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+
+        console.error('Error compiling vertex shader', gl.getShaderInfoLog(vertexShader));
+        return;
+
+    }
+
+    gl.compileShader(fragmentShader);
+    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+
+        console.error('Error compiling fragment shader', gl.getShaderInfoLog(fragmentShader));
+        return;
+
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+
+        console.error('Error linking program', gl.getProgramInfoLog(program));
+        return;
+
+    }
+
+    // Create buffer
+
+    const frameCount = spectrumFrames.length;
 
     let maxValue = 0;
     let minValue = 0;
 
     // Calculate range of filtered values to scale colours between
+
     for (let a = 0; a < spectrumFrames.length; a++) {
 
-        maxValue = Math.max(Math.max.apply(null, spectrumFrames[a]), maxValue);
-        minValue = Math.min(Math.min.apply(null, spectrumFrames[a]), minValue);
+        maxValue = Math.max(Math.max(...spectrumFrames[a]), maxValue);
+        minValue = Math.min(Math.min(...spectrumFrames[a]), minValue);
 
     }
 
-    const ctx = canvas.getContext('2d');
+    // Only use half of the vertical spectrum data as it's mirrored
+    // Each point has 5 values: x, y, R, G, B
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pointData = new Array(frameCount * spectrumFrames[0].length / 2 * 5);
 
-    // Save context so it can be restored to original scale once spectrogram has been drawn
-    ctx.save();
+    const W = frameCount;
+    const H = spectrumFrames[0].length / 2;
 
-    // Scale drawing context to fill canvas
-    const specWidth = spectrumFrames.length;
-    const specHeight = spectrumFrames[0].length / 2;
+    let index = 0;
 
-    ctx.scale((canvas.width / specWidth), canvas.height / specHeight);
+    for (let i = 0; i < frameCount; i++) {
 
-    for (let o = 0; o < spectrumFrames.length; o++) {
+        // Scale to fit the canvas
 
-        // Ignore half of spectrogram above Nyquist frequency as it is redundant a reflects values below
-        for (let p = spectrumFrames[0].length / 2; p < spectrumFrames[0].length; p++) {
+        const scaleFactorX = i / W;
+        const scaleFactorY = 1 / H;
 
-            // Scale values between 0 - 255 to match colour map
-            const scaledValue = Math.round(255 * scaleAcrossRange(spectrumFrames[o][p], maxValue, minValue));
+        for (let j = 0; j < spectrumFrames[0].length / 2; j++) {
 
-            ctx.fillStyle = colours[scaledValue];
-            ctx.fillRect(o, p - spectrumFrames[0].length / 2, 1, 1);
+            const x = 2.0 * scaleFactorX - 1.0;
+            const y = 2.0 * j * scaleFactorY - 1.0;
+
+            const scaledValue = Math.round(255 * scaleAcrossRange(spectrumFrames[i][j], maxValue, minValue));
+            const rgbValues = rgbColours[scaledValue];
+
+            pointData[index] = x;
+            index++;
+            pointData[index] = y;
+            index++;
+
+            pointData[index] = rgbValues[0];
+            index++;
+            pointData[index] = rgbValues[1];
+            index++;
+            pointData[index] = rgbValues[2];
+            index++;
 
         }
 
     }
 
-    // Restore default scaling
-    ctx.restore();
+    const pointVertexBufferObject = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointVertexBufferObject);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointData), gl.STATIC_DRAW);
+
+    const positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
+    const colorAttribLocation = gl.getAttribLocation(program, 'vertColor');
+
+    gl.vertexAttribPointer(
+        positionAttribLocation, // Attribute location
+        2, // Number of elements per attribute
+        gl.FLOAT, // Type of elements
+        gl.FALSE,
+        5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+        0 // Offset from the bgeinning of a single vertex to this attribute
+    );
+
+    gl.vertexAttribPointer(
+        colorAttribLocation, // Attribute location
+        3, // Number of elements per attribute
+        gl.FLOAT, // Type of elements
+        gl.FALSE,
+        5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+        2 * Float32Array.BYTES_PER_ELEMENT // Offset from the bgeinning of a single vertex to this attribute
+    );
+
+    gl.enableVertexAttribArray(positionAttribLocation);
+    gl.enableVertexAttribArray(colorAttribLocation);
+
+    // Main render loop
+
+    gl.useProgram(program);
+    gl.drawArrays(gl.POINTS, 0, pointData.length / 5);
 
     callback();
 

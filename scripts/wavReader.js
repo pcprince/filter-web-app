@@ -119,22 +119,6 @@ function readHeader (buffer) {
 
 }
 
-function readSamples (buffer, fileLength) {
-
-    const state = {buffer: buffer, index: 0};
-
-    const samples = [];
-
-    while (state.index < fileLength) {
-
-        samples.push(readInt16LE(state));
-
-    }
-
-    return samples;
-
-}
-
 /* Function to check header */
 
 function checkHeader (header, fileSize) {
@@ -305,7 +289,7 @@ async function readWav (fileHandler, maxFileSize) {
 
     }
 
-    const samples = readSamples(contents.slice(LENGTH_OF_WAV_HEADER), header.data.size);
+    const samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER);
 
     return {
         success: true,
