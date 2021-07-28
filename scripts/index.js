@@ -654,7 +654,7 @@ function drawAxisLabels () {
     ySpecCtx.font = '10px monospace';
     ySpecCtx.textBaseline = 'middle';
 
-    const ySpecLabelIncrement = (sampleCount !== 0) ? sampleRate / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
+    const ySpecLabelIncrement = (sampleCount !== 0) ? sampleRate / 2 / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
     const ySpecIncrement = spectrogramLabelCanvas.height / Y_LABEL_COUNT;
 
     for (let i = 0; i <= Y_LABEL_COUNT; i++) {
