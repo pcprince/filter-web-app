@@ -298,7 +298,7 @@ function drawSpectrogram (spectrumFrames, drawingCanvas, pixelOffset, zoom, call
         gl.FLOAT, // Type of elements
         gl.FALSE,
         5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-        0 // Offset from the bgeinning of a single vertex to this attribute
+        0 // Offset from the beginning of a single vertex to this attribute
     );
 
     gl.vertexAttribPointer(
@@ -307,7 +307,7 @@ function drawSpectrogram (spectrumFrames, drawingCanvas, pixelOffset, zoom, call
         gl.FLOAT, // Type of elements
         gl.FALSE,
         5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-        2 * Float32Array.BYTES_PER_ELEMENT // Offset from the bgeinning of a single vertex to this attribute
+        2 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
     );
 
     gl.enableVertexAttribArray(positionAttribLocation);
