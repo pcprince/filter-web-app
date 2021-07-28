@@ -7,8 +7,6 @@
 /* global RFFT */
 
 const NFFT = 128;
-const FRAME_LENGTH = 256;
-const FRAME_STEP = 128;
 
 const vertexShaderText =
 [
@@ -100,30 +98,32 @@ function medianFilter (array) {
 
 }
 
-function getFrameCount (numSamples) {
+function getFrameCount (numSamples, frameLength, frameStep) {
 
-    return Math.ceil((numSamples - FRAME_LENGTH) / FRAME_STEP);
+    return Math.ceil((numSamples - frameLength) / frameStep);
 
 }
 
-function calculateSpectrogramFrames (samples, sampleRate) {
+function calculateSpectrogramFrames (samples, sampleRate, frameLength) {
+
+    const frameStep = frameLength / 2;
 
     let sampleArray = Array.from(samples);
 
     // Pad signal to make sure that all frames have equal number of samples without truncating any samples from the original signal
-    const numFrames = getFrameCount(sampleArray.length);
+    const numFrames = getFrameCount(sampleArray.length, frameLength, frameStep);
 
-    const paddedArrayLength = numFrames * FRAME_STEP + FRAME_LENGTH;
+    const paddedArrayLength = numFrames * frameStep + frameLength;
     sampleArray = sampleArray.concat(new Array(paddedArrayLength - sampleArray.length).fill(0));
 
     const frames = new Array(numFrames);
 
     for (let i = 0; i < numFrames; i++) {
 
-        const frameStart = i * FRAME_STEP;
-        const frame = new Array(FRAME_LENGTH);
+        const frameStart = i * frameStep;
+        const frame = new Array(frameLength);
 
-        for (let j = 0; j < FRAME_LENGTH; j++) {
+        for (let j = 0; j < frameLength; j++) {
 
             frame[j] = sampleArray[j + frameStart];
 
@@ -169,7 +169,7 @@ function calculateSpectrogramFrames (samples, sampleRate) {
 
 }
 
-function drawSpectrogram (spectrumFrames, drawingCanvas, pixelOffset, zoom, callback) {
+function drawSpectrogram (spectrumFrames, drawingCanvas, callback) {
 
     // Prepare WebGL
 
@@ -190,7 +190,7 @@ function drawSpectrogram (spectrumFrames, drawingCanvas, pixelOffset, zoom, call
 
     }
 
-    gl.viewport(pixelOffset, 0, zoom * drawingCanvas.width, drawingCanvas.height);
+    gl.viewport(0, 0, drawingCanvas.width, drawingCanvas.height);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
