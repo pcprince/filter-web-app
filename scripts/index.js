@@ -11,9 +11,9 @@
 const FILLER_SAMPLE_COUNT = 1440000;
 const FILLER_SAMPLE_RATE = 48000;
 
-// Approximately 30 seconds at 384 kHz
+// Approximately 60 seconds at 384 kHz
 
-const MAX_FILE_SIZE = 24117248;
+const MAX_FILE_SIZE = 46080488;
 
 // Error display elements
 
