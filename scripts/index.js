@@ -181,7 +181,6 @@ for (let sIndex = sliderMin; sIndex <= sliderMax; sIndex += sliderStep) {
 
 // Other UI
 
-const updateButton = document.getElementById('update-button');
 const resetButton = document.getElementById('reset-button');
 
 /**
@@ -1098,7 +1097,6 @@ function drawPlots () {
             amplitudeThresholdingCheckboxLabel.style.color = '';
             updateAmplitudeThresholdingUI();
 
-            updateButton.disabled = false;
             resetButton.disabled = false;
 
         });
@@ -1181,7 +1179,6 @@ function processContents (samples, sampleRate) {
     amplitudeThresholdingCheckboxLabel.style.color = 'grey';
     updateAmplitudeThresholdingUI();
 
-    updateButton.disabled = true;
     resetButton.disabled = true;
 
     // Wait short period to make sure UI is completely disabled before processing actually begins
@@ -1357,6 +1354,12 @@ function zoomOut () {
  * Apply filter and amplitude threshold if appropriate then redraw plots
  */
 async function updatePlots () {
+
+    if (drawing || sampleCount === 0) {
+
+        return;
+
+    }
 
     if (!filterCheckbox.checked && !amplitudeThresholdingCheckbox.checked) {
 
@@ -1549,7 +1552,6 @@ fileButton.addEventListener('click', async () => {
     amplitudeThresholdingCheckboxLabel.style.color = 'grey';
     updateAmplitudeThresholdingUI();
 
-    updateButton.disabled = true;
     resetButton.disabled = true;
 
     // Read samples
@@ -1683,7 +1685,7 @@ function handleMouseDown (e) {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const canvas = e.srcElement;
+        const canvas = e.target;
         const rect = canvas.getBoundingClientRect();
 
         // Update drag start location
@@ -1728,7 +1730,7 @@ function handleMouseMove (e) {
 
     if (isDragging && sampleCount !== 0 && !drawing) {
 
-        const canvas = e.srcElement;
+        const canvas = e.target;
 
         const rect = canvas.getBoundingClientRect();
         const dragCurrentX = e.clientX - rect.left;
@@ -1752,7 +1754,7 @@ function handleMouseUp (e) {
 
     if (isDragging && sampleCount !== 0 && !drawing) {
 
-        const canvas = e.srcElement;
+        const canvas = e.target;
 
         isDragging = false;
 
@@ -1913,9 +1915,28 @@ for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
 amplitudeThresholdingSlider.on('change', updateAmplitudeThresholdingLabel);
 
 /**
- * Add update plot button listener, applying low/band/high pass filter and amplitude threshold if selected
+ * Add update plot listeners, applying low/band/high pass filter and amplitude threshold if selected
  */
-updateButton.addEventListener('click', updatePlots);
+filterCheckbox.addEventListener('change', updatePlots);
+filterRadioButtons[0].addEventListener('change', updatePlots);
+filterRadioButtons[1].addEventListener('change', updatePlots);
+filterRadioButtons[2].addEventListener('change', updatePlots);
+bandPassFilterSlider.on('slideStop', updatePlots);
+lowPassFilterSlider.on('slideStop', updatePlots);
+highPassFilterSlider.on('slideStop', updatePlots);
+amplitudeThresholdingCheckbox.addEventListener('change', updatePlots);
+amplitudeThresholdingSlider.on('slideStop', updatePlots);
+amplitudeThresholdingRadioButtons[0].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[1].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[2].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[3].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[4].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[5].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[6].addEventListener('change', updatePlots);
+amplitudeThresholdingRadioButtons[7].addEventListener('change', updatePlots);
+amplitudeThresholdingScaleRadioButtons[0].addEventListener('change', updatePlots);
+amplitudeThresholdingScaleRadioButtons[1].addEventListener('change', updatePlots);
+amplitudeThresholdingScaleRadioButtons[2].addEventListener('change', updatePlots);
 
 /**
  * Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
