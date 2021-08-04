@@ -78,11 +78,34 @@
                 <div class="col-2"></div>
                 <div class="col-4">
                     <div class="row">
+                        <div class="col" style="text-align: right;"></div>
+                        <div class="col align-self-center">
+                            <span>Zoom</span>
+                        </div>
+                        <div class="col" style="text-align: left;"></div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="row">
+                        <div class="col" style="text-align: right;"></div>
+                        <div class="col align-self-center">
+                            <span>Pan</span>
+                        </div>
+                        <div class="col" style="text-align: left;"></div>
+                    </div>
+                </div>
+                <div class="col-2"></div>
+            </div>
+
+            <div class="row" style="margin-top: 2px; text-align: center;">
+                <div class="col-2"></div>
+                <div class="col-4">
+                    <div class="row">
                         <div class="col" style="text-align: right;">
                             <button class="btn btn-primary" id="zoom-in-button">+</button>
                         </div>
-                        <div class="col">
-                            <span class="align-middle" id="zoom-span">x1.0</span>
+                        <div class="col align-self-center">
+                            <input class="align-middle" id="zoom-input" style="text-align: center;" size="2" maxlength="5" value="1.0">
                         </div>
                         <div class="col" style="text-align: left;">
                             <button class="btn btn-primary" id="zoom-out-button">-</button>
@@ -94,8 +117,8 @@
                         <div class="col" style="text-align: right;">
                             <button class="btn btn-secondary" id="pan-left-button" style="margin-left: 5px;"><</button>
                         </div>
-                        <div class="col">
-                            <span class="align-middle">Pan</span>
+                        <div class="col align-self-center">
+                            <input class="align-middle" id="pan-input" style="text-align: center;" size="2" maxlength="5" value="0.0">
                         </div>
                         <div class="col" style="text-align: left;">
                             <button class="btn btn-secondary" id="pan-right-button">></button>
@@ -107,18 +130,20 @@
 
             <!-- Plots -->
 
-            <div class="row justify-content-center" style="margin-top: 10px; height: 300px; text-align: center;">
-                <div class="wrapper" style="width: 843px; height: 298px;">
-                    <canvas class="label-canvas" id="spectrogram-label-canvas" width="45" height="300" style="padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="spectrogram-canvas" width="798" height="298" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="spectrogram-overlay-canvas" width="798" height="298"></canvas>
+            <div class="row justify-content-center" style="margin-top: 10px; height: 258px; text-align: center;">
+                <div class="wrapper" style="width: 843px; height: 256px;">
+                    <canvas class="label-canvas" id="spectrogram-label-canvas" width="45" height="258" style="padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-canvas" width="798" height="256" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="798" height="258"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="798" height="258"></canvas>
                 </div>
             </div>
-            <div class="row justify-content-center" style="margin-top: 0px; height: 400px; text-align: center;">
-                <div class="wrapper" style="width: 843px; height: 398px;">
-                    <canvas class="label-canvas" id="waveform-label-canvas" width="45" height="400" style="padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="waveform-canvas" width="798" height="398" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="waveform-overlay-canvas" width="798" height="398"></canvas>
+            <div class="row justify-content-center" style="margin-top: 0px; height: 200px; text-align: center;">
+                <div class="wrapper" style="width: 843px; height: 198px;">
+                    <canvas class="label-canvas" id="waveform-label-canvas" width="45" height="200" style="padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="waveform-canvas" width="798" height="198" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="waveform-threshold-canvas" width="798" height="198"></canvas>
+                    <canvas class="plot-canvas" id="waveform-drag-canvas" width="798" height="198"></canvas>
                 </div>
             </div>
             <div class="row justify-content-center" style="margin-top: 0%; text-align: center;">
@@ -424,6 +449,8 @@
                 <div class="col-2"></div>
             </div>
 
+            <div style="margin-bottom: 20px;"></div>
+
         </div>
     </body>
     <script src="scripts/external/complex.min.js"></script>
@@ -432,7 +459,7 @@
     <script src="scripts/external/jquery-3.6.0.slim.min.js"></script>
     <script src="scripts/external/bootstrap.bundle.min.js"></script>
     <script src="scripts/external/bootstrap-slider.min.js"></script>
-    <script src="scripts/external/dsp.js"></script>
+    <script src="scripts/external/fft.js"></script>
     <script src="scripts/spectrogram.js"></script>
     <script src="scripts/waveform.js"></script>
     <script src="scripts/amplitudeThresholding.js"></script>

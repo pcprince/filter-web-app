@@ -4,320 +4,172 @@
  * June 2021
  *****************************************************************************/
 
-/* global RFFT */
+/* global FFT */
 
-const NFFT = 128;
+// Canvas the spectrogram will be drawn to
 
-const vertexShaderText =
-[
-    'precision mediump float;',
-    '',
-    'attribute vec2 vertPosition;',
-    'attribute vec3 vertColor;',
-    'varying vec3 fragColor;',
-    '',
-    'void main()',
-    '{',
-    '   gl_PointSize = 10.0;',
-    '   fragColor = vertColor;',
-    '   gl_Position = vec4(vertPosition, 0.0, 1.0);',
-    '}'
-].join('\n');
+const specCanvas = document.getElementById('spectrogram-canvas');
 
-const fragmentShaderText =
-[
-    'precision mediump float;',
-    '',
-    'varying vec3 fragColor;',
-    '',
-    'void main ()',
-    '{',
-    '   gl_FragColor = vec4(fragColor, 1.0);',
-    '}'
-].join('\n');
+const PIXEL_WIDTH = specCanvas.width;
+const PIXEL_HEIGHT = specCanvas.height;
+
+// 2D array which will hold spectrogram frames
+
+const spectrogram = new Array(PIXEL_WIDTH * PIXEL_HEIGHT);
 
 // 255 colours from Jet
-const rgbColours = [[0, 0, 0.5137254901960784], [0, 0.00784313725490196, 0.5176470588235295], [0, 0.01568627450980392, 0.5215686274509804], [0, 0.023529411764705882, 0.5294117647058824], [0, 0.03137254901960784, 0.5333333333333333], [0, 0.03529411764705882, 0.5372549019607843], [0, 0.043137254901960784, 0.5411764705882353], [0, 0.050980392156862744, 0.5490196078431373], [0, 0.058823529411764705, 0.5529411764705883], [0, 0.06666666666666667, 0.5568627450980392], [0, 0.07450980392156863, 0.5607843137254902], [0, 0.08235294117647059, 0.5647058823529412], [0, 0.09019607843137255, 0.5725490196078431], [0, 0.09411764705882353, 0.5764705882352941], [0, 0.10196078431372549, 0.5803921568627451], [0, 0.10980392156862745, 0.5843137254901961], [0, 0.11764705882352941, 0.592156862745098], [0, 0.12549019607843137, 0.596078431372549], [0, 0.13333333333333333, 0.6], [0, 0.1411764705882353, 0.6039215686274509], [0, 0.14901960784313725, 0.6078431372549019], [0, 0.15294117647058825, 0.615686274509804], [0, 0.1607843137254902, 0.6196078431372549], [0, 0.16862745098039217, 0.6235294117647059], [0, 0.17647058823529413, 0.6274509803921569], [0, 0.1843137254901961, 0.6313725490196078], [0, 0.19215686274509805, 0.6392156862745098], [0, 0.2, 0.6431372549019608], [0, 0.20784313725490197, 0.6470588235294118], [0, 0.21176470588235294, 0.6509803921568628], [0, 0.2196078431372549, 0.6588235294117647], [0, 0.22745098039215686, 0.6627450980392157], [0, 0.23529411764705882, 0.6666666666666666], [0, 0.24705882352941178, 0.6705882352941176], [0, 0.25882352941176473, 0.6784313725490196], [0, 0.27058823529411763, 0.6823529411764706], [0, 0.2823529411764706, 0.6862745098039216], [0, 0.29411764705882354, 0.6941176470588235], [0, 0.30980392156862746, 0.6980392156862745], [0.00392156862745098, 0.3215686274509804, 0.7019607843137254], [0.00392156862745098, 0.3333333333333333, 0.7098039215686275], [0.00392156862745098, 0.34509803921568627, 0.7137254901960784], [0.00392156862745098, 0.3568627450980392, 0.7176470588235294], [0.00392156862745098, 0.3686274509803922, 0.7254901960784313], [0.00392156862745098, 0.3803921568627451, 0.7294117647058823], [0.00392156862745098, 0.39215686274509803, 0.7372549019607844], [0.00392156862745098, 0.403921568627451, 0.7411764705882353], [0.00392156862745098, 0.41568627450980394, 0.7450980392156863], [0.00392156862745098, 0.43137254901960786, 0.7529411764705882], [0.00392156862745098, 0.44313725490196076, 0.7568627450980392], [0.00392156862745098, 0.4549019607843137, 0.7607843137254902], [0.00784313725490196, 0.4666666666666667, 0.7686274509803922], [0.00784313725490196, 0.47843137254901963, 0.7725490196078432], [0.00784313725490196, 0.49019607843137253, 0.7764705882352941], [0.00784313725490196, 0.5019607843137255, 0.7843137254901961], [0.00784313725490196, 0.5137254901960784, 0.788235294117647], [0.00784313725490196, 0.5254901960784314, 0.792156862745098], [0.00784313725490196, 0.5372549019607843, 0.8], [0.00784313725490196, 0.5490196078431373, 0.803921568627451], [0.00784313725490196, 0.5647058823529412, 0.807843137254902], [0.00784313725490196, 0.5764705882352941, 0.8156862745098039], [0.00784313725490196, 0.5882352941176471, 0.8196078431372549], [0.00784313725490196, 0.6, 0.8235294117647058], [0.00784313725490196, 0.611764705882353, 0.8313725490196079], [0.011764705882352941, 0.6235294117647059, 0.8352941176470589], [0.011764705882352941, 0.6352941176470588, 0.8431372549019608], [0.011764705882352941, 0.6470588235294118, 0.8470588235294118], [0.011764705882352941, 0.6588235294117647, 0.8509803921568627], [0.011764705882352941, 0.6705882352941176, 0.8588235294117647], [0.011764705882352941, 0.6862745098039216, 0.8627450980392157], [0.011764705882352941, 0.6980392156862745, 0.8666666666666667], [0.011764705882352941, 0.7098039215686275, 0.8745098039215686], [0.011764705882352941, 0.7215686274509804, 0.8784313725490196], [0.011764705882352941, 0.7333333333333333, 0.8823529411764706], [0.011764705882352941, 0.7450980392156863, 0.8901960784313725], [0.011764705882352941, 0.7568627450980392, 0.8941176470588236], [0.011764705882352941, 0.7686274509803922, 0.8980392156862745], [0.01568627450980392, 0.7803921568627451, 0.9058823529411765], [0.01568627450980392, 0.792156862745098, 0.9098039215686274], [0.01568627450980392, 0.803921568627451, 0.9137254901960784], [0.01568627450980392, 0.8196078431372549, 0.9215686274509803], [0.01568627450980392, 0.8313725490196079, 0.9254901960784314], [0.01568627450980392, 0.8431372549019608, 0.9294117647058824], [0.01568627450980392, 0.8549019607843137, 0.9372549019607843], [0.01568627450980392, 0.8666666666666667, 0.9411764705882353], [0.01568627450980392, 0.8784313725490196, 0.9490196078431372], [0.01568627450980392, 0.8901960784313725, 0.9529411764705882], [0.01568627450980392, 0.9019607843137255, 0.9568627450980393], [0.01568627450980392, 0.9137254901960784, 0.9647058823529412], [0.0196078431372549, 0.9254901960784314, 0.9686274509803922], [0.0196078431372549, 0.9411764705882353, 0.9725490196078431], [0.0196078431372549, 0.9529411764705882, 0.9803921568627451], [0.0196078431372549, 0.9647058823529412, 0.984313725490196], [0.0196078431372549, 0.9764705882352941, 0.9882352941176471], [0.0196078431372549, 0.9882352941176471, 0.996078431372549], [0.0196078431372549, 1, 1], [0.03529411764705882, 1, 0.984313725490196], [0.050980392156862744, 1, 0.9686274509803922], [0.06666666666666667, 1, 0.9529411764705882], [0.08235294117647059, 1, 0.9372549019607843], [0.09803921568627451, 1, 0.9215686274509803], [0.10980392156862745, 1, 0.9058823529411765], [0.12549019607843137, 1, 0.8901960784313725], [0.1411764705882353, 1, 0.8745098039215686], [0.1568627450980392, 1, 0.8588235294117647], [0.17254901960784313, 1, 0.8431372549019608], [0.18823529411764706, 1, 0.8274509803921568], [0.20392156862745098, 1, 0.8117647058823529], [0.2196078431372549, 1, 0.796078431372549], [0.23529411764705882, 1, 0.7803921568627451], [0.25098039215686274, 1, 0.7647058823529411], [0.26666666666666666, 1, 0.7490196078431373], [0.2784313725490196, 1, 0.7333333333333333], [0.29411764705882354, 1, 0.7176470588235294], [0.30980392156862746, 1, 0.7019607843137254], [0.3254901960784314, 1, 0.6862745098039216], [0.3411764705882353, 1, 0.6705882352941176], [0.3568627450980392, 1, 0.6549019607843137], [0.37254901960784315, 1, 0.6392156862745098], [0.38823529411764707, 1, 0.6235294117647059], [0.403921568627451, 1, 0.6078431372549019], [0.4196078431372549, 1, 0.592156862745098], [0.43137254901960786, 1, 0.5764705882352941], [0.4470588235294118, 1, 0.5607843137254902], [0.4627450980392157, 1, 0.5450980392156862], [0.47843137254901963, 1, 0.5294117647058824], [0.49411764705882355, 1, 0.5137254901960784], [0.5098039215686274, 1, 0.5019607843137255], [0.5254901960784314, 1, 0.48627450980392156], [0.5411764705882353, 1, 0.47058823529411764], [0.5568627450980392, 1, 0.4549019607843137], [0.5725490196078431, 1, 0.4392156862745098], [0.5882352941176471, 1, 0.4235294117647059], [0.6, 1, 0.40784313725490196], [0.615686274509804, 1, 0.39215686274509803], [0.6313725490196078, 1, 0.3764705882352941], [0.6470588235294118, 1, 0.3607843137254902], [0.6627450980392157, 1, 0.34509803921568627], [0.6784313725490196, 1, 0.32941176470588235], [0.6941176470588235, 1, 0.3137254901960784], [0.7098039215686275, 1, 0.2980392156862745], [0.7254901960784313, 1, 0.2823529411764706], [0.7411764705882353, 1, 0.26666666666666666], [0.7568627450980392, 1, 0.25098039215686274], [0.7686274509803922, 1, 0.23529411764705882], [0.7843137254901961, 1, 0.2196078431372549], [0.8, 1, 0.20392156862745098], [0.8156862745098039, 1, 0.18823529411764706], [0.8313725490196079, 1, 0.17254901960784313], [0.8470588235294118, 1, 0.1568627450980392], [0.8627450980392157, 1, 0.1411764705882353], [0.8784313725490196, 1, 0.12549019607843137], [0.8941176470588236, 1, 0.10980392156862745], [0.9098039215686274, 1, 0.09411764705882353], [0.9215686274509803, 1, 0.0784313725490196], [0.9372549019607843, 1, 0.06274509803921569], [0.9529411764705882, 1, 0.047058823529411764], [0.9686274509803922, 1, 0.03137254901960784], [0.984313725490196, 1, 0.01568627450980392], [1, 1, 0], [1, 0.984313725490196, 0], [1, 0.9686274509803922, 0], [1, 0.9529411764705882, 0], [1, 0.9372549019607843, 0], [1, 0.9215686274509803, 0], [1, 0.9058823529411765, 0], [0.996078431372549, 0.8901960784313725, 0], [0.996078431372549, 0.8745098039215686, 0], [0.996078431372549, 0.8588235294117647, 0], [0.996078431372549, 0.8431372549019608, 0], [0.996078431372549, 0.8235294117647058, 0], [0.996078431372549, 0.807843137254902, 0], [0.996078431372549, 0.792156862745098, 0], [0.996078431372549, 0.7764705882352941, 0], [0.996078431372549, 0.7607843137254902, 0], [0.996078431372549, 0.7450980392156863, 0], [0.996078431372549, 0.7294117647058823, 0], [0.996078431372549, 0.7137254901960784, 0], [0.9921568627450981, 0.6980392156862745, 0], [0.9921568627450981, 0.6823529411764706, 0], [0.9921568627450981, 0.6666666666666666, 0], [0.9921568627450981, 0.6509803921568628, 0], [0.9921568627450981, 0.6352941176470588, 0], [0.9921568627450981, 0.6196078431372549, 0], [0.9921568627450981, 0.6039215686274509, 0], [0.9921568627450981, 0.5882352941176471, 0], [0.9921568627450981, 0.5725490196078431, 0], [0.9921568627450981, 0.5568627450980392, 0], [0.9921568627450981, 0.5411764705882353, 0], [0.9921568627450981, 0.5254901960784314, 0], [0.9921568627450981, 0.5098039215686274, 0], [0.9882352941176471, 0.49019607843137253, 0], [0.9882352941176471, 0.4745098039215686, 0], [0.9882352941176471, 0.4588235294117647, 0], [0.9882352941176471, 0.44313725490196076, 0], [0.9882352941176471, 0.42745098039215684, 0], [0.9882352941176471, 0.4117647058823529, 0], [0.9882352941176471, 0.396078431372549, 0], [0.9882352941176471, 0.3803921568627451, 0], [0.9882352941176471, 0.36470588235294116, 0], [0.9882352941176471, 0.34901960784313724, 0], [0.9882352941176471, 0.3333333333333333, 0], [0.9882352941176471, 0.3176470588235294, 0], [0.9882352941176471, 0.30196078431372547, 0], [0.984313725490196, 0.28627450980392155, 0], [0.984313725490196, 0.27058823529411763, 0], [0.984313725490196, 0.2549019607843137, 0], [0.984313725490196, 0.23921568627450981, 0], [0.984313725490196, 0.2235294117647059, 0], [0.984313725490196, 0.20784313725490197, 0], [0.984313725490196, 0.19215686274509805, 0], [0.984313725490196, 0.17647058823529413, 0], [0.984313725490196, 0.1568627450980392, 0], [0.984313725490196, 0.1411764705882353, 0], [0.984313725490196, 0.12549019607843137, 0], [0.984313725490196, 0.10980392156862745, 0], [0.9803921568627451, 0.09411764705882353, 0], [0.9803921568627451, 0.0784313725490196, 0], [0.9803921568627451, 0.06274509803921569, 0], [0.9803921568627451, 0.047058823529411764, 0], [0.9803921568627451, 0.03137254901960784, 0], [0.9803921568627451, 0.01568627450980392, 0], [0.9803921568627451, 0, 0], [0.9647058823529412, 0, 0], [0.9490196078431372, 0, 0], [0.9372549019607843, 0, 0], [0.9215686274509803, 0, 0], [0.9058823529411765, 0, 0], [0.8901960784313725, 0, 0], [0.8745098039215686, 0, 0], [0.8627450980392157, 0, 0], [0.8470588235294118, 0, 0], [0.8313725490196079, 0, 0], [0.8156862745098039, 0, 0], [0.8, 0, 0], [0.7843137254901961, 0, 0], [0.7725490196078432, 0, 0], [0.7568627450980392, 0, 0], [0.7411764705882353, 0, 0], [0.7254901960784313, 0, 0], [0.7098039215686275, 0, 0], [0.6980392156862745, 0, 0], [0.6823529411764706, 0, 0], [0.6666666666666666, 0, 0], [0.6509803921568628, 0, 0], [0.6352941176470588, 0, 0], [0.6235294117647059, 0, 0], [0.6078431372549019, 0, 0], [0.592156862745098, 0, 0], [0.5764705882352941, 0, 0], [0.5607843137254902, 0, 0], [0.5450980392156862, 0, 0], [0.5333333333333333, 0, 0], [0.5176470588235295, 0, 0], [0.5019607843137255, 0, 0], [0.5019607843137255, 0, 0]];
+const rgbColours = [[0, 0, 131], [0, 2, 132], [0, 4, 133], [0, 6, 135], [0, 8, 136], [0, 9, 137], [0, 11, 138], [0, 13, 140], [0, 15, 141], [0, 17, 142], [0, 19, 143], [0, 21, 144], [0, 23, 146], [0, 24, 147], [0, 26, 148], [0, 28, 149], [0, 30, 151], [0, 32, 152], [0, 34, 153], [0, 36, 154], [0, 38, 155], [0, 39, 157], [0, 41, 158], [0, 43, 159], [0, 45, 160], [0, 47, 161], [0, 49, 163], [0, 51, 164], [0, 53, 165], [0, 54, 166], [0, 56, 168], [0, 58, 169], [0, 60, 170], [0, 63, 171], [0, 66, 173], [0, 69, 174], [0, 72, 175], [0, 75, 177], [0, 79, 178], [1, 82, 179], [1, 85, 181], [1, 88, 182], [1, 91, 183], [1, 94, 185], [1, 97, 186], [1, 100, 188], [1, 103, 189], [1, 106, 190], [1, 110, 192], [1, 113, 193], [1, 116, 194], [2, 119, 196], [2, 122, 197], [2, 125, 198], [2, 128, 200], [2, 131, 201], [2, 134, 202], [2, 137, 204], [2, 140, 205], [2, 144, 206], [2, 147, 208], [2, 150, 209], [2, 153, 210], [2, 156, 212], [3, 159, 213], [3, 162, 215], [3, 165, 216], [3, 168, 217], [3, 171, 219], [3, 175, 220], [3, 178, 221], [3, 181, 223], [3, 184, 224], [3, 187, 225], [3, 190, 227], [3, 193, 228], [3, 196, 229], [4, 199, 231], [4, 202, 232], [4, 205, 233], [4, 209, 235], [4, 212, 236], [4, 215, 237], [4, 218, 239], [4, 221, 240], [4, 224, 242], [4, 227, 243], [4, 230, 244], [4, 233, 246], [5, 236, 247], [5, 240, 248], [5, 243, 250], [5, 246, 251], [5, 249, 252], [5, 252, 254], [5, 255, 255], [9, 255, 251], [13, 255, 247], [17, 255, 243], [21, 255, 239], [25, 255, 235], [28, 255, 231], [32, 255, 227], [36, 255, 223], [40, 255, 219], [44, 255, 215], [48, 255, 211], [52, 255, 207], [56, 255, 203], [60, 255, 199], [64, 255, 195], [68, 255, 191], [71, 255, 187], [75, 255, 183], [79, 255, 179], [83, 255, 175], [87, 255, 171], [91, 255, 167], [95, 255, 163], [99, 255, 159], [103, 255, 155], [107, 255, 151], [110, 255, 147], [114, 255, 143], [118, 255, 139], [122, 255, 135], [126, 255, 131], [130, 255, 128], [134, 255, 124], [138, 255, 120], [142, 255, 116], [146, 255, 112], [150, 255, 108], [153, 255, 104], [157, 255, 100], [161, 255, 96], [165, 255, 92], [169, 255, 88], [173, 255, 84], [177, 255, 80], [181, 255, 76], [185, 255, 72], [189, 255, 68], [193, 255, 64], [196, 255, 60], [200, 255, 56], [204, 255, 52], [208, 255, 48], [212, 255, 44], [216, 255, 40], [220, 255, 36], [224, 255, 32], [228, 255, 28], [232, 255, 24], [235, 255, 20], [239, 255, 16], [243, 255, 12], [247, 255, 8], [251, 255, 4], [255, 255, 0], [255, 251, 0], [255, 247, 0], [255, 243, 0], [255, 239, 0], [255, 235, 0], [255, 231, 0], [254, 227, 0], [254, 223, 0], [254, 219, 0], [254, 215, 0], [254, 210, 0], [254, 206, 0], [254, 202, 0], [254, 198, 0], [254, 194, 0], [254, 190, 0], [254, 186, 0], [254, 182, 0], [253, 178, 0], [253, 174, 0], [253, 170, 0], [253, 166, 0], [253, 162, 0], [253, 158, 0], [253, 154, 0], [253, 150, 0], [253, 146, 0], [253, 142, 0], [253, 138, 0], [253, 134, 0], [253, 130, 0], [252, 125, 0], [252, 121, 0], [252, 117, 0], [252, 113, 0], [252, 109, 0], [252, 105, 0], [252, 101, 0], [252, 97, 0], [252, 93, 0], [252, 89, 0], [252, 85, 0], [252, 81, 0], [252, 77, 0], [251, 73, 0], [251, 69, 0], [251, 65, 0], [251, 61, 0], [251, 57, 0], [251, 53, 0], [251, 49, 0], [251, 45, 0], [251, 40, 0], [251, 36, 0], [251, 32, 0], [251, 28, 0], [250, 24, 0], [250, 20, 0], [250, 16, 0], [250, 12, 0], [250, 8, 0], [250, 4, 0], [250, 0, 0], [246, 0, 0], [242, 0, 0], [239, 0, 0], [235, 0, 0], [231, 0, 0], [227, 0, 0], [223, 0, 0], [220, 0, 0], [216, 0, 0], [212, 0, 0], [208, 0, 0], [204, 0, 0], [200, 0, 0], [197, 0, 0], [193, 0, 0], [189, 0, 0], [185, 0, 0], [181, 0, 0], [178, 0, 0], [174, 0, 0], [170, 0, 0], [166, 0, 0], [162, 0, 0], [159, 0, 0], [155, 0, 0], [151, 0, 0], [147, 0, 0], [143, 0, 0], [139, 0, 0], [136, 0, 0], [132, 0, 0], [128, 0, 0], [128, 0, 0]];
 
-function scaleAcrossRange (x, max, min) {
+/**
+ * Fast approximation of log2()
+ * @param {number} n Value to have log2() applied to
+ * @returns log2(n)
+ */
+function fastLog2 (n) {
 
-    return (x - min) / (max - min);
+    const a = new ArrayBuffer(4);
+    const i = new Int32Array(a);
+    const f = new Float32Array(a);
 
-}
-
-function median (values) {
-
-    values.sort((a, b) => {
-
-        return a - b;
-
-    });
-
-    const half = Math.floor(values.length / 2);
-
-    if (values.length % 2) {
-
-        return values[half];
-
-    }
-
-    return (values[half - 1] + values[half]) / 2.0;
+    f[0] = n;
+    const t = i[0] * 1.1920928955078125e-7;
+    return t - 126.94269504;
 
 }
 
-function medianFilter (array) {
+/**
+ * Create spectrogram
+ * @param {number[]} sampleArray Samples to be processed
+ * @returns Object containing the spectrogram and its minimum and maximum values for use in colouring
+ */
+function calculateSpectrogramFrames (sampleArray) {
 
-    const filteredArray = new Array(array.length - 2);
+    // const startTime = new Date();
 
-    for (let i = 1; i < array.length - 1; i++) {
+    const length = sampleArray.length / PIXEL_WIDTH;
+    const lengthFFT = 2 * PIXEL_HEIGHT;
+    const FFTCount = Math.ceil(length / lengthFFT);
 
-        const filteredRow = new Array(array[i].length - 2);
+    const complexSpectrum = new Array(lengthFFT);
+    const spectrum = new Array(PIXEL_HEIGHT);
 
-        for (let j = 1; j < array[i].length - 1; j++) {
+    const fft = new FFT(lengthFFT);
 
-            const values = new Array(9);
-            values[0] = array[i - 1][j];
-            values[1] = array[i][j];
-            values[2] = array[i + 1][j];
-            values[3] = array[i - 1][j - 1];
-            values[4] = array[i][j - 1];
-            values[5] = array[i + 1][j - 1];
-            values[6] = array[i - 1][j + 1];
-            values[7] = array[i][j + 1];
-            values[8] = array[i + 1][j + 1];
+    for (let i = 0; i < PIXEL_WIDTH; i += 1) {
 
-            filteredRow[j - 1] = median(values);
+        for (let j = 0; j < FFTCount; j += 1) {
 
-        }
+            const start = Math.round(i * length) + j * lengthFFT;
 
-        filteredArray[i - 1] = filteredRow;
+            const dataToProcess = sampleArray.slice(start, start + lengthFFT);
+            if (dataToProcess.length === lengthFFT) fft.realTransform(complexSpectrum, dataToProcess);
 
-    }
+            for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
 
-    return filteredArray;
+                const real = complexSpectrum[2 * (k + 1)];
+                const imag = complexSpectrum[2 * (k + 1) + 1];
 
-}
+                spectrum[k] = 2 / lengthFFT * Math.sqrt(real * real + imag * imag);
 
-function getFrameCount (numSamples, frameLength, frameStep) {
+            }
 
-    return Math.ceil((numSamples - frameLength) / frameStep);
+            for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
 
-}
+                const index = i * PIXEL_HEIGHT + k;
 
-function calculateSpectrogramFrames (samples, sampleRate, frameLength) {
+                const existingValue = j === 0 ? 0 : spectrogram[index];
 
-    const frameStep = frameLength / 2;
-
-    let sampleArray = Array.from(samples);
-
-    // Pad signal to make sure that all frames have equal number of samples without truncating any samples from the original signal
-    const numFrames = getFrameCount(sampleArray.length, frameLength, frameStep);
-
-    const paddedArrayLength = numFrames * frameStep + frameLength;
-    sampleArray = sampleArray.concat(new Array(paddedArrayLength - sampleArray.length).fill(0));
-
-    const frames = new Array(numFrames);
-
-    for (let i = 0; i < numFrames; i++) {
-
-        const frameStart = i * frameStep;
-        const frame = new Array(frameLength);
-
-        for (let j = 0; j < frameLength; j++) {
-
-            frame[j] = sampleArray[j + frameStart];
-
-        }
-
-        frames[i] = frame;
-
-    }
-
-    let spectrumFrames = new Array(frames.length);
-
-    for (let m = 0; m < frames.length; m++) {
-
-        // Apply FFT
-        const fft = new RFFT(NFFT, sampleRate);
-        fft.forward(frames[m]);
-
-        const spectrum = new Array(fft.trans.length);
-
-        for (let n = 0; n < fft.trans.length; n++) {
-
-            if (fft.trans[n] !== 0) {
-
-                spectrum[n] = Math.log(Math.abs(fft.trans[n]));
-
-            } else {
-
-                // Prevent log(0) = -inf
-                spectrum[n] = 0;
+                spectrogram[index] = Math.max(spectrum[k], existingValue);
 
             }
 
         }
 
-        spectrumFrames[m] = spectrum;
-
     }
 
-    // Apply median filter
-    spectrumFrames = medianFilter(spectrumFrames);
+    // Calculate the max and min values in spectrogram so the colour map can be applied during rendering
 
-    return spectrumFrames;
+    let max = 0;
+    let min = 1000000;
 
-}
+    for (let i = 0; i < PIXEL_WIDTH; i += 1) { 
 
-function drawSpectrogram (spectrumFrames, drawingCanvas, callback) {
+        for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
 
-    // Prepare WebGL
+            const index = i * PIXEL_HEIGHT + k;
 
-    /** @type {WebGLRenderingContext} */
-    let gl = drawingCanvas.getContext('webgl');
-
-    if (!gl) {
-
-        console.log('Loading experimental WebGL context');
-        gl = drawingCanvas.getContext('experimental-webgl');
-
-    }
-
-    if (!gl) {
-
-        console.error('WebGL not supported by this browser');
-        return;
-
-    }
-
-    gl.viewport(0, 0, drawingCanvas.width, drawingCanvas.height);
-
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-
-    gl.shaderSource(vertexShader, vertexShaderText);
-    gl.shaderSource(fragmentShader, fragmentShaderText);
-
-    gl.compileShader(vertexShader);
-    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-
-        console.error('Error compiling vertex shader', gl.getShaderInfoLog(vertexShader));
-        return;
-
-    }
-
-    gl.compileShader(fragmentShader);
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-
-        console.error('Error compiling fragment shader', gl.getShaderInfoLog(fragmentShader));
-        return;
-
-    }
-
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-
-        console.error('Error linking program', gl.getProgramInfoLog(program));
-        return;
-
-    }
-
-    // Create buffer
-
-    const frameCount = spectrumFrames.length;
-
-    let maxValue = 0;
-    let minValue = 0;
-
-    // Calculate range of filtered values to scale colours between
-
-    for (let a = 0; a < spectrumFrames.length; a++) {
-
-        maxValue = Math.max(Math.max(...spectrumFrames[a]), maxValue);
-        minValue = Math.min(Math.min(...spectrumFrames[a]), minValue);
-
-    }
-
-    // Only use half of the vertical spectrum data as it's mirrored
-    // Each point has 5 values: x, y, R, G, B
-
-    const pointData = new Array(frameCount * spectrumFrames[0].length / 2 * 5);
-
-    const W = frameCount;
-    const H = spectrumFrames[0].length / 2;
-
-    let index = 0;
-
-    for (let i = 0; i < frameCount; i++) {
-
-        // Scale to fit the canvas
-
-        const scaleFactorX = i / W;
-        const scaleFactorY = 1 / H;
-
-        for (let j = 0; j < spectrumFrames[0].length / 2; j++) {
-
-            const x = 2.0 * scaleFactorX - 1.0;
-            const y = 2.0 * j * scaleFactorY - 1.0;
-
-            const scaledValue = Math.round(255 * scaleAcrossRange(spectrumFrames[i][j], maxValue, minValue));
-            const rgbValues = rgbColours[scaledValue];
-
-            pointData[index] = x;
-            index++;
-            pointData[index] = y;
-            index++;
-
-            pointData[index] = rgbValues[0];
-            index++;
-            pointData[index] = rgbValues[1];
-            index++;
-            pointData[index] = rgbValues[2];
-            index++;
+            max = Math.max(max, spectrogram[index]);
+            min = Math.min(min, spectrogram[index]);
 
         }
 
     }
 
-    const pointVertexBufferObject = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, pointVertexBufferObject);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointData), gl.STATIC_DRAW);
+    // Apply log2() to min and max as it will be applied to scale spectrogram values later
 
-    const positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
-    const colorAttribLocation = gl.getAttribLocation(program, 'vertColor');
+    min = fastLog2(min);
+    max = fastLog2(max);
 
-    gl.vertexAttribPointer(
-        positionAttribLocation, // Attribute location
-        2, // Number of elements per attribute
-        gl.FLOAT, // Type of elements
-        gl.FALSE,
-        5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-        0 // Offset from the beginning of a single vertex to this attribute
-    );
+    // const endTime = new Date();
+    // const diff = endTime - startTime;
+    // console.log('Processing time:', diff);
 
-    gl.vertexAttribPointer(
-        colorAttribLocation, // Attribute location
-        3, // Number of elements per attribute
-        gl.FLOAT, // Type of elements
-        gl.FALSE,
-        5 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-        2 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
-    );
+    return {
+        frames: spectrogram,
+        min: min,
+        max: max
+    };
 
-    gl.enableVertexAttribArray(positionAttribLocation);
-    gl.enableVertexAttribArray(colorAttribLocation);
+}
 
-    // Main render loop
+/**
+ * Render spectrogram to canvas
+ * @param {number[][]} spectrogram 2D array created by calculateSpectrogramFrames()
+ * @param {number} min log2(Minimum value in spectrogram)
+ * @param {number} max log2(Maximum value in spectrogram)
+ * @param {function} callback Function to be called on completion
+ */
+function drawSpectrogram (spectrogram, min, max, callback) {
 
-    gl.useProgram(program);
-    gl.drawArrays(gl.POINTS, 0, pointData.length / 5);
+    const range = max - min;
+
+    // const startTime = new Date();
+
+    const ctx = specCanvas.getContext('2d');
+
+    const id = ctx.getImageData(0, 0, PIXEL_WIDTH, PIXEL_HEIGHT);
+
+    const pixels = id.data;
+
+    for (let i = 0; i < PIXEL_WIDTH; i += 1) {
+
+        for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
+
+            const index = i * PIXEL_HEIGHT + k;
+
+            const offset = 4 * ((PIXEL_HEIGHT - k) * PIXEL_WIDTH + i);
+
+            // Scale colours between 0 and 255 to fit in colour map
+
+            const colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / range);
+
+            const colour = rgbColours[colourIndex];
+
+            pixels[offset] = colour[0];
+            pixels[offset + 1] = colour[1];
+            pixels[offset + 2] = colour[2];
+            pixels[offset + 3] = 255;
+
+        }
+
+    }
+
+    ctx.putImageData(id, 0, 0);
 
     callback();
+
+    // const endTime = new Date();
+    // const diff = endTime - startTime;
+    // console.log('Rendering time:', diff);
 
 }

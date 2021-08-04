@@ -30,33 +30,45 @@ const fileLabel = document.getElementById('file-label');
 
 const zoomInButton = document.getElementById('zoom-in-button');
 const zoomOutButton = document.getElementById('zoom-out-button');
-const zoomSpan = document.getElementById('zoom-span');
+const zoomInput = document.getElementById('zoom-input');
 
 const panLeftButton = document.getElementById('pan-left-button');
 const panRightButton = document.getElementById('pan-right-button');
+const panInput = document.getElementById('pan-input');
 
 // Plot navigation variables
 
 let zoom = 1.0;
-const zoomIncrement = 0.5;
-const zoomMax = 5.0;
+const zoomIncrement = 1.0;
+const zoomMax = 150.0;
 
-let offset = 0;
-const offsetIncrement = 1;
+let offset = 0.0;
+const offsetIncrement = 1.0;
 
-// Plot canvases
+// Zoom drag variables
 
-const spectrogramOverlayCanvas = document.getElementById('spectrogram-overlay-canvas');
-const spectrogramCanvas = document.getElementById('spectrogram-canvas');
-const waveformOverlayCanvas = document.getElementById('waveform-overlay-canvas');
-const waveformCanvas = document.getElementById('waveform-canvas');
+let isDragging = false;
+let dragStartX = 0;
+
+// Spectrogram canvases
+
+const spectrogramDragCanvas = document.getElementById('spectrogram-drag-canvas'); // Canvas layer where zoom overlay is drawn
+const spectrogramThresholdCanvas = document.getElementById('spectrogram-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
+const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canvas layer where spectrogram is drawn
+
+const waveformDragCanvas = document.getElementById('waveform-drag-canvas'); // Canvas layer where zoom overlay is drawn
+const waveformThresholdCanvas = document.getElementById('waveform-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
+const waveformCanvas = document.getElementById('waveform-canvas'); // Canvas layer where waveform is drawn
+
 const timeLabelCanvas = document.getElementById('time-label-canvas');
 
 // Create staging canvas for labels which can be reused so labels still match after panning
 
 const prepLabelCanvas = document.createElement('canvas');
-prepLabelCanvas.width = timeLabelCanvas.width * zoomMax;
+prepLabelCanvas.width = timeLabelCanvas.width * 30;
 prepLabelCanvas.height = timeLabelCanvas.height;
+
+// Y axis label canvases
 
 const spectrogramLabelCanvas = document.getElementById('spectrogram-label-canvas');
 const Y_LABEL_COUNT = 4;
@@ -65,23 +77,13 @@ const waveformLabelCanvas = document.getElementById('waveform-label-canvas');
 // File variables
 
 let fileHandler;
+let unfilteredSamples;
 let sampleCount = 0;
-let sampleRate, processedSpectrumFrames;
+let sampleRate, processedSpectrumFrames, spectrumMin, spectrumMax;
 
 // Drawing/processing flag
 
 let drawing = false;
-
-// Setting used to draw current plots
-
-let previousSettings = {
-    filterEnabled: false,
-    filterIndex: 1,
-    amplitudeThresholdEnabled: false,
-    minimumTriggerDuration: 0,
-    amplitudeThresholdScale: 0,
-    amplitudeThreshold: 0
-};
 
 // Filter elements
 
@@ -108,7 +110,11 @@ const bandPassFilterSlider = new Slider('#band-pass-filter-slider', {});
 
 const filterLabel = document.getElementById('filter-label');
 
+// Previous low/band/high pass filter type selected
+
 let previousSelectionType = 1;
+
+// Low/band/high pass filter slider spacing steps
 
 const FILTER_SLIDER_STEPS = {8000: 100, 16000: 100, 32000: 100, 48000: 100, 96000: 200, 192000: 500, 250000: 500, 384000: 1000};
 
@@ -175,30 +181,42 @@ for (let sIndex = sliderMin; sIndex <= sliderMax; sIndex += sliderStep) {
 const updateButton = document.getElementById('update-button');
 const resetButton = document.getElementById('reset-button');
 
+/**
+ * Get index of radio button selected from a collection of radio buttons
+ * @param {string} radioName Name assigned to the group of radio buttons
+ * @returns Radio index
+ */
 function getSelectedRadioValue (radioName) {
 
     return parseInt(document.querySelector('input[name="' + radioName + '"]:checked').value, 10);
 
 }
 
-/* Set the high-pass filter values to given value */
-
+/**
+ * Set the high-pass filter values to given value
+ * @param {number} value New high-pass filter value
+ */
 function setHighPassSliderValue (value) {
 
     highPassFilterSlider.setValue(value);
 
 }
 
-/* Set the low-pass filter values to given value */
-
+/**
+ * Set the low-pass filter values to given value
+ * @param {number} value New low-pass filter value
+ */
 function setLowPassSliderValue (value) {
 
     lowPassFilterSlider.setValue(value);
 
 }
 
-/* Set the band-pass filter values to 2 given values */
-
+/**
+ * Set the band-pass filter values to 2 given values
+ * @param {number} lowerSliderValue New lower band-pass filter value
+ * @param {number} higherSliderValue New higher band-pass filter value
+ */
 function setBandPass (lowerSliderValue, higherSliderValue) {
 
     lowerSliderValue = (lowerSliderValue === -1) ? 0 : lowerSliderValue;
@@ -208,14 +226,21 @@ function setBandPass (lowerSliderValue, higherSliderValue) {
 
 }
 
-/* When sample rate changes, so does the slider step. Update values to match the corresponding step */
-
+/**
+ * When sample rate changes, so does the slider step. Update values to match the corresponding step
+ * @param {number} value Value returned by slider
+ * @param {number} step Step value according to sample rate
+ * @returns Closest step to given value
+ */
 function roundToSliderStep (value, step) {
 
     return Math.round(value / step) * step;
 
 }
 
+/**
+ * Handle a change in the sample rate from loading a new file
+ */
 function sampleRateChange () {
 
     // Update labels to reflect new sample rate
@@ -228,6 +253,8 @@ function sampleRateChange () {
     highPassMaxLabel.textContent = labelText;
     bandPassMaxLabel.textContent = labelText;
 
+    // Update low/band/high pass filter ranges
+
     highPassFilterSlider.setAttribute('max', maxFreq);
     lowPassFilterSlider.setAttribute('max', maxFreq);
     bandPassFilterSlider.setAttribute('max', maxFreq);
@@ -238,6 +265,8 @@ function sampleRateChange () {
     lowPassFilterSlider.setAttribute('step', filterSliderStep);
     bandPassFilterSlider.setAttribute('step', filterSliderStep);
 
+    // Set values to 1/4 and 3/4 of max value
+
     const newLowPassFreq = maxFreq / 4;
     const newHighPassFreq = 3 * maxFreq / 4;
 
@@ -247,6 +276,9 @@ function sampleRateChange () {
 
 }
 
+/**
+ * Display correct low/band/high pass filter UI
+ */
 function updateFilterUI () {
 
     const filterIndex = getSelectedRadioValue('filter-radio');
@@ -331,30 +363,11 @@ function updateFilterUI () {
 
 }
 
-function getAmplitudeThreshold () {
-
-    return convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max')).amplitude;
-
-}
-
-function formatPercentage (mantissa, exponent) {
-
-    let response = '';
-
-    if (exponent < 0) {
-
-        response += '0.0000'.substring(0, 1 - exponent);
-
-    }
-
-    response += mantissa;
-
-    for (let i = 0; i < exponent; i += 1) response += '0';
-
-    return response;
-
-}
-
+/**
+ * Convert raw slider to all possible amplitude threshold scales
+ * @param {number} rawSlider Slider value
+ * @returns Object containing value as a decibel, percentage, and amplitude
+ */
 function convertAmplitudeThreshold (rawSlider) {
 
     let exponent, mantissa, validAmplitude;
@@ -404,6 +417,43 @@ function convertAmplitudeThreshold (rawSlider) {
 
 }
 
+/**
+ * Convert selected amplitude threshold from current scale raw slider value to amplitude
+ * @returns Amplitude threshold value
+ */
+function getAmplitudeThreshold () {
+
+    return convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max')).amplitude;
+
+}
+
+/**
+ * Convert mantissa/exponent to human-readable percentage
+ * @param {number} mantissa Amplitude threshold mantissa
+ * @param {number} exponent Amplitude threshold exponent
+ * @returns Percentage value
+ */
+function formatPercentage (mantissa, exponent) {
+
+    let response = '';
+
+    if (exponent < 0) {
+
+        response += '0.0000'.substring(0, 1 - exponent);
+
+    }
+
+    response += mantissa;
+
+    for (let i = 0; i < exponent; i += 1) response += '0';
+
+    return response;
+
+}
+
+/**
+ * Update the information label which displays the amplitude threshold in a given scale
+ */
 function updateAmplitudeThresholdingLabel () {
 
     const amplitudeThreshold = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max'));
@@ -433,6 +483,9 @@ function updateAmplitudeThresholdingLabel () {
 
 }
 
+/**
+ * Update UI when amplitude threshold scale is changed
+ */
 function updateAmplitudeThresholdingScale () {
 
     updateAmplitudeThresholdingLabel();
@@ -458,6 +511,9 @@ function updateAmplitudeThresholdingScale () {
 
 }
 
+/**
+ * Handle a change to the amplitude threshold status/value
+ */
 function updateAmplitudeThresholdingUI () {
 
     if (amplitudeThresholdingCheckbox.checked && !amplitudeThresholdingCheckbox.disabled) {
@@ -523,6 +579,9 @@ function updateAmplitudeThresholdingUI () {
 
 }
 
+/**
+ * Update theinformation label which displays the low/band/high pass filter status
+ */
 function updateFilterLabel () {
 
     if (!filterCheckbox.checked) {
@@ -555,6 +614,9 @@ function updateFilterLabel () {
 
 }
 
+/**
+ * Make the filter values consistent across filter types when the type is changed
+ */
 function updateFilterSliders () {
 
     const newSelectionType = getSelectedRadioValue('filter-radio');
@@ -601,6 +663,11 @@ function updateFilterSliders () {
 
 }
 
+/**
+ * Convert a time in seconds to a pixel value on the screen, given the current zoom level
+ * @param {number} seconds A length of time in seconds
+ * @returns How many horizontal pixels on-screen portray this amount of time
+ */
 function timeToPixel (seconds) {
 
     const totalLength = (sampleCount !== 0) ? sampleCount / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
@@ -610,6 +677,9 @@ function timeToPixel (seconds) {
 
 }
 
+/**
+ * Fill in the y axis labels for the two plots and their shared x axis labels
+ */
 function drawAxisLabels () {
 
     // Draw x axis labels
@@ -623,7 +693,9 @@ function drawAxisLabels () {
 
     // Widen gap between labels as more audio is viewable to prevent squashed labels
     const displayedTime = totalLength / zoom;
-    let labelIncrement = 1;
+    let labelIncrement = 0.25;
+    labelIncrement = (displayedTime > 2) ? 0.5 : labelIncrement;
+    labelIncrement = (displayedTime > 5) ? 1 : labelIncrement;
     labelIncrement = (displayedTime > 10) ? 2 : labelIncrement;
     labelIncrement = (displayedTime > 30) ? 5 : labelIncrement;
 
@@ -692,12 +764,6 @@ function drawAxisLabels () {
 
     let waveformLabelTexts = [];
 
-    // for (let i = 1.0; i >= -1.0; i -= 0.25) {
-
-    //     waveformLabelTexts.push(i);
-
-    // }
-
     switch (amplitudeThresholdingScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
@@ -743,32 +809,27 @@ function drawAxisLabels () {
 
 }
 
-function resetCanvas (canvas, isWebGL) {
+/**
+ * Clear a canvas of its contents and reset all transformations
+ * @param {object} canvas The canvas to be cleared
+ */
+function resetCanvas (canvas) {
 
     // Setting the width/height of a canvas in any way wipes it clean and resets the context's transformations
     canvas.width = canvas.width;
 
-    if (isWebGL) {
-
-        /** @type {WebGLRenderingContext} */
-        const gl = canvas.getContext('webgl');
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    } else {
-
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    }
-
 }
 
+/**
+ * Update zoom input with current zoom level and enable/disable zoom in/out buttons if appropriate
+ */
 function updateZoomUI () {
 
     if (sampleCount === 0) {
 
         zoomInButton.disabled = true;
         zoomOutButton.disabled = true;
+        zoomInput.disabled = true;
         return;
 
     }
@@ -793,16 +854,22 @@ function updateZoomUI () {
 
     }
 
-    zoomSpan.innerText = 'x' + zoom.toFixed(1);
+    zoomInput.disabled = false;
+
+    zoomInput.value = zoom.toFixed(1);
 
 }
 
+/**
+ * Enable/disable pan buttons when appropriate
+ */
 function updatePanUI () {
 
     if (sampleCount === 0) {
 
         panLeftButton.disabled = true;
         panRightButton.disabled = true;
+        panInput.disabled = true;
         return;
 
     }
@@ -816,6 +883,8 @@ function updatePanUI () {
         panRightButton.disabled = false;
 
     }
+
+    panInput.disabled = false;
 
     const totalLength = sampleCount / sampleRate;
     const displayedTime = totalLength / zoom;
@@ -837,19 +906,24 @@ function updatePanUI () {
 
     }
 
+    panInput.value = Math.abs(offset).toFixed(1);
+
 }
 
+/**
+ * Draw amplitude threshold periods to the overlay layer
+ */
 function drawThresholdedPeriods () {
 
-    const waveformCtx = waveformOverlayCanvas.getContext('2d');
-    const waveformW = waveformOverlayCanvas.width;
-    const waveformH = waveformOverlayCanvas.height;
+    const waveformCtx = waveformThresholdCanvas.getContext('2d');
+    const waveformW = waveformThresholdCanvas.width;
+    const waveformH = waveformThresholdCanvas.height;
 
     waveformCtx.clearRect(0, 0, waveformW, waveformH);
 
-    const spectrogramCtx = spectrogramOverlayCanvas.getContext('2d');
-    const spectrogramW = spectrogramCanvas.width;
-    const spectrogramH = spectrogramCanvas.height;
+    const spectrogramCtx = spectrogramThresholdCanvas.getContext('2d');
+    const spectrogramW = spectrogramThresholdCanvas.width;
+    const spectrogramH = spectrogramThresholdCanvas.height;
 
     spectrogramCtx.clearRect(0, 0, spectrogramW, spectrogramH);
 
@@ -900,13 +974,17 @@ function drawThresholdedPeriods () {
 
 }
 
+/**
+ * Draw a loading message to the given canvas
+ * @param {object} canvas The canvas to be cleared and display the loading message
+ */
 function drawLoadingImage (canvas) {
 
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
 
-    resetCanvas(canvas, false);
+    resetCanvas(canvas);
 
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
@@ -914,22 +992,28 @@ function drawLoadingImage (canvas) {
 
 }
 
+/**
+ * Draw loading message on spectrogram and waveform canvases
+ */
 function drawLoadingImages () {
 
-    resetCanvas(spectrogramCanvas, true);
-    drawLoadingImage(spectrogramOverlayCanvas);
-    resetCanvas(waveformCanvas, true);
-    drawLoadingImage(waveformOverlayCanvas);
+    resetCanvas(spectrogramCanvas);
+    drawLoadingImage(spectrogramThresholdCanvas);
+    resetCanvas(waveformCanvas);
+    drawLoadingImage(waveformThresholdCanvas);
 
 }
 
+/**
+ * Copy the x axis labels to the canvas, offset to the current pan location
+ */
 function copyLabelsToCanvas () {
 
     const ctx = timeLabelCanvas.getContext('2d');
     const w = timeLabelCanvas.width;
     const h = timeLabelCanvas.height;
 
-    resetCanvas(timeLabelCanvas, false);
+    resetCanvas(timeLabelCanvas);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -939,15 +1023,14 @@ function copyLabelsToCanvas () {
 
 }
 
+/**
+ * Draw spectrogram and waveform plots
+ */
 function drawPlots () {
 
-    const pixelOffset = timeToPixel(offset);
+    drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async () => {
 
-    drawSpectrogram(processedSpectrumFrames, spectrogramCanvas, async () => {
-
-        const unfilteredSamples = await readFromFile();
-
-        resetCanvas(spectrogramOverlayCanvas, false);
+        resetCanvas(spectrogramThresholdCanvas);
 
         const totalLength = sampleCount / sampleRate;
         const displayedTime = totalLength / zoom;
@@ -962,9 +1045,9 @@ function drawPlots () {
         sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
 
         console.log('Drawing waveform');
-        drawWaveform(unfilteredSamples.slice(sampleStart, sampleEnd), waveformCanvas, gapLength, () => {
+        drawWaveform(unfilteredSamples.slice(sampleStart, sampleEnd), gapLength, () => {
 
-            resetCanvas(waveformOverlayCanvas, false);
+            resetCanvas(waveformThresholdCanvas);
 
             if (amplitudeThresholdingCheckbox.checked) {
 
@@ -979,9 +1062,11 @@ function drawPlots () {
 
             zoomInButton.disabled = false;
             zoomOutButton.disabled = false;
+            zoomInput.disabled = false;
             updateZoomUI();
             panLeftButton.disabled = false;
             panRightButton.disabled = false;
+            panInput.disabled = false;
             updatePanUI();
 
             filterCheckbox.disabled = false;
@@ -995,71 +1080,77 @@ function drawPlots () {
             updateButton.disabled = false;
             resetButton.disabled = false;
 
-            updateSettingsRecord();
-
         });
 
     });
 
 }
 
-function getCurrentSettings () {
+// TODO: Use this to export settings
+// function getCurrentSettings () {
 
-    const filterIndex = getSelectedRadioValue('filter-radio');
-    let filterValue0 = 0;
-    let filterValue1 = 0;
+//     const filterIndex = getSelectedRadioValue('filter-radio');
+//     let filterValue0 = 0;
+//     let filterValue1 = 0;
 
-    switch (filterIndex) {
+//     switch (filterIndex) {
 
-    case LOW_PASS_FILTER:
-        filterValue0 = lowPassFilterSlider.getValue();
-        break;
-    case HIGH_PASS_FILTER:
-        filterValue1 = highPassFilterSlider.getValue();
-        break;
-    case BAND_PASS_FILTER:
-        filterValue0 = Math.min(...bandPassFilterSlider.getValue());
-        filterValue1 = Math.max(...bandPassFilterSlider.getValue());
-        break;
+//     case LOW_PASS_FILTER:
+//         filterValue0 = lowPassFilterSlider.getValue();
+//         break;
+//     case HIGH_PASS_FILTER:
+//         filterValue1 = highPassFilterSlider.getValue();
+//         break;
+//     case BAND_PASS_FILTER:
+//         filterValue0 = Math.min(...bandPassFilterSlider.getValue());
+//         filterValue1 = Math.max(...bandPassFilterSlider.getValue());
+//         break;
 
-    }
+//     }
 
-    const minimumTriggerDuration = getSelectedRadioValue('amplitude-thresholding-duration-radio');
-    const amplitudeThresholdScale = getSelectedRadioValue('amplitude-thresholding-scale-radio');
+//     const minimumTriggerDuration = getSelectedRadioValue('amplitude-thresholding-duration-radio');
+//     const amplitudeThresholdScale = getSelectedRadioValue('amplitude-thresholding-scale-radio');
 
-    return {
-        filterEnabled: filterCheckbox.checked,
-        filterIndex: filterIndex,
-        filterValue0: filterValue0,
-        filterValue1: filterValue1,
-        amplitudeThresholdEnabled: amplitudeThresholdingCheckbox.checked,
-        minimumTriggerDuration: minimumTriggerDuration,
-        amplitudeThresholdScale: amplitudeThresholdScale,
-        amplitudeThreshold: getAmplitudeThreshold()
-    };
+//     return {
+//         filterEnabled: filterCheckbox.checked,
+//         filterIndex: filterIndex,
+//         filterValue0: filterValue0,
+//         filterValue1: filterValue1,
+//         amplitudeThresholdEnabled: amplitudeThresholdingCheckbox.checked,
+//         minimumTriggerDuration: minimumTriggerDuration,
+//         amplitudeThresholdScale: amplitudeThresholdScale,
+//         amplitudeThreshold: getAmplitudeThreshold()
+//     };
 
-}
+// }
 
-function updateSettingsRecord () {
-
-    previousSettings = getCurrentSettings();
-
-}
-
+/**
+ * Gets number of samples which will be displayed onscreen
+ * @returns Sample count
+ */
 function getDisplayedSampleCount () {
 
     return Math.ceil(sampleCount / zoom);
 
 }
 
+/**
+ * Temporarily disable UI then calculate spectrogram frames
+ * @param {number[]} samples Samples to be processed
+ * @param {number} sampleRate Sample rate of samples
+ */
 function processContents (samples, sampleRate) {
 
     drawing = true;
 
+    // Disable UI
+
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
+    zoomInput.disabled = true;
     panLeftButton.disabled = true;
     panRightButton.disabled = true;
+    panInput.disabled = true;
 
     filterCheckbox.disabled = true;
     filterCheckboxLabel.style.color = 'grey';
@@ -1072,23 +1163,25 @@ function processContents (samples, sampleRate) {
     updateButton.disabled = true;
     resetButton.disabled = true;
 
+    // Wait short period to make sure UI is completely disabled before processing actually begins
+
     setTimeout(() => {
+
+        // Calculate the subset of samples which should be processed
 
         const displayedSampleCount = getDisplayedSampleCount();
 
-        let frameLength = Math.ceil(displayedSampleCount / spectrogramCanvas.width);
-        frameLength = (frameLength < spectrogramCanvas.height) ? spectrogramCanvas.height : frameLength;
-
-        // Round up to nearest power of 2
-
-        frameLength = Math.pow(2, Math.ceil(Math.log(frameLength) / Math.log(2)));
-
-        console.log('Calculating spectrogram frames (frame length =', frameLength, ')');
+        console.log('Calculating spectrogram frames');
 
         const startSample = Math.abs(offset) * sampleRate;
         const endSample = startSample + displayedSampleCount;
 
-        processedSpectrumFrames = calculateSpectrogramFrames(samples.slice(startSample, endSample), sampleRate, frameLength);
+        // Process spectrogram frames
+
+        const result = calculateSpectrogramFrames(samples.slice(startSample, endSample));
+        processedSpectrumFrames = result.frames;
+        spectrumMin = result.min;
+        spectrumMax = result.max;
 
         drawPlots();
 
@@ -1096,6 +1189,9 @@ function processContents (samples, sampleRate) {
 
 }
 
+/**
+ * Reset zoom/pan settings
+ */
 function resetTransformations () {
 
     zoom = 1.0;
@@ -1105,23 +1201,45 @@ function resetTransformations () {
 
 }
 
+/**
+ * Shift plot along if zooming out at current location would create a gap at the end of the plot
+ */
+function removeEndGap () {
+
+    const totalLength = sampleCount / sampleRate;
+
+    const displayedTime = totalLength / zoom;
+
+    const sampleEnd = Math.floor((Math.abs(offset) + displayedTime) * sampleRate);
+
+    const gapLength = (sampleEnd - sampleCount) / sampleRate;
+
+    if (gapLength > 0) {
+
+        offset += gapLength;
+
+    }
+
+}
+
+/**
+ * Pan plot to the left
+ */
 function panLeft () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const totalLength = sampleCount / sampleRate;
+        const newOffset = Math.ceil(offset - offsetIncrement);
 
-        if (Math.abs(offset - offsetIncrement) <= totalLength) {
+        offset = newOffset;
 
-            offset -= offsetIncrement;
+        removeEndGap();
 
-            setTimeout(() => {
+        setTimeout(() => {
 
-                updatePlots();
+            updatePlots();
 
-            }, 100);
-
-        }
+        }, 100);
 
         updatePanUI();
 
@@ -1129,13 +1247,18 @@ function panLeft () {
 
 }
 
+/**
+ * Pan plot to the right
+ */
 function panRight () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        if (offset + offsetIncrement <= 0) {
+        const newOffset = Math.floor(offset + offsetIncrement);
 
-            offset += offsetIncrement;
+        if (newOffset <= 0) {
+
+            offset = newOffset;
 
             setTimeout(() => {
 
@@ -1151,13 +1274,16 @@ function panRight () {
 
 }
 
+/**
+ * Zoom plot in
+ */
 function zoomIn () {
 
     if (sampleCount !== 0 && !drawing) {
 
         if (zoom < zoomMax) {
 
-            zoom += zoomIncrement;
+            zoom = Math.round(zoom + zoomIncrement);
 
             setTimeout(() => {
 
@@ -1174,13 +1300,18 @@ function zoomIn () {
 
 }
 
+/**
+ * Zoom plot out
+ */
 function zoomOut () {
 
     if (sampleCount !== 0 && !drawing) {
 
         if (zoom - zoomIncrement >= 1.0) {
 
-            zoom -= zoomIncrement;
+            zoom = Math.round(zoom - zoomIncrement);
+
+            removeEndGap();
 
             setTimeout(() => {
 
@@ -1201,11 +1332,10 @@ function zoomOut () {
 
 }
 
+/**
+ * Apply filter and amplitude threshold if appropriate then redraw plots
+ */
 async function updatePlots () {
-
-    drawLoadingImages();
-
-    const unfilteredSamples = await readFromFile();
 
     if (!filterCheckbox.checked && !amplitudeThresholdingCheckbox.checked) {
 
@@ -1216,6 +1346,8 @@ async function updatePlots () {
     }
 
     let filteredSamples = [];
+
+    // Apply low/band/high pass filter
 
     if (filterCheckbox.checked) {
 
@@ -1259,6 +1391,8 @@ async function updatePlots () {
 
     }
 
+    // Apply amplitude threshold
+
     if (amplitudeThresholdingCheckbox.checked) {
 
         const threshold = getAmplitudeThreshold();
@@ -1273,10 +1407,16 @@ async function updatePlots () {
 
     }
 
+    // Generate spectrogram frames then draw plots
+
     processContents(filteredSamples, sampleRate);
 
 }
 
+/**
+ * Read the contents of the file given by the current filehandler
+ * @returns Samples read from file
+ */
 async function readFromFile () {
 
     console.log('Reading samples');
@@ -1299,10 +1439,10 @@ async function readFromFile () {
 
         // Clear plots
 
-        resetCanvas(spectrogramOverlayCanvas, false);
-        resetCanvas(spectrogramCanvas, true);
-        resetCanvas(waveformOverlayCanvas, false);
-        resetCanvas(waveformCanvas, true);
+        resetCanvas(spectrogramThresholdCanvas);
+        resetCanvas(spectrogramCanvas);
+        resetCanvas(waveformThresholdCanvas);
+        resetCanvas(waveformCanvas);
 
         return;
 
@@ -1312,10 +1452,18 @@ async function readFromFile () {
 
     sampleRate = result.header.wavFormat.samplesPerSecond;
     sampleCount = result.samples.length;
+
+    const lengthSecs = sampleCount / sampleRate;
+
+    console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + lengthSecs + ' seconds)');
+
     return result.samples;
 
 }
 
+/**
+ * Handle a new file being selected
+ */
 fileButton.addEventListener('click', async () => {
 
     const opts = {
@@ -1331,6 +1479,8 @@ fileButton.addEventListener('click', async () => {
         multiple: false
     };
 
+    // Display file picker
+
     try {
 
         fileHandler = await window.showOpenFilePicker(opts);
@@ -1342,6 +1492,8 @@ fileButton.addEventListener('click', async () => {
         return;
 
     }
+
+    // If no file was selected, return
 
     if (!fileHandler) {
 
@@ -1363,8 +1515,10 @@ fileButton.addEventListener('click', async () => {
 
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
+    zoomInput.disabled = true;
     panLeftButton.disabled = true;
     panRightButton.disabled = true;
+    panInput.disabled = true;
 
     filterCheckbox.disabled = true;
     filterCheckboxLabel.style.color = 'grey';
@@ -1379,7 +1533,9 @@ fileButton.addEventListener('click', async () => {
 
     // Read samples
 
-    const unfilteredSamples = await readFromFile();
+    unfilteredSamples = await readFromFile();
+
+    // If no samples can be read, return
 
     if (!unfilteredSamples) {
 
@@ -1389,16 +1545,259 @@ fileButton.addEventListener('click', async () => {
 
     thresholdPeriods = [];
 
-    const lengthSecs = sampleCount / sampleRate;
-
-    console.log('Loaded', sampleCount, 'samples at a sample rate of', sampleRate, 'Hz (', lengthSecs, 'seconds)');
+    // Update UI elements which change when a file at a new sample rate is loaded
 
     sampleRateChange();
+
+    // Generate spectrogram frames and draw plots
 
     processContents(unfilteredSamples, sampleRate);
 
 });
 
+/**
+ * Handle the manual zoom input value changing
+ */
+zoomInput.addEventListener('change', () => {
+
+    let newZoom = parseFloat(zoomInput.value);
+
+    // If input is invalid, reset to previous value
+
+    if (isNaN(newZoom)) {
+
+        zoomInput.value = zoom.toFixed(1);
+        return;
+
+    }
+
+    // Bound zoom to between x1 and x150
+
+    newZoom = (newZoom > 150.0) ? 150.0 : newZoom;
+    newZoom = (newZoom < 1.0) ? 1.0 : newZoom;
+
+    zoom = newZoom;
+
+    // If zoom results in a gap at the end of the plot, alter offset to remove it
+
+    removeEndGap();
+
+    // Process and redraw plots
+
+    setTimeout(() => {
+
+        updatePlots();
+
+    }, 10);
+
+    // Update UI
+
+    updateZoomUI();
+    updatePanUI();
+
+});
+
+/**
+ * Handle manual pan input value changing
+ */
+panInput.addEventListener('change', () => {
+
+    const oldOffset = offset;
+
+    let newOffset = parseFloat(panInput.value);
+
+    // If input is invalid, reset to previous value
+
+    if (isNaN(newOffset)) {
+
+        panInput.value = Math.abs(offset).toFixed(1);
+        return;
+
+    }
+
+    // Bound offset to between 0.0 and the length of the file
+
+    const lengthSecs = sampleCount / sampleRate;
+
+    newOffset = (newOffset < 0.0) ? 0.0 : newOffset;
+    newOffset = (newOffset > lengthSecs) ? lengthSecs : newOffset;
+
+    offset = -1.0 * newOffset;
+
+    // If pan results in a gap at the end of the plot, alter offset to remove it
+
+    removeEndGap();
+
+    // If the calculations have resulted in no change in the actual offset, don't bother redrawing everything
+
+    if (offset === oldOffset) {
+
+        panInput.value = Math.abs(offset).toFixed(1);
+        return;
+
+    }
+
+    // Process and redraw plots
+
+    setTimeout(() => {
+
+        updatePlots();
+
+    }, 10);
+
+    // Update UI
+
+    updateZoomUI();
+    updatePanUI();
+
+});
+
+/**
+ * Handle start of a zoom drag event
+ * @param {event} e Drag event
+ */
+function handleMouseDown (e) {
+
+    // If samples have been loaded and drawing a plot isn't currently underway
+
+    if (sampleCount !== 0 && !drawing) {
+
+        const canvas = e.srcElement;
+        const rect = canvas.getBoundingClientRect();
+
+        // Update drag start location
+
+        dragStartX = e.clientX - rect.left;
+
+        isDragging = true;
+
+    }
+
+}
+
+/**
+ * Draw the alpha-ed overlay rectangle to the given canvas
+ * @param {object} canvas Canvas being drawn to
+ * @param {number} dragCurrentX The end of the drag area
+ */
+function drawZoomOverlay (canvas, dragCurrentX) {
+
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw a light grey box with a black outline
+
+    ctx.fillStyle = 'lightgrey';
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(dragStartX, 0, dragCurrentX - dragStartX, canvas.height);
+
+    ctx.fillStyle = 'black';
+    ctx.strokeRect(dragStartX, 0, dragCurrentX - dragStartX, canvas.height);
+
+}
+
+/**
+ * Handle the mouse movement when a drag is underway, drawing the area to both plots to show what will be zoomed in on
+ * @param {event} e Drag event
+ */
+function handleMouseMove (e) {
+
+    // If dragging has started, samples are available and a plot is not currently being drawn
+
+    if (isDragging && sampleCount !== 0 && !drawing) {
+
+        const canvas = e.srcElement;
+
+        const rect = canvas.getBoundingClientRect();
+        const dragCurrentX = e.clientX - rect.left;
+
+        // Draw zoom areas on each canvas
+
+        drawZoomOverlay(spectrogramDragCanvas, dragCurrentX);
+        drawZoomOverlay(waveformDragCanvas, dragCurrentX);
+
+    }
+
+}
+
+/**
+ * Handle the end of a zoom drag
+ * @param {event} e Drag event
+ */
+function handleMouseUp (e) {
+
+    // If dragging has started, samples are available and a plot is not currently being drawn
+
+    if (isDragging && sampleCount !== 0 && !drawing) {
+
+        const canvas = e.srcElement;
+
+        isDragging = false;
+
+        // Get end of zoom drag
+
+        const rect = canvas.getBoundingClientRect();
+        const dragEndX = Math.max(0, e.clientX - rect.left);
+
+        // Clear zoom overlay canvases
+
+        const specCtx = spectrogramDragCanvas.getContext('2d');
+        specCtx.clearRect(0, 0, spectrogramDragCanvas.width, spectrogramDragCanvas.height);
+        const wavCtx = waveformDragCanvas.getContext('2d');
+        wavCtx.clearRect(0, 0, waveformDragCanvas.width, waveformDragCanvas.height);
+
+        // Calculate new zoom value
+
+        let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / canvas.width);
+        newZoom = (newZoom > 150.0) ? 150.0 : newZoom;
+
+        // Calculate new offset value
+
+        const totalLength = sampleCount / sampleRate;
+        const displayedTime = totalLength / zoom;
+
+        const dragLeft = Math.min(dragStartX, dragEndX);
+
+        const newOffset = offset + (-1 * displayedTime * dragLeft / canvas.width);
+
+        // Set new zoom/offset values
+
+        zoom = newZoom;
+        offset = newOffset;
+
+        // Redraw plots
+
+        setTimeout(() => {
+
+            updatePlots();
+
+        }, 10);
+
+        updateZoomUI();
+        updatePanUI();
+
+    }
+
+}
+
+// Assign drag listeners to both spectrogram and waveform overlay canvases to allow a zoom drag on either
+
+spectrogramDragCanvas.addEventListener('mousedown', handleMouseDown);
+spectrogramDragCanvas.addEventListener('mousemove', handleMouseMove);
+spectrogramDragCanvas.addEventListener('mouseout', handleMouseUp);
+spectrogramDragCanvas.addEventListener('mouseup', handleMouseUp);
+
+waveformDragCanvas.addEventListener('mousedown', handleMouseDown);
+waveformDragCanvas.addEventListener('mousemove', handleMouseMove);
+waveformDragCanvas.addEventListener('mouseout', handleMouseUp);
+waveformDragCanvas.addEventListener('mouseup', handleMouseUp);
+
+/**
+ * Add keyboard controls to page
+ * ctrl + up/down       : Zoom in/out
+ * ctrl + left/right    : Pan left/right
+ */
 document.addEventListener('keydown', (event) => {
 
     if (event.ctrlKey) {
@@ -1438,6 +1837,9 @@ document.addEventListener('keydown', (event) => {
 
 });
 
+/**
+ * Add listener which reacts to the low/band/high pass filter being enabled/disabled
+ */
 filterCheckbox.addEventListener('change', () => {
 
     updateFilterUI();
@@ -1446,7 +1848,9 @@ filterCheckbox.addEventListener('change', () => {
 
 });
 
-// Add filter radio button listeners
+/**
+ * Add filter radio button listeners
+ */
 for (let i = 0; i < filterRadioButtons.length; i++) {
 
     filterRadioButtons[i].addEventListener('change', function () {
@@ -1459,9 +1863,15 @@ for (let i = 0; i < filterRadioButtons.length; i++) {
 
 }
 
+/**
+ * Add listener which reacts to amplitude threshold being enabled/disabled
+ */
 amplitudeThresholdingCheckbox.addEventListener('change', updateAmplitudeThresholdingUI);
 updateAmplitudeThresholdingUI();
 
+/**
+ * Add amplitude threshold scale listeners
+ */
 for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
 
     amplitudeThresholdingScaleRadioButtons[i].addEventListener('change', function () {
@@ -1476,9 +1886,19 @@ for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
 
 }
 
+/**
+ * Add listener which updates the amplitude threshold information label when the slider value is changed
+ */
 amplitudeThresholdingSlider.on('change', updateAmplitudeThresholdingLabel);
 
+/**
+ * Add update plot button listener, applying low/band/high pass filter and amplitude threshold if selected
+ */
 updateButton.addEventListener('click', updatePlots);
+
+/**
+ * Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
+ */
 resetButton.addEventListener('click', () => {
 
     filterCheckbox.checked = false;
@@ -1492,24 +1912,41 @@ resetButton.addEventListener('click', () => {
 
 });
 
+/**
+ * Add filter slider listeners which update the information label
+ */
 bandPassFilterSlider.on('change', updateFilterLabel);
 lowPassFilterSlider.on('change', updateFilterLabel);
 highPassFilterSlider.on('change', updateFilterLabel);
 
+/**
+ * Add zoom and pan control to buttons
+ */
 zoomInButton.addEventListener('click', zoomIn);
 zoomOutButton.addEventListener('click', zoomOut);
 
 panLeftButton.addEventListener('click', panLeft);
 panRightButton.addEventListener('click', panRight);
 
+/**
+ * Start zoom and offset level on default values
+ */
 resetTransformations();
 
+/**
+ * Add filler axis labels
+ */
 drawAxisLabels();
 copyLabelsToCanvas();
 
+/**
+ * Prepare filter UI
+ */
 filterCheckbox.checked = false;
 updateFilterUI();
 updateFilterLabel();
+
+// Display error if current browser is not Chrome
 
 const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 

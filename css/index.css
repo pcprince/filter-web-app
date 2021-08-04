@@ -3,6 +3,12 @@
   border: none;
 }
 
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .slider-selection {
   position: absolute;
   background-image: -webkit-linear-gradient(top, #F5F5F5 0%, #F9F9F9 100%);

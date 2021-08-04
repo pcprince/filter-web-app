@@ -5,12 +5,25 @@
  *****************************************************************************/
 
 // 32 KB buffer, 16-bit samples
+
 const BUFFER_LENGTH = 16000;
 
+/**
+ * Apply amplitude trheshold to given samples
+ * @param {*} samples Samples to be processed
+ * @param {*} threshold Amplitude threshold value
+ * @param {*} minTriggerDurationSamples Minimum trigger duration in samples
+ * @returns Samples with amplitude threshold applied
+ */
 function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples) {
 
+    // Convert minimum trigger duration buffers
+
     const minTriggerDurationBuffers = Math.ceil(minTriggerDurationSamples / BUFFER_LENGTH);
+
     let triggerDuration = 0;
+
+    // Boolean array denoting a period is above the amplitude threshold
 
     const buffersAreAboveThreshold = [];
 
