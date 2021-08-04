@@ -6,6 +6,8 @@
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold */
 
+// TODO: Add export settings button. Change config app so loading a settings file with no schedule gives you the option of mapping the settings from a file to a current schedule
+
 // Use these values to fill in the axis labels before samples have been loaded
 
 const FILLER_SAMPLE_COUNT = 1440000;
@@ -61,6 +63,7 @@ const waveformThresholdCanvas = document.getElementById('waveform-threshold-canv
 const waveformCanvas = document.getElementById('waveform-canvas'); // Canvas layer where waveform is drawn
 
 const timeLabelCanvas = document.getElementById('time-label-canvas');
+const timeAxisHeadingCanvas = document.getElementById('time-axis-heading-canvas');
 
 // Create staging canvas for labels which can be reused so labels still match after panning
 
@@ -731,7 +734,7 @@ function drawAxisLabels () {
 
     for (let i = 0; i <= Y_LABEL_COUNT; i++) {
 
-        const labelText = i * ySpecLabelIncrement / 1000;
+        const labelText = (i * ySpecLabelIncrement / 1000) + 'kHz';
 
         const x = spectrogramLabelCanvas.width - ySpecCtx.measureText(labelText.toString()).width - 5;
 
@@ -806,6 +809,24 @@ function drawAxisLabels () {
         yWaveformCtx.fillText(waveformLabelTexts[i], x, y);
 
     }
+
+}
+
+/**
+ * Add axis heading to plots
+ */
+function drawAxisHeadings () {
+
+    const xCtx = timeAxisHeadingCanvas.getContext('2d');
+
+    xCtx.clearRect(0, 0, timeAxisHeadingCanvas.width, timeAxisHeadingCanvas.height);
+
+    xCtx.font = '10px monospace';
+    xCtx.textBaseline = 'middle';
+
+    const labelText = 'Time (seconds)';
+    const textWidth = xCtx.measureText(labelText).width;
+    xCtx.fillText(labelText, (timeAxisHeadingCanvas.width - textWidth) / 2, timeAxisHeadingCanvas.height / 2);
 
 }
 
@@ -1937,6 +1958,7 @@ resetTransformations();
  * Add filler axis labels
  */
 drawAxisLabels();
+drawAxisHeadings();
 copyLabelsToCanvas();
 
 /**
