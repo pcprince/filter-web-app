@@ -1945,10 +1945,10 @@ exportButton.addEventListener('click', () => {
     switch (filterIndex) {
 
     case LOW_PASS_FILTER:
-        filterValue0 = lowPassFilterSlider.getValue();
+        filterValue1 = lowPassFilterSlider.getValue();
         break;
     case HIGH_PASS_FILTER:
-        filterValue1 = highPassFilterSlider.getValue();
+        filterValue0 = highPassFilterSlider.getValue();
         break;
     case BAND_PASS_FILTER:
         filterValue0 = Math.min(...bandPassFilterSlider.getValue());
@@ -1962,13 +1962,38 @@ exportButton.addEventListener('click', () => {
     const filterTypes = ['low', 'band', 'high'];
     const amplitudeThresholdScales = ['percentage', '16bit', 'decibel'];
 
+    const amplitudeThresholdValues = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max'));
+
+    let amplitudeThreshold = 0;
+
+    switch (amplitudeThresholdingScaleIndex) {
+
+    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+
+        amplitudeThreshold = parseFloat(amplitudeThresholdValues.percentage);
+        break;
+
+    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+
+        amplitudeThreshold = amplitudeThresholdValues.amplitude;
+        break;
+
+    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+
+        amplitudeThreshold = amplitudeThresholdValues.decibels;
+        break;
+
+    }
+
     const settings = {
+        webApp: true,
+        sampleRate: sampleRate,
         passFiltersEnabled: filterCheckbox.checked,
         filterType: filterTypes[filterIndex],
         lowerFilter: filterValue0,
         higherFilter: filterValue1,
         amplitudeThresholdingEnabled: amplitudeThresholdingCheckbox.checked,
-        amplitudeThreshold: getAmplitudeThreshold(),
+        amplitudeThreshold: amplitudeThreshold,
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
         amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdingScaleIndex]
     };
