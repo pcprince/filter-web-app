@@ -140,10 +140,10 @@
 
             <div class="row justify-content-center" style="margin-top: 10px; height: 258px; text-align: center;">
                 <div class="wrapper" style="width: 843px; height: 256px;">
-                    <canvas class="label-canvas" id="spectrogram-label-canvas" width="45" height="258" style="padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="spectrogram-canvas" width="798" height="256" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                    <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="798" height="258"></canvas>
-                    <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="798" height="258"></canvas>
+                    <canvas class="label-canvas" id="spectrogram-label-canvas" width="45" height="257" style="padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-canvas" width="798" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="798" height="257"></canvas>
+                    <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="798" height="257"></canvas>
                 </div>
             </div>
             <div class="row justify-content-center" style="margin-top: 0px; height: 200px; text-align: center;">
@@ -393,11 +393,14 @@
             </div>
 
             <div class="row" style="margin-top: 15px;">
-                <div class="col-4"></div>
+                <div class="col-2"></div>
                 <div class="col-4">
                     <button class="btn btn-primary" id="reset-button" style="width: 100%;" disabled>Reset</button>
                 </div>
-                <div class="col-4"></div>
+                <div class="col-4">
+                    <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export</button>
+                </div>
+                <div class="col-2"></div>
             </div>
 
             <div class="row" style="margin-top: 50px;">
@@ -463,7 +466,7 @@
     <script src="scripts/external/jquery-3.6.0.slim.min.js"></script>
     <script src="scripts/external/bootstrap.bundle.min.js"></script>
     <script src="scripts/external/bootstrap-slider.min.js"></script>
-    <script src="scripts/external/fft.js"></script>
+    <script src="scripts/stft.js"></script>
     <script src="scripts/spectrogram.js"></script>
     <script src="scripts/waveform.js"></script>
     <script src="scripts/amplitudeThresholding.js"></script>

@@ -6,8 +6,6 @@
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold */
 
-// TODO: Add export settings button. Change config app so loading a settings file with no schedule gives you the option of mapping the settings from a file to a current schedule
-
 // Use these values to fill in the axis labels before samples have been loaded
 
 const FILLER_SAMPLE_COUNT = 1440000;
@@ -182,6 +180,7 @@ for (let sIndex = sliderMin; sIndex <= sliderMax; sIndex += sliderStep) {
 // Other UI
 
 const resetButton = document.getElementById('reset-button');
+const exportButton = document.getElementById('export-button');
 
 /**
  * Get index of radio button selected from a collection of radio buttons
@@ -1098,50 +1097,13 @@ function drawPlots () {
             updateAmplitudeThresholdingUI();
 
             resetButton.disabled = false;
+            exportButton.disabled = false;
 
         });
 
     });
 
 }
-
-// TODO: Use this to export settings
-// function getCurrentSettings () {
-
-//     const filterIndex = getSelectedRadioValue('filter-radio');
-//     let filterValue0 = 0;
-//     let filterValue1 = 0;
-
-//     switch (filterIndex) {
-
-//     case LOW_PASS_FILTER:
-//         filterValue0 = lowPassFilterSlider.getValue();
-//         break;
-//     case HIGH_PASS_FILTER:
-//         filterValue1 = highPassFilterSlider.getValue();
-//         break;
-//     case BAND_PASS_FILTER:
-//         filterValue0 = Math.min(...bandPassFilterSlider.getValue());
-//         filterValue1 = Math.max(...bandPassFilterSlider.getValue());
-//         break;
-
-//     }
-
-//     const minimumTriggerDuration = getSelectedRadioValue('amplitude-thresholding-duration-radio');
-//     const amplitudeThresholdScale = getSelectedRadioValue('amplitude-thresholding-scale-radio');
-
-//     return {
-//         filterEnabled: filterCheckbox.checked,
-//         filterIndex: filterIndex,
-//         filterValue0: filterValue0,
-//         filterValue1: filterValue1,
-//         amplitudeThresholdEnabled: amplitudeThresholdingCheckbox.checked,
-//         minimumTriggerDuration: minimumTriggerDuration,
-//         amplitudeThresholdScale: amplitudeThresholdScale,
-//         amplitudeThreshold: getAmplitudeThreshold()
-//     };
-
-// }
 
 /**
  * Gets number of samples which will be displayed onscreen
@@ -1180,6 +1142,7 @@ function processContents (samples, sampleRate) {
     updateAmplitudeThresholdingUI();
 
     resetButton.disabled = true;
+    exportButton.disabled = true;
 
     // Wait short period to make sure UI is completely disabled before processing actually begins
 
@@ -1192,11 +1155,10 @@ function processContents (samples, sampleRate) {
         console.log('Calculating spectrogram frames');
 
         const startSample = Math.abs(offset) * sampleRate;
-        const endSample = startSample + displayedSampleCount;
 
         // Process spectrogram frames
 
-        const result = calculateSpectrogramFrames(samples.slice(startSample, endSample));
+        const result = calculateSpectrogramFrames(samples, startSample, displayedSampleCount);
         processedSpectrumFrames = result.frames;
         spectrumMin = result.min;
         spectrumMax = result.max;
@@ -1526,6 +1488,8 @@ fileButton.addEventListener('click', async () => {
 
     }
 
+    resetTransformations();
+
     fileHandler = fileHandler[0];
 
     fileLabel.innerText = fileHandler.name;
@@ -1553,6 +1517,7 @@ fileButton.addEventListener('click', async () => {
     updateAmplitudeThresholdingUI();
 
     resetButton.disabled = true;
+    exportButton.disabled = true;
 
     // Read samples
 
@@ -1969,6 +1934,62 @@ zoomOutButton.addEventListener('click', zoomOut);
 
 panLeftButton.addEventListener('click', panLeft);
 panRightButton.addEventListener('click', panRight);
+
+/** Add export functionality */
+exportButton.addEventListener('click', () => {
+
+    const filterIndex = getSelectedRadioValue('filter-radio');
+    let filterValue0 = 0;
+    let filterValue1 = 0;
+
+    switch (filterIndex) {
+
+    case LOW_PASS_FILTER:
+        filterValue0 = lowPassFilterSlider.getValue();
+        break;
+    case HIGH_PASS_FILTER:
+        filterValue1 = highPassFilterSlider.getValue();
+        break;
+    case BAND_PASS_FILTER:
+        filterValue0 = Math.min(...bandPassFilterSlider.getValue());
+        filterValue1 = Math.max(...bandPassFilterSlider.getValue());
+        break;
+
+    }
+
+    const minimumTriggerDuration = getSelectedRadioValue('amplitude-thresholding-duration-radio');
+
+    const filterTypes = ['low', 'band', 'high'];
+    const amplitudeThresholdScales = ['percentage', '16bit', 'decibel'];
+
+    const settings = {
+        passFiltersEnabled: filterCheckbox.checked,
+        filterType: filterTypes[filterIndex],
+        lowerFilter: filterValue0,
+        higherFilter: filterValue1,
+        amplitudeThresholdingEnabled: amplitudeThresholdingCheckbox.checked,
+        amplitudeThreshold: getAmplitudeThreshold(),
+        minimumAmplitudeThresholdDuration: minimumTriggerDuration,
+        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdingScaleIndex]
+    };
+
+    const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
+
+    const encodedUri = encodeURI(content);
+
+    // Create hidden <a> tag to apply download to
+
+    const link = document.createElement('a');
+
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'audiomoth_filter.config');
+    document.body.appendChild(link);
+
+    // Click link
+
+    link.click();
+
+});
 
 /**
  * Start zoom and offset level on default values

@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global FFT */
+/* global STFT */
 
 // Canvas the spectrogram will be drawn to
 
@@ -12,6 +12,8 @@ const specCanvas = document.getElementById('spectrogram-canvas');
 
 const PIXEL_WIDTH = specCanvas.width;
 const PIXEL_HEIGHT = specCanvas.height;
+
+const stft = new STFT(PIXEL_WIDTH, PIXEL_HEIGHT);
 
 // 2D array which will hold spectrogram frames
 
@@ -40,52 +42,15 @@ function fastLog2 (n) {
 /**
  * Create spectrogram
  * @param {number[]} sampleArray Samples to be processed
+ * @param {*} offset Number of samples in array to start processing
+ * @param {*} length Number of samples after offset to stop
  * @returns Object containing the spectrogram and its minimum and maximum values for use in colouring
  */
-function calculateSpectrogramFrames (sampleArray) {
+function calculateSpectrogramFrames (sampleArray, offset, length) {
 
     // const startTime = new Date();
 
-    const length = sampleArray.length / PIXEL_WIDTH;
-    const lengthFFT = 2 * PIXEL_HEIGHT;
-    const FFTCount = Math.ceil(length / lengthFFT);
-
-    const complexSpectrum = new Array(lengthFFT);
-    const spectrum = new Array(PIXEL_HEIGHT);
-
-    const fft = new FFT(lengthFFT);
-
-    for (let i = 0; i < PIXEL_WIDTH; i += 1) {
-
-        for (let j = 0; j < FFTCount; j += 1) {
-
-            const start = Math.round(i * length) + j * lengthFFT;
-
-            const dataToProcess = sampleArray.slice(start, start + lengthFFT);
-            if (dataToProcess.length === lengthFFT) fft.realTransform(complexSpectrum, dataToProcess);
-
-            for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
-
-                const real = complexSpectrum[2 * (k + 1)];
-                const imag = complexSpectrum[2 * (k + 1) + 1];
-
-                spectrum[k] = 2 / lengthFFT * Math.sqrt(real * real + imag * imag);
-
-            }
-
-            for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
-
-                const index = i * PIXEL_HEIGHT + k;
-
-                const existingValue = j === 0 ? 0 : spectrogram[index];
-
-                spectrogram[index] = Math.max(spectrum[k], existingValue);
-
-            }
-
-        }
-
-    }
+    stft.calculate(sampleArray, offset, length, spectrogram);
 
     // Calculate the max and min values in spectrogram so the colour map can be applied during rendering
 
@@ -131,9 +96,7 @@ function calculateSpectrogramFrames (sampleArray) {
  */
 function drawSpectrogram (spectrogram, min, max, callback) {
 
-    const range = max - min;
-
-    // const startTime = new Date();
+    // // const startTime = new Date();
 
     const ctx = specCanvas.getContext('2d');
 
@@ -141,19 +104,17 @@ function drawSpectrogram (spectrogram, min, max, callback) {
 
     const pixels = id.data;
 
-    for (let i = 0; i < PIXEL_WIDTH; i += 1) {
+    for (let i = 0; i < PIXEL_HEIGHT; i += 1) {
 
-        for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
+        for (let j = 0; j < PIXEL_WIDTH; j += 1) {
 
-            const index = i * PIXEL_HEIGHT + k;
+            const index = i * PIXEL_WIDTH + j;
 
-            const offset = 4 * ((PIXEL_HEIGHT - k) * PIXEL_WIDTH + i);
-
-            // Scale colours between 0 and 255 to fit in colour map
-
-            const colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / range);
+            const colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / (max - min));
 
             const colour = rgbColours[colourIndex];
+
+            const offset = 4 * index;
 
             pixels[offset] = colour[0];
             pixels[offset + 1] = colour[1];
