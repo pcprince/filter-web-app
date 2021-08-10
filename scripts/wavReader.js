@@ -207,7 +207,7 @@ function checkHeader (header, fileSize) {
 
 }
 
-async function readWav (fileHandler, maxFileSize) {
+async function readWav (fileHandler) {
 
     /* Open input file */
 
@@ -236,17 +236,6 @@ async function readWav (fileHandler, maxFileSize) {
         return {
             success: false,
             error: 'Input file has zero size.',
-            header: null,
-            samples: null
-        };
-
-    }
-
-    if (fileSize > maxFileSize) {
-
-        return {
-            success: false,
-            error: 'Input file is too large.',
             header: null,
             samples: null
         };
@@ -289,7 +278,21 @@ async function readWav (fileHandler, maxFileSize) {
 
     }
 
-    const samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER);
+    const maxSamples = header.wavFormat.samplesPerSecond * 60;
+
+    let samples;
+
+    if ((contents.byteLength / 2) - LENGTH_OF_WAV_HEADER > maxSamples) {
+
+        console.log('Trimming to initial 60 seconds of recording');
+
+        samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER, maxSamples);
+
+    } else {
+
+        samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER);
+
+    }
 
     return {
         success: true,

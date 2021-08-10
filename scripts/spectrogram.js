@@ -63,6 +63,12 @@ function calculateSpectrogramFrames (sampleArray, offset, length) {
 
             const index = i * PIXEL_HEIGHT + k;
 
+            if (spectrogram[index] === 0.0) {
+
+                continue;
+
+            }
+
             max = Math.max(max, spectrogram[index]);
             min = Math.min(min, spectrogram[index]);
 
@@ -110,9 +116,17 @@ function drawSpectrogram (spectrogram, min, max, callback) {
 
             const index = i * PIXEL_WIDTH + j;
 
-            const colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / (max - min));
+            let colour = [255, 255, 255];
 
-            const colour = rgbColours[colourIndex];
+            if (spectrogram[index] !== 0.0) {
+
+                let colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / (max - min));
+
+                colourIndex = Math.max(colourIndex, 0);
+
+                colour = rgbColours[colourIndex];
+
+            }
 
             const offset = 4 * index;
 

@@ -6,14 +6,12 @@
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold */
 
+// TODO: Add file size comparison
+
 // Use these values to fill in the axis labels before samples have been loaded
 
 const FILLER_SAMPLE_COUNT = 1440000;
 const FILLER_SAMPLE_RATE = 48000;
-
-// Approximately 60 seconds at 384 kHz
-
-const MAX_FILE_SIZE = 46080488;
 
 // Error display elements
 
@@ -39,11 +37,11 @@ const panInput = document.getElementById('pan-input');
 // Plot navigation variables
 
 let zoom = 1.0;
-const zoomIncrement = 1.0;
-const zoomMax = 150.0;
+const ZOOM_INCREMENT = 2.0;
+const MAX_ZOOM = 128.0;
 
 let offset = 0.0;
-const offsetIncrement = 1.0;
+const OFFSET_INCREMENT = 1.0;
 
 // Zoom drag variables
 
@@ -80,7 +78,9 @@ const waveformLabelCanvas = document.getElementById('waveform-label-canvas');
 let fileHandler;
 let unfilteredSamples;
 let sampleCount = 0;
-let sampleRate, processedSpectrumFrames, spectrumMin, spectrumMax;
+let sampleRate, processedSpectrumFrames;
+let spectrumMin = 0;
+let spectrumMax = 0;
 
 // Drawing/processing flag
 
@@ -683,6 +683,10 @@ function timeToPixel (seconds) {
  */
 function drawAxisLabels () {
 
+    // FIXME: Fix label font being blurry (https://www.w3schools.com/graphics/svg_text.asp)
+
+    const font = '10px';
+
     // Draw x axis labels
 
     const xCtx = prepLabelCanvas.getContext('2d');
@@ -711,7 +715,7 @@ function drawAxisLabels () {
         // Convert the time to a pixel value, then take into account the label width and the padding to position correctly
         const x = timeToPixel(label) + padding - (labelWidth / 2);
 
-        xCtx.font = '10px monospace';
+        xCtx.font = font;
         xCtx.fillText(label, x, 15);
 
         label += labelIncrement;
@@ -724,7 +728,7 @@ function drawAxisLabels () {
 
     ySpecCtx.clearRect(0, 0, spectrogramLabelCanvas.width, spectrogramLabelCanvas.height);
 
-    ySpecCtx.font = '10px monospace';
+    ySpecCtx.font = font;
     ySpecCtx.textBaseline = 'middle';
 
     const ySpecLabelIncrement = (sampleCount !== 0) ? sampleRate / 2 / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
@@ -760,7 +764,7 @@ function drawAxisLabels () {
 
     yWaveformCtx.clearRect(0, 0, waveformLabelCanvas.width, waveformLabelCanvas.height);
 
-    yWaveformCtx.font = '10px monospace';
+    yWaveformCtx.font = font;
     yWaveformCtx.textBaseline = 'middle';
 
     let waveformLabelTexts = [];
@@ -863,7 +867,7 @@ function updateZoomUI () {
 
     }
 
-    if (zoom >= zoomMax) {
+    if (zoom >= MAX_ZOOM) {
 
         zoomInButton.disabled = true;
 
@@ -952,12 +956,12 @@ function drawThresholdedPeriods () {
 
     waveformCtx.resetTransform();
 
-    waveformCtx.fillStyle = 'red';
-    waveformCtx.globalAlpha = 0.5;
+    waveformCtx.fillStyle = 'lightgray';
+    waveformCtx.globalAlpha = 0.75;
 
     spectrogramCtx.resetTransform();
 
-    spectrogramCtx.fillStyle = 'grey';
+    spectrogramCtx.fillStyle = 'white';
     spectrogramCtx.globalAlpha = 0.75;
 
     for (let i = 0; i < thresholdPeriods.length; i++) {
@@ -1045,7 +1049,7 @@ function copyLabelsToCanvas () {
 /**
  * Draw spectrogram and waveform plots
  */
-function drawPlots () {
+function drawPlots (samples) {
 
     drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async () => {
 
@@ -1063,8 +1067,10 @@ function drawPlots () {
 
         sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
 
+        // TODO: Add amplitude threshold as lines on the waveform plot
+
         console.log('Drawing waveform');
-        drawWaveform(unfilteredSamples.slice(sampleStart, sampleEnd), gapLength, () => {
+        drawWaveform(samples.slice(sampleStart, sampleEnd), gapLength, () => {
 
             resetCanvas(waveformThresholdCanvas);
 
@@ -1160,10 +1166,15 @@ function processContents (samples, sampleRate) {
 
         const result = calculateSpectrogramFrames(samples, startSample, displayedSampleCount);
         processedSpectrumFrames = result.frames;
-        spectrumMin = result.min;
-        spectrumMax = result.max;
 
-        drawPlots();
+        if (spectrumMin === 0.0 && spectrumMax === 0.0) {
+
+            spectrumMin = result.min;
+            spectrumMax = result.max;
+
+        }
+
+        drawPlots(samples);
 
     }, 100);
 
@@ -1209,7 +1220,7 @@ function panLeft () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newOffset = Math.ceil(offset - offsetIncrement);
+        const newOffset = Math.ceil(offset - OFFSET_INCREMENT);
 
         offset = newOffset;
 
@@ -1217,7 +1228,7 @@ function panLeft () {
 
         setTimeout(() => {
 
-            updatePlots();
+            updatePlots(false);
 
         }, 100);
 
@@ -1234,7 +1245,7 @@ function panRight () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newOffset = Math.floor(offset + offsetIncrement);
+        const newOffset = Math.floor(offset + OFFSET_INCREMENT);
 
         if (newOffset <= 0) {
 
@@ -1242,7 +1253,7 @@ function panRight () {
 
             setTimeout(() => {
 
-                updatePlots();
+                updatePlots(false);
 
             }, 100);
 
@@ -1261,13 +1272,19 @@ function zoomIn () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        if (zoom < zoomMax) {
+        let newZoom = Math.round(zoom * ZOOM_INCREMENT);
 
-            zoom = Math.round(zoom + zoomIncrement);
+        newZoom = Math.pow(2, Math.round(Math.log(newZoom) / Math.log(2)));
+
+        console.log(newZoom);
+
+        if (newZoom <= MAX_ZOOM) {
+
+            zoom = newZoom;
 
             setTimeout(() => {
 
-                updatePlots();
+                updatePlots(false);
 
             }, 10);
 
@@ -1285,17 +1302,23 @@ function zoomIn () {
  */
 function zoomOut () {
 
+    // FIXME: Zooming out sometimes doesn't effect waveform
+
     if (sampleCount !== 0 && !drawing) {
 
-        if (zoom - zoomIncrement >= 1.0) {
+        let newZoom = Math.round(zoom / ZOOM_INCREMENT);
 
-            zoom = Math.round(zoom - zoomIncrement);
+        newZoom = Math.pow(2, Math.round(Math.log(newZoom) / Math.log(2)));
+
+        if (newZoom >= 1.0) {
+
+            zoom = newZoom;
 
             removeEndGap();
 
             setTimeout(() => {
 
-                updatePlots();
+                updatePlots(false);
 
             }, 10);
 
@@ -1314,12 +1337,20 @@ function zoomOut () {
 
 /**
  * Apply filter and amplitude threshold if appropriate then redraw plots
+ * @param {boolean} resetColourMap Whether or not to reset the stored max and min values used to calculate the colour map
  */
-async function updatePlots () {
+async function updatePlots (resetColourMap) {
 
     if (drawing || sampleCount === 0) {
 
         return;
+
+    }
+
+    if (resetColourMap) {
+
+        spectrumMin = 0.0;
+        spectrumMax = 0.0;
 
     }
 
@@ -1407,7 +1438,7 @@ async function readFromFile () {
 
     console.log('Reading samples');
 
-    const result = await readWav(fileHandler, MAX_FILE_SIZE);
+    const result = await readWav(fileHandler);
 
     if (!result.success) {
 
@@ -1559,9 +1590,9 @@ zoomInput.addEventListener('change', () => {
 
     }
 
-    // Bound zoom to between x1 and x150
+    // Bound zoom to between x1 and max zoom level
 
-    newZoom = (newZoom > 150.0) ? 150.0 : newZoom;
+    newZoom = (newZoom > MAX_ZOOM) ? MAX_ZOOM : newZoom;
     newZoom = (newZoom < 1.0) ? 1.0 : newZoom;
 
     zoom = newZoom;
@@ -1574,7 +1605,7 @@ zoomInput.addEventListener('change', () => {
 
     setTimeout(() => {
 
-        updatePlots();
+        updatePlots(false);
 
     }, 10);
 
@@ -1629,7 +1660,7 @@ panInput.addEventListener('change', () => {
 
     setTimeout(() => {
 
-        updatePlots();
+        updatePlots(false);
 
     }, 10);
 
@@ -1738,7 +1769,7 @@ function handleMouseUp (e) {
         // Calculate new zoom value
 
         let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / canvas.width);
-        newZoom = (newZoom > 150.0) ? 150.0 : newZoom;
+        newZoom = (newZoom > MAX_ZOOM) ? MAX_ZOOM : newZoom;
 
         // Calculate new offset value
 
@@ -1758,7 +1789,7 @@ function handleMouseUp (e) {
 
         setTimeout(() => {
 
-            updatePlots();
+            updatePlots(false);
 
         }, 10);
 
@@ -1879,29 +1910,35 @@ for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
  */
 amplitudeThresholdingSlider.on('change', updateAmplitudeThresholdingLabel);
 
+function updatePlotsAndResetColourMap () {
+
+    updatePlots(true);
+
+}
+
 /**
  * Add update plot listeners, applying low/band/high pass filter and amplitude threshold if selected
  */
-filterCheckbox.addEventListener('change', updatePlots);
-filterRadioButtons[0].addEventListener('change', updatePlots);
-filterRadioButtons[1].addEventListener('change', updatePlots);
-filterRadioButtons[2].addEventListener('change', updatePlots);
-bandPassFilterSlider.on('slideStop', updatePlots);
-lowPassFilterSlider.on('slideStop', updatePlots);
-highPassFilterSlider.on('slideStop', updatePlots);
-amplitudeThresholdingCheckbox.addEventListener('change', updatePlots);
-amplitudeThresholdingSlider.on('slideStop', updatePlots);
-amplitudeThresholdingRadioButtons[0].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[1].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[2].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[3].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[4].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[5].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[6].addEventListener('change', updatePlots);
-amplitudeThresholdingRadioButtons[7].addEventListener('change', updatePlots);
-amplitudeThresholdingScaleRadioButtons[0].addEventListener('change', updatePlots);
-amplitudeThresholdingScaleRadioButtons[1].addEventListener('change', updatePlots);
-amplitudeThresholdingScaleRadioButtons[2].addEventListener('change', updatePlots);
+filterCheckbox.addEventListener('change', updatePlotsAndResetColourMap);
+filterRadioButtons[0].addEventListener('change', updatePlotsAndResetColourMap);
+filterRadioButtons[1].addEventListener('change', updatePlotsAndResetColourMap);
+filterRadioButtons[2].addEventListener('change', updatePlotsAndResetColourMap);
+bandPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
+lowPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
+highPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
+amplitudeThresholdingCheckbox.addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingSlider.on('slideStop', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[0].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[1].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[2].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[3].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[4].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[5].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[6].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingRadioButtons[7].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingScaleRadioButtons[0].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingScaleRadioButtons[1].addEventListener('change', updatePlotsAndResetColourMap);
+amplitudeThresholdingScaleRadioButtons[2].addEventListener('change', updatePlotsAndResetColourMap);
 
 /**
  * Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
@@ -1915,7 +1952,7 @@ resetButton.addEventListener('click', () => {
 
     resetTransformations();
     sampleRateChange();
-    updatePlots();
+    updatePlots(true);
 
 });
 

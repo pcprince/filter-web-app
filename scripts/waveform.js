@@ -112,15 +112,15 @@ function drawWaveform (samples, gapLength, callback) {
     for (let i = 0; i < blockCount; i++) {
 
         const blockStart = blockSize * i;
-        let sum = 0;
+        let max = 0;
 
         for (let j = 0; j < blockSize; j++) {
 
-            sum += Math.abs(samples[blockStart + j]);
+            max = Math.max(max, samples[blockStart + j]);
 
         }
 
-        filteredData.push(sum / blockSize);
+        filteredData.push(max);
 
     }
 
