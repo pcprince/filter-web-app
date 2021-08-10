@@ -1564,6 +1564,11 @@ fileButton.addEventListener('click', async () => {
 
     thresholdPeriods = [];
 
+    // Reset values used to calculate colour map
+
+    spectrumMin = 0.0;
+    spectrumMax = 0.0;
+
     // Update UI elements which change when a file at a new sample rate is loaded
 
     sampleRateChange();
