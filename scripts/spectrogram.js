@@ -123,6 +123,7 @@ function drawSpectrogram (spectrogram, min, max, callback) {
                 let colourIndex = Math.round(255 * (fastLog2(spectrogram[index]) - min) / (max - min));
 
                 colourIndex = Math.max(colourIndex, 0);
+                colourIndex = Math.min(colourIndex, 255);
 
                 colour = rgbColours[colourIndex];
 
