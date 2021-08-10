@@ -1276,8 +1276,6 @@ function zoomIn () {
 
         newZoom = Math.pow(2, Math.round(Math.log(newZoom) / Math.log(2)));
 
-        console.log(newZoom);
-
         if (newZoom <= MAX_ZOOM) {
 
             zoom = newZoom;
