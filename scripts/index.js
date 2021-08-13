@@ -26,13 +26,13 @@ const fileLabel = document.getElementById('file-label');
 
 // Plot navigation buttons
 
+const homeButton = document.getElementById('home-button');
+
 const zoomInButton = document.getElementById('zoom-in-button');
 const zoomOutButton = document.getElementById('zoom-out-button');
-const zoomInput = document.getElementById('zoom-input');
 
 const panLeftButton = document.getElementById('pan-left-button');
 const panRightButton = document.getElementById('pan-right-button');
-const panInput = document.getElementById('pan-input');
 
 // Plot navigation variables
 
@@ -41,7 +41,6 @@ const ZOOM_INCREMENT = 2.0;
 const MAX_ZOOM = 128.0;
 
 let offset = 0.0;
-const OFFSET_INCREMENT = 1.0;
 
 // Zoom drag variables
 
@@ -56,22 +55,17 @@ const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canv
 
 const waveformDragCanvas = document.getElementById('waveform-drag-canvas'); // Canvas layer where zoom overlay is drawn
 const waveformThresholdCanvas = document.getElementById('waveform-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
+const waveformThresholdLineCanvas = document.getElementById('waveform-threshold-line-canvas'); // Canvas layer where amplitude threshold value lines are drawn
 const waveformCanvas = document.getElementById('waveform-canvas'); // Canvas layer where waveform is drawn
 
-const timeLabelCanvas = document.getElementById('time-label-canvas');
-const timeAxisHeadingCanvas = document.getElementById('time-axis-heading-canvas');
-
-// Create staging canvas for labels which can be reused so labels still match after panning
-
-const prepLabelCanvas = document.createElement('canvas');
-prepLabelCanvas.width = timeLabelCanvas.width * 30;
-prepLabelCanvas.height = timeLabelCanvas.height;
+const timeLabelSVG = document.getElementById('time-axis-label-svg');
+const timeAxisHeadingSVG = document.getElementById('time-axis-heading-svg');
 
 // Y axis label canvases
 
-const spectrogramLabelCanvas = document.getElementById('spectrogram-label-canvas');
+const spectrogramLabelSVG = document.getElementById('spectrogram-label-svg');
 const Y_LABEL_COUNT = 4;
-const waveformLabelCanvas = document.getElementById('waveform-label-canvas');
+const waveformLabelSVG = document.getElementById('waveform-label-svg');
 
 // File variables
 
@@ -130,9 +124,8 @@ const amplitudeThresholdingSlider = new Slider('#amplitude-thresholding-slider',
 const amplitudeThresholdingLabel = document.getElementById('amplitude-thresholding-label');
 const amplitudeThresholdingDurationTable = document.getElementById('amplitude-thresholding-duration-table');
 const amplitudeThresholdingRadioButtons = document.getElementsByName('amplitude-thresholding-duration-radio');
-const amplitudeThresholdingScaleLabel = document.getElementById('amplitude-thresholding-scale-label');
-const amplitudeThresholdingScaleRadioButtons = document.getElementsByName('amplitude-thresholding-scale-radio');
-const amplitudeThresholdScaleTable = document.getElementById('amplitude-threshold-scale-table');
+
+const amplitudeThresholdScaleSelect = document.getElementById('amplitude-threshold-scale-select');
 
 // Non-linear amplitude threshold values to map to slider scale
 
@@ -144,10 +137,10 @@ const MINIMUM_TRIGGER_DURATIONS = [0, 1, 2, 5, 10, 15, 30, 60];
 
 // Amplitude thresholding scale enums
 
-let amplitudeThresholdingScaleIndex = 0;
-const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 0;
-const AMPLITUDE_THRESHOLD_SCALE_16BIT = 1;
-const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 2;
+let amplitudeThresholdingScaleIndex = 2;
+const AMPLITUDE_THRESHOLD_SCALE_16BIT = 0;
+const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 1;
+const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 2;
 
 // All possible slider values
 
@@ -167,9 +160,7 @@ const sliderStep = amplitudeThresholdingSlider.getAttribute('step');
 
 for (let sIndex = sliderMin; sIndex <= sliderMax; sIndex += sliderStep) {
 
-    const rawSlider = (sIndex / sliderMax);
-
-    const amplitudeThresholdValues = convertAmplitudeThreshold(rawSlider);
+    const amplitudeThresholdValues = convertAmplitudeThreshold(sIndex);
 
     THRESHOLD_PERCENTAGE_SLIDER_VALUES.push(parseFloat(amplitudeThresholdValues.percentage));
     THRESHOLD_16BIT_SLIDER_VALUES.push(amplitudeThresholdValues.amplitude);
@@ -373,7 +364,10 @@ function convertAmplitudeThreshold (rawSlider) {
 
     let exponent, mantissa, validAmplitude;
 
-    const rawLog = (100 * rawSlider - 100);
+    const sliderMax = amplitudeThresholdingSlider.getAttribute('max');
+    const scaledSlider = rawSlider / sliderMax;
+
+    const rawLog = (100 * scaledSlider - 100);
 
     /* Decibels */
 
@@ -424,7 +418,7 @@ function convertAmplitudeThreshold (rawSlider) {
  */
 function getAmplitudeThreshold () {
 
-    return convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max')).amplitude;
+    return convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue()).amplitude;
 
 }
 
@@ -457,7 +451,7 @@ function formatPercentage (mantissa, exponent) {
  */
 function updateAmplitudeThresholdingLabel () {
 
-    const amplitudeThreshold = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max'));
+    const amplitudeThreshold = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue());
 
     amplitudeThresholdingLabel.textContent = 'Amplitude threshold of ';
 
@@ -534,15 +528,6 @@ function updateAmplitudeThresholdingUI () {
 
         }
 
-        amplitudeThresholdingScaleLabel.style.color = '';
-        amplitudeThresholdScaleTable.style.color = '';
-
-        for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
-
-            amplitudeThresholdingScaleRadioButtons[i].disabled = false;
-
-        }
-
     } else {
 
         amplitudeThresholdingSlider.disable();
@@ -564,15 +549,6 @@ function updateAmplitudeThresholdingUI () {
         for (let i = 0; i < amplitudeThresholdingRadioButtons.length; i++) {
 
             amplitudeThresholdingRadioButtons[i].disabled = true;
-
-        }
-
-        amplitudeThresholdingScaleLabel.style.color = 'grey';
-        amplitudeThresholdScaleTable.style.color = 'grey';
-
-        for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
-
-            amplitudeThresholdingScaleRadioButtons[i].disabled = true;
 
         }
 
@@ -678,20 +654,54 @@ function timeToPixel (seconds) {
 
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Draw text to an SVG holder
+ * @param {Element} parent SVG element to be drawn to
+ * @param {string} content Text to be written
+ * @param {number} x x coordinate
+ * @param {number} y y coordinate
+ * @param {string} anchor What end of the text it should be anchored to. Possible values: start/middle/end
+ */
+function addSVGText (parent, content, x, y, anchor) {
+
+    const textElement = document.createElementNS(SVG_NS, 'text');
+
+    textElement.setAttributeNS(null, 'x', x);
+    textElement.setAttributeNS(null, 'y', y);
+    textElement.setAttributeNS(null, 'dominant-baseline', 'middle');
+    textElement.setAttributeNS(null, 'text-anchor', anchor);
+    textElement.setAttributeNS(null, 'font-size', '10px');
+
+    textElement.textContent = content;
+
+    parent.appendChild(textElement);
+
+}
+
+/**
+ * Remove all SVG drawing elements from an SVG holder
+ * @param {Element} parent SVG element containing labels to be cleared
+ */
+function clearSVG (parent) {
+
+    while (parent.firstChild) {
+
+        parent.removeChild(parent.lastChild);
+
+    }
+
+}
+
 /**
  * Fill in the y axis labels for the two plots and their shared x axis labels
  */
 function drawAxisLabels () {
 
-    // FIXME: Fix label font being blurry (https://www.w3schools.com/graphics/svg_text.asp)
-
-    const font = '10px';
-
     // Draw x axis labels
 
-    const xCtx = prepLabelCanvas.getContext('2d');
-
-    xCtx.clearRect(0, 0, prepLabelCanvas.width, prepLabelCanvas.height);
+    clearSVG(timeLabelSVG);
 
     let label = 0;
     const totalLength = (sampleCount !== 0) ? sampleCount / sampleRate : FILLER_SAMPLE_COUNT / FILLER_SAMPLE_RATE;
@@ -705,18 +715,14 @@ function drawAxisLabels () {
     labelIncrement = (displayedTime > 30) ? 5 : labelIncrement;
 
     // So the centre of the text can be the label location, there's a small amount of padding around the label canvas
-    const padding = (timeLabelCanvas.width - waveformCanvas.width) / 2;
+    const padding = (timeLabelSVG.width.baseVal.value - waveformCanvas.width) / 2;
 
     while (label <= totalLength) {
 
-        // If there's 2 characters, label width is doubled
-        const labelWidth = xCtx.measureText(label).width;
-
         // Convert the time to a pixel value, then take into account the label width and the padding to position correctly
-        const x = timeToPixel(label) + padding - (labelWidth / 2);
+        const x = timeToPixel(label) + padding + timeToPixel(offset);
 
-        xCtx.font = font;
-        xCtx.fillText(label, x, 15);
+        addSVGText(timeLabelSVG, label, x, 10, 'middle');
 
         label += labelIncrement;
 
@@ -724,23 +730,18 @@ function drawAxisLabels () {
 
     // Draw y axis labels for spectrogram
 
-    const ySpecCtx = spectrogramLabelCanvas.getContext('2d');
-
-    ySpecCtx.clearRect(0, 0, spectrogramLabelCanvas.width, spectrogramLabelCanvas.height);
-
-    ySpecCtx.font = font;
-    ySpecCtx.textBaseline = 'middle';
+    clearSVG(spectrogramLabelSVG);
 
     const ySpecLabelIncrement = (sampleCount !== 0) ? sampleRate / 2 / Y_LABEL_COUNT : 48000 / Y_LABEL_COUNT;
-    const ySpecIncrement = spectrogramLabelCanvas.height / Y_LABEL_COUNT;
+    const ySpecIncrement = spectrogramLabelSVG.height.baseVal.value / Y_LABEL_COUNT;
+
+    const specLabelX = spectrogramLabelSVG.width.baseVal.value - 5;
 
     for (let i = 0; i <= Y_LABEL_COUNT; i++) {
 
         const labelText = (i * ySpecLabelIncrement / 1000) + 'kHz';
 
-        const x = spectrogramLabelCanvas.width - ySpecCtx.measureText(labelText.toString()).width - 5;
-
-        let y = spectrogramLabelCanvas.height - (i * ySpecIncrement);
+        let y = spectrogramLabelSVG.height.baseVal.value - (i * ySpecIncrement);
 
         if (i === 0) {
 
@@ -754,18 +755,13 @@ function drawAxisLabels () {
 
         }
 
-        ySpecCtx.fillText(labelText, x, y);
+        addSVGText(spectrogramLabelSVG, labelText, specLabelX, y, 'end');
 
     }
 
     // Draw y axis labels for waveform
 
-    const yWaveformCtx = waveformLabelCanvas.getContext('2d');
-
-    yWaveformCtx.clearRect(0, 0, waveformLabelCanvas.width, waveformLabelCanvas.height);
-
-    yWaveformCtx.font = font;
-    yWaveformCtx.textBaseline = 'middle';
+    clearSVG(waveformLabelSVG);
 
     let waveformLabelTexts = [];
 
@@ -788,11 +784,11 @@ function drawAxisLabels () {
 
     }
 
-    const yWaveformIncrement = waveformLabelCanvas.height / (waveformLabelTexts.length - 1);
+    const yWaveformIncrement = waveformLabelSVG.height.baseVal.value / (waveformLabelTexts.length - 1);
+
+    const wavLabelX = waveformLabelSVG.width.baseVal.value - 5;
 
     for (let i = 0; i < waveformLabelTexts.length; i++) {
-
-        const x = waveformLabelCanvas.width - yWaveformCtx.measureText(waveformLabelTexts[i].toString()).width - 5;
 
         let y = i * yWaveformIncrement;
 
@@ -808,7 +804,7 @@ function drawAxisLabels () {
 
         }
 
-        yWaveformCtx.fillText(waveformLabelTexts[i], x, y);
+        addSVGText(waveformLabelSVG, waveformLabelTexts[i], wavLabelX, y, 'end');
 
     }
 
@@ -819,16 +815,9 @@ function drawAxisLabels () {
  */
 function drawAxisHeadings () {
 
-    const xCtx = timeAxisHeadingCanvas.getContext('2d');
+    clearSVG(timeAxisHeadingSVG);
 
-    xCtx.clearRect(0, 0, timeAxisHeadingCanvas.width, timeAxisHeadingCanvas.height);
-
-    xCtx.font = '10px monospace';
-    xCtx.textBaseline = 'middle';
-
-    const labelText = 'Time (seconds)';
-    const textWidth = xCtx.measureText(labelText).width;
-    xCtx.fillText(labelText, (timeAxisHeadingCanvas.width - textWidth) / 2, timeAxisHeadingCanvas.height / 2);
+    addSVGText(timeAxisHeadingSVG, 'Time (seconds)', timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle');
 
 }
 
@@ -839,6 +828,7 @@ function drawAxisHeadings () {
 function resetCanvas (canvas) {
 
     // Setting the width/height of a canvas in any way wipes it clean and resets the context's transformations
+    // eslint-disable-next-line no-self-assign
     canvas.width = canvas.width;
 
 }
@@ -852,7 +842,6 @@ function updateZoomUI () {
 
         zoomInButton.disabled = true;
         zoomOutButton.disabled = true;
-        zoomInput.disabled = true;
         return;
 
     }
@@ -877,10 +866,6 @@ function updateZoomUI () {
 
     }
 
-    zoomInput.disabled = false;
-
-    zoomInput.value = zoom.toFixed(1);
-
 }
 
 /**
@@ -892,7 +877,6 @@ function updatePanUI () {
 
         panLeftButton.disabled = true;
         panRightButton.disabled = true;
-        panInput.disabled = true;
         return;
 
     }
@@ -906,8 +890,6 @@ function updatePanUI () {
         panRightButton.disabled = false;
 
     }
-
-    panInput.disabled = false;
 
     const totalLength = sampleCount / sampleRate;
     const displayedTime = totalLength / zoom;
@@ -929,7 +911,36 @@ function updatePanUI () {
 
     }
 
-    panInput.value = Math.abs(offset).toFixed(1);
+}
+
+/**
+ * Draw amplitude threshold value to its overlay layer
+ */
+function drawThresholdLines () {
+
+    const thresholdCtx = waveformThresholdLineCanvas.getContext('2d');
+    const w = waveformThresholdLineCanvas.width;
+    const h = waveformThresholdLineCanvas.height;
+
+    resetCanvas(waveformThresholdLineCanvas);
+
+    thresholdCtx.strokeStyle = 'black';
+    thresholdCtx.lineWidth = 2;
+
+    const amplitudeThreshold = getAmplitudeThreshold();
+
+    const centre = h / 2;
+    const offsetFromCentre = (amplitudeThreshold / 32768.0) * centre;
+    const positiveY = centre - offsetFromCentre;
+    const negativeY = centre + offsetFromCentre;
+
+    thresholdCtx.moveTo(0, positiveY);
+    thresholdCtx.lineTo(w, positiveY);
+    thresholdCtx.stroke();
+
+    thresholdCtx.moveTo(0, negativeY);
+    thresholdCtx.lineTo(w, negativeY);
+    thresholdCtx.stroke();
 
 }
 
@@ -1028,25 +1039,6 @@ function drawLoadingImages () {
 }
 
 /**
- * Copy the x axis labels to the canvas, offset to the current pan location
- */
-function copyLabelsToCanvas () {
-
-    const ctx = timeLabelCanvas.getContext('2d');
-    const w = timeLabelCanvas.width;
-    const h = timeLabelCanvas.height;
-
-    resetCanvas(timeLabelCanvas);
-
-    ctx.clearRect(0, 0, w, h);
-
-    const pixelOffset = timeToPixel(offset);
-
-    ctx.drawImage(prepLabelCanvas, pixelOffset, 0);
-
-}
-
-/**
  * Draw spectrogram and waveform plots
  */
 function drawPlots (samples) {
@@ -1055,22 +1047,11 @@ function drawPlots (samples) {
 
         resetCanvas(spectrogramThresholdCanvas);
 
-        const totalLength = sampleCount / sampleRate;
-        const displayedTime = totalLength / zoom;
-
-        const sampleStart = Math.floor(Math.abs(offset) * sampleRate);
-        let sampleEnd = Math.floor((Math.abs(offset) + displayedTime) * sampleRate);
-
-        // Gap at the end of the plot in samples
-        let gapLength = sampleEnd - sampleCount;
-        gapLength = gapLength < 0 ? 0 : gapLength;
-
-        sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
-
-        // TODO: Add amplitude threshold as lines on the waveform plot
+        const displayedSampleCount = getDisplayedSampleCount();
+        const startSample = Math.abs(offset) * sampleRate;
 
         console.log('Drawing waveform');
-        drawWaveform(samples.slice(sampleStart, sampleEnd), gapLength, () => {
+        drawWaveform(samples, startSample, displayedSampleCount, () => {
 
             resetCanvas(waveformThresholdCanvas);
 
@@ -1081,17 +1062,15 @@ function drawPlots (samples) {
             }
 
             drawAxisLabels();
-            copyLabelsToCanvas();
 
             drawing = false;
 
+            homeButton.disabled = false;
             zoomInButton.disabled = false;
             zoomOutButton.disabled = false;
-            zoomInput.disabled = false;
             updateZoomUI();
             panLeftButton.disabled = false;
             panRightButton.disabled = false;
-            panInput.disabled = false;
             updatePanUI();
 
             filterCheckbox.disabled = false;
@@ -1132,12 +1111,11 @@ function processContents (samples, sampleRate) {
 
     // Disable UI
 
+    homeButton.disabled = true;
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
-    zoomInput.disabled = true;
     panLeftButton.disabled = true;
     panRightButton.disabled = true;
-    panInput.disabled = true;
 
     filterCheckbox.disabled = true;
     filterCheckboxLabel.style.color = 'grey';
@@ -1190,6 +1168,8 @@ function resetTransformations () {
     updatePanUI();
     updateZoomUI();
 
+    homeButton.disabled = (sampleCount === 0);
+
 }
 
 /**
@@ -1220,7 +1200,9 @@ function panLeft () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newOffset = Math.ceil(offset - OFFSET_INCREMENT);
+        const offsetIncrement = getDisplayedSampleCount() / 2 / sampleRate;
+
+        const newOffset = offset - offsetIncrement;
 
         offset = newOffset;
 
@@ -1245,7 +1227,9 @@ function panRight () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newOffset = Math.floor(offset + OFFSET_INCREMENT);
+        const offsetIncrement = getDisplayedSampleCount() / 2 / sampleRate;
+
+        const newOffset = offset + offsetIncrement;
 
         if (newOffset <= 0) {
 
@@ -1266,11 +1250,25 @@ function panRight () {
 }
 
 /**
+ * Reset zoom level and pan offset
+ */
+function resetNavigation () {
+
+    resetTransformations();
+    sampleRateChange();
+    updatePlots(true);
+
+}
+
+/**
  * Zoom plot in
  */
 function zoomIn () {
 
     if (sampleCount !== 0 && !drawing) {
+
+        let displayedSampleCount = getDisplayedSampleCount();
+        const oldCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
 
         let newZoom = Math.round(zoom * ZOOM_INCREMENT);
 
@@ -1279,6 +1277,13 @@ function zoomIn () {
         if (newZoom <= MAX_ZOOM) {
 
             zoom = newZoom;
+
+            displayedSampleCount = getDisplayedSampleCount();
+            const newCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
+
+            const diffSecs = (oldCentre - newCentre) / sampleRate;
+
+            offset -= diffSecs;
 
             setTimeout(() => {
 
@@ -1300,9 +1305,10 @@ function zoomIn () {
  */
 function zoomOut () {
 
-    // FIXME: Zooming out sometimes doesn't effect waveform
-
     if (sampleCount !== 0 && !drawing) {
+
+        let displayedSampleCount = getDisplayedSampleCount();
+        const oldCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
 
         let newZoom = Math.round(zoom / ZOOM_INCREMENT);
 
@@ -1311,6 +1317,13 @@ function zoomOut () {
         if (newZoom >= 1.0) {
 
             zoom = newZoom;
+
+            displayedSampleCount = getDisplayedSampleCount();
+            const newCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
+
+            const diffSecs = (oldCentre - newCentre) / sampleRate;
+
+            offset -= diffSecs;
 
             removeEndGap();
 
@@ -1530,12 +1543,11 @@ fileButton.addEventListener('click', async () => {
     filterCheckbox.checked = false;
     amplitudeThresholdingCheckbox.checked = false;
 
+    homeButton.disabled = true;
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
-    zoomInput.disabled = true;
     panLeftButton.disabled = true;
     panRightButton.disabled = true;
-    panInput.disabled = true;
 
     filterCheckbox.disabled = true;
     filterCheckboxLabel.style.color = 'grey';
@@ -1574,103 +1586,6 @@ fileButton.addEventListener('click', async () => {
     // Generate spectrogram frames and draw plots
 
     processContents(unfilteredSamples, sampleRate);
-
-});
-
-/**
- * Handle the manual zoom input value changing
- */
-zoomInput.addEventListener('change', () => {
-
-    let newZoom = parseFloat(zoomInput.value);
-
-    // If input is invalid, reset to previous value
-
-    if (isNaN(newZoom)) {
-
-        zoomInput.value = zoom.toFixed(1);
-        return;
-
-    }
-
-    // Bound zoom to between x1 and max zoom level
-
-    newZoom = (newZoom > MAX_ZOOM) ? MAX_ZOOM : newZoom;
-    newZoom = (newZoom < 1.0) ? 1.0 : newZoom;
-
-    zoom = newZoom;
-
-    // If zoom results in a gap at the end of the plot, alter offset to remove it
-
-    removeEndGap();
-
-    // Process and redraw plots
-
-    setTimeout(() => {
-
-        updatePlots(false);
-
-    }, 10);
-
-    // Update UI
-
-    updateZoomUI();
-    updatePanUI();
-
-});
-
-/**
- * Handle manual pan input value changing
- */
-panInput.addEventListener('change', () => {
-
-    const oldOffset = offset;
-
-    let newOffset = parseFloat(panInput.value);
-
-    // If input is invalid, reset to previous value
-
-    if (isNaN(newOffset)) {
-
-        panInput.value = Math.abs(offset).toFixed(1);
-        return;
-
-    }
-
-    // Bound offset to between 0.0 and the length of the file
-
-    const lengthSecs = sampleCount / sampleRate;
-
-    newOffset = (newOffset < 0.0) ? 0.0 : newOffset;
-    newOffset = (newOffset > lengthSecs) ? lengthSecs : newOffset;
-
-    offset = -1.0 * newOffset;
-
-    // If pan results in a gap at the end of the plot, alter offset to remove it
-
-    removeEndGap();
-
-    // If the calculations have resulted in no change in the actual offset, don't bother redrawing everything
-
-    if (offset === oldOffset) {
-
-        panInput.value = Math.abs(offset).toFixed(1);
-        return;
-
-    }
-
-    // Process and redraw plots
-
-    setTimeout(() => {
-
-        updatePlots(false);
-
-    }, 10);
-
-    // Update UI
-
-    updateZoomUI();
-    updatePanUI();
 
 });
 
@@ -1892,21 +1807,17 @@ amplitudeThresholdingCheckbox.addEventListener('change', updateAmplitudeThreshol
 updateAmplitudeThresholdingUI();
 
 /**
- * Add amplitude threshold scale listeners
+ * Add amplitude threshold scale listener
  */
-for (let i = 0; i < amplitudeThresholdingScaleRadioButtons.length; i++) {
+amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
-    amplitudeThresholdingScaleRadioButtons[i].addEventListener('change', function () {
+    amplitudeThresholdingScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
 
-        amplitudeThresholdingScaleIndex = getSelectedRadioValue('amplitude-thresholding-scale-radio');
+    updateAmplitudeThresholdingScale();
 
-        updateAmplitudeThresholdingScale();
+    drawAxisLabels();
 
-        drawAxisLabels();
-
-    });
-
-}
+});
 
 /**
  * Add listener which updates the amplitude threshold information label when the slider value is changed
@@ -1920,6 +1831,11 @@ function updatePlotsAndResetColourMap () {
 }
 
 /**
+ * Add listener which updates the position of the lines on the waveform plot as the amplitude threshold slider moves
+ */
+amplitudeThresholdingSlider.on('change', drawThresholdLines);
+
+/**
  * Add update plot listeners, applying low/band/high pass filter and amplitude threshold if selected
  */
 filterCheckbox.addEventListener('change', updatePlotsAndResetColourMap);
@@ -1929,7 +1845,25 @@ filterRadioButtons[2].addEventListener('change', updatePlotsAndResetColourMap);
 bandPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
 lowPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
 highPassFilterSlider.on('slideStop', updatePlotsAndResetColourMap);
-amplitudeThresholdingCheckbox.addEventListener('change', updatePlotsAndResetColourMap);
+
+amplitudeThresholdingCheckbox.addEventListener('change', () => {
+
+    updatePlotsAndResetColourMap();
+
+    // Draw or clear the amplitude threshold lines
+
+    if (amplitudeThresholdingCheckbox.checked) {
+
+        drawThresholdLines();
+
+    } else {
+
+        resetCanvas(waveformThresholdLineCanvas);
+
+    }
+
+});
+
 amplitudeThresholdingSlider.on('slideStop', updatePlotsAndResetColourMap);
 amplitudeThresholdingRadioButtons[0].addEventListener('change', updatePlotsAndResetColourMap);
 amplitudeThresholdingRadioButtons[1].addEventListener('change', updatePlotsAndResetColourMap);
@@ -1939,9 +1873,6 @@ amplitudeThresholdingRadioButtons[4].addEventListener('change', updatePlotsAndRe
 amplitudeThresholdingRadioButtons[5].addEventListener('change', updatePlotsAndResetColourMap);
 amplitudeThresholdingRadioButtons[6].addEventListener('change', updatePlotsAndResetColourMap);
 amplitudeThresholdingRadioButtons[7].addEventListener('change', updatePlotsAndResetColourMap);
-amplitudeThresholdingScaleRadioButtons[0].addEventListener('change', updatePlotsAndResetColourMap);
-amplitudeThresholdingScaleRadioButtons[1].addEventListener('change', updatePlotsAndResetColourMap);
-amplitudeThresholdingScaleRadioButtons[2].addEventListener('change', updatePlotsAndResetColourMap);
 
 /**
  * Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
@@ -1967,8 +1898,10 @@ lowPassFilterSlider.on('change', updateFilterLabel);
 highPassFilterSlider.on('change', updateFilterLabel);
 
 /**
- * Add zoom and pan control to buttons
+ * Add home, zoom and pan control to buttons
  */
+homeButton.addEventListener('click', resetNavigation);
+
 zoomInButton.addEventListener('click', zoomIn);
 zoomOutButton.addEventListener('click', zoomOut);
 
@@ -2002,7 +1935,7 @@ exportButton.addEventListener('click', () => {
     const filterTypes = ['low', 'band', 'high'];
     const amplitudeThresholdScales = ['percentage', '16bit', 'decibel'];
 
-    const amplitudeThresholdValues = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue() / amplitudeThresholdingSlider.getAttribute('max'));
+    const amplitudeThresholdValues = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue());
 
     let amplitudeThreshold = 0;
 
@@ -2066,7 +1999,6 @@ resetTransformations();
  */
 drawAxisLabels();
 drawAxisHeadings();
-copyLabelsToCanvas();
 
 /**
  * Prepare filter UI

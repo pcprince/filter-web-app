@@ -4,6 +4,10 @@
  * June 2021
  *****************************************************************************/
 
+// Size of block samples are divided into for each peak/trough of the waveform
+
+const BLOCK_SIZE = 32;
+
 // WebGL shaders
 
 const waveformVertexShaderText =
@@ -39,7 +43,7 @@ const wavCanvas = document.getElementById('waveform-canvas');
  * @param {number} gapLength Gap at the end of the plot in samples
  * @param {function} callback Function to be called once rendering is complete
  */
-function drawWaveform (samples, gapLength, callback) {
+function drawWaveform (samples, offset, length, callback) {
 
     // Prepare WebGL
 
@@ -100,23 +104,24 @@ function drawWaveform (samples, gapLength, callback) {
 
     // Create buffer
 
-    let blockCount = 20000;
-
-    const sampleCount = samples.length + gapLength;
-
-    blockCount = blockCount > sampleCount ? sampleCount : blockCount;
-    const blockSize = Math.floor(sampleCount / blockCount);
+    const blockCount = Math.ceil(length / BLOCK_SIZE);
 
     const filteredData = [];
 
     for (let i = 0; i < blockCount; i++) {
 
-        const blockStart = blockSize * i;
+        const blockStart = BLOCK_SIZE * i;
         let max = 0;
 
-        for (let j = 0; j < blockSize; j++) {
+        for (let j = 0; j < BLOCK_SIZE; j++) {
 
-            max = Math.max(max, samples[blockStart + j]);
+            if (blockStart + j > length) {
+
+                continue;
+
+            }
+
+            max = Math.max(max, Math.abs(samples[offset + blockStart + j]));
 
         }
 
