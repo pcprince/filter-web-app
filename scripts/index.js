@@ -1048,7 +1048,7 @@ function drawPlots (samples) {
         resetCanvas(spectrogramThresholdCanvas);
 
         const displayedSampleCount = getDisplayedSampleCount();
-        const startSample = Math.abs(offset) * sampleRate;
+        const startSample = Math.ceil(Math.abs(offset) * sampleRate);
 
         console.log('Drawing waveform');
         drawWaveform(samples, startSample, displayedSampleCount, () => {
