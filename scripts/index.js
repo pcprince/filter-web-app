@@ -708,7 +708,9 @@ function drawAxisLabels () {
 
     // Widen gap between labels as more audio is viewable to prevent squashed labels
     const displayedTime = totalLength / zoom;
-    let labelIncrement = 0.25;
+    let labelIncrement = 0.02;
+    labelIncrement = (displayedTime > 0.5) ? 0.05 : labelIncrement;
+    labelIncrement = (displayedTime > 1) ? 0.25 : labelIncrement;
     labelIncrement = (displayedTime > 2) ? 0.5 : labelIncrement;
     labelIncrement = (displayedTime > 5) ? 1 : labelIncrement;
     labelIncrement = (displayedTime > 10) ? 2 : labelIncrement;
@@ -722,7 +724,9 @@ function drawAxisLabels () {
         // Convert the time to a pixel value, then take into account the label width and the padding to position correctly
         const x = timeToPixel(label) + padding + timeToPixel(offset);
 
-        addSVGText(timeLabelSVG, label, x, 10, 'middle');
+        const labelText = +label.toFixed(2);
+
+        addSVGText(timeLabelSVG, labelText, x, 10, 'middle');
 
         label += labelIncrement;
 
