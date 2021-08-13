@@ -1595,6 +1595,14 @@ fileButton.addEventListener('click', async () => {
  */
 function handleMouseDown (e) {
 
+    // If it's not a left click, ignore it
+
+    if (e.button !== 0) {
+
+        return;
+
+    }
+
     // If samples have been loaded and drawing a plot isn't currently underway
 
     if (sampleCount !== 0 && !drawing) {
@@ -1664,6 +1672,14 @@ function handleMouseMove (e) {
  */
 function handleMouseUp (e) {
 
+    // If it's not a left click, ignore it
+
+    if (e.button !== 0) {
+
+        return;
+
+    }
+
     // If dragging has started, samples are available and a plot is not currently being drawn
 
     if (isDragging && sampleCount !== 0 && !drawing) {
@@ -1676,6 +1692,12 @@ function handleMouseUp (e) {
 
         const rect = canvas.getBoundingClientRect();
         const dragEndX = Math.max(0, e.clientX - rect.left);
+
+        if (dragEndX === dragStartX) {
+
+            return;
+
+        }
 
         // Clear zoom overlay canvases
 
