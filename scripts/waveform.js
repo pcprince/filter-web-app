@@ -43,7 +43,7 @@ const wavCanvas = document.getElementById('waveform-canvas');
  * @param {number} gapLength Gap at the end of the plot in samples
  * @param {function} callback Function to be called once rendering is complete
  */
-function drawWaveform (samples, offset, length, callback) {
+function drawWaveform (samples, offset, length, yZoom, callback) {
 
     // Prepare WebGL
 
@@ -154,6 +154,8 @@ function drawWaveform (samples, offset, length, callback) {
 
         }
 
+        height /= yZoom;
+
         // Is line an up or down stroke
 
         const y = (i + 1) % 2 ? height : -height;
@@ -188,7 +190,7 @@ function drawWaveform (samples, offset, length, callback) {
     // Render waveform
 
     gl.useProgram(program);
-    gl.drawArrays(gl.LINES, 0, pointData.length / 2);
+    gl.drawArrays(gl.LINE_STRIP, 0, pointData.length / 2);
 
     callback();
 

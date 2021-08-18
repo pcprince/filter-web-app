@@ -55,14 +55,6 @@ function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples)
 
         }
 
-        // If a sample within this block has already exceeded the threshold, don't bother checking the new sample
-
-        if (aboveThreshold) {
-
-            continue;
-
-        }
-
         if (Math.abs(samples[i]) > threshold) {
 
             aboveThreshold = true;
