@@ -150,31 +150,9 @@ const AMPLITUDE_THRESHOLD_SCALE_16BIT = 0;
 const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 1;
 const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 2;
 
-// All possible slider values
-
-const THRESHOLD_PERCENTAGE_SLIDER_VALUES = [];
-const THRESHOLD_16BIT_SLIDER_VALUES = [];
-const THRESHOLD_DECIBEL_SLIDER_VALUES = [];
-
 // Blocks in pixel space representing audio below the threshold
 
 let thresholdPeriods = [];
-
-// Populate slider value lists with valid values
-
-const sliderMin = amplitudeThresholdingSlider.getAttribute('min');
-const sliderMax = amplitudeThresholdingSlider.getAttribute('max');
-const sliderStep = amplitudeThresholdingSlider.getAttribute('step');
-
-for (let sIndex = sliderMin; sIndex <= sliderMax; sIndex += sliderStep) {
-
-    const amplitudeThresholdValues = convertAmplitudeThreshold(sIndex);
-
-    THRESHOLD_PERCENTAGE_SLIDER_VALUES.push(parseFloat(amplitudeThresholdValues.percentage));
-    THRESHOLD_16BIT_SLIDER_VALUES.push(amplitudeThresholdValues.amplitude);
-    THRESHOLD_DECIBEL_SLIDER_VALUES.push(amplitudeThresholdValues.decibels);
-
-}
 
 // Other UI
 
@@ -836,42 +814,72 @@ function drawAxisLabels () {
 
     let waveformLabelTexts = [];
 
+    const percentageValues = [100, 75, 50, 25, 0, 25, 50, 75, 100];
+    const a16bitValues = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
+    const rawSliderValues = [1.0, 0.75, 0.5, 0.25, 0.0, 0.25, 0.5, 0.75, 1.0];
+
     switch (amplitudeThresholdingScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
-        waveformLabelTexts = ['100%', '75%', '50%', '25%', '0%', '25%', '50%', '75%', '100%'];
+        waveformLabelTexts = ['', '', '', '', '', '', '', '', ''];
+
+        for (let i = 0; i < waveformLabelTexts.length; i++) {
+
+            waveformLabelTexts[i] = (percentageValues[i] * waveformZoomY).toFixed(1) + '%';
+
+        }
+
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_16BIT:
 
-        waveformLabelTexts = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
+        waveformLabelTexts = ['', '', '', '', '', '', '', '', ''];
+
+        for (let i = 0; i < waveformLabelTexts.length; i++) {
+
+            waveformLabelTexts[i] = Math.round(a16bitValues[i] * waveformZoomY);
+
+        }
+
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
 
-        waveformLabelTexts = ['0 dB', '-100 db', '0 dB'];
+        waveformLabelTexts = ['', '', '', '', '', '', '', '', ''];
+
+        for (let i = 0; i < waveformLabelTexts.length; i++) {
+
+            if (rawSliderValues[i] === 0.0) {
+
+                continue;
+
+            }
+
+            const rawLog = 20 * Math.log10(rawSliderValues[i] * waveformZoomY);
+
+            const decibelValue = 2 * Math.round(rawLog / 2);
+
+            waveformLabelTexts[i] = decibelValue + 'dB';
+
+        }
+
         break;
 
     }
 
     const canvasH = waveformLabelSVG.height.baseVal.value;
 
-    const yWaveformIncrement = canvasH / (waveformLabelTexts.length - 1) / waveformZoomY;
+    const yWaveformIncrement = canvasH / (waveformLabelTexts.length - 1);
 
     const wavLabelX = waveformLabelSVG.width.baseVal.value - 7;
     const wavMarkerX = waveformLabelSVG.width.baseVal.value - yMarkerLength;
-
-    // Draw top and bottom label markers
-
-    const canvasCentreY = canvasH / 2;
-    const canvasStartY = canvasCentreY - (canvasH / 2 / waveformZoomY);
 
     // Draw middle labels and markers
 
     for (let i = 0; i < waveformLabelTexts.length; i++) {
 
-        let markerY = Math.round(canvasStartY + (i * yWaveformIncrement));
+        let markerY = Math.round(i * yWaveformIncrement);
         let labelY = markerY;
 
         labelY = (labelY === 0) ? labelY + 5 : labelY;
@@ -2202,6 +2210,4 @@ if (!isChrome) {
 
 }
 
-// TODO: Test layout on mac and different resolutions. Reduce plot width if necessary
 // TODO: Add file size comparison
-// TODO: Display same number of labels as you zoom in
