@@ -2,8 +2,8 @@
 <html>
     <head>
         <title>Filter web app</title>
-        <link rel="stylesheet" href="css/index.css">
         <link rel="stylesheet" href="css/external/bootstrap.min.css">
+        <link rel="stylesheet" href="css/index.css">
         <link rel="stylesheet" href="css/external/bootstrap-slider.min.css">
     </head>
     <body style="font-size: 10pt;">
@@ -12,7 +12,7 @@
             <!-- Title -->
 
             <div class="row justify-content-md-center">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <h1>Filter web app</h1>
                 </div>
             </div>
@@ -20,7 +20,7 @@
             <!-- Incorrect browser error -->
 
             <div id="browser-error-display" class="row justify-content-md-center" style="display: none; margin-top: 15px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <div class="card text-white bg-danger mb-3" style="width: 100%;">
                         <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>Current browser is not supported.</b></div>
                         <div class="card-body" style="padding-top: 10px; padding-bottom: 10px;">
@@ -33,7 +33,7 @@
             <!-- File selection description -->
 
             <div class="row justify-content-md-center" style="margin-top: 5px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <span>Select a file up to 60 seconds in length:</span>
                 </div>
             </div>
@@ -41,7 +41,7 @@
             <!-- File selection -->
 
             <div class="row justify-content-md-center" style="margin-top: 10px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <button class="btn btn-primary" id="file-button">Select Files</button>
                     <span id="file-label" style="margin-left: 10px;">No .WAV files selected.</span>
                 </div>
@@ -50,7 +50,7 @@
             <!-- General error display -->
 
             <div id="error-display" class="row justify-content-md-center" style="display: none; margin-top: 15px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <div class="card text-white bg-danger mb-3" style="width: 100%;">
                         <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>An error has occurred.</b></div>
                         <div class="card-body" style="padding-top: 10px; padding-bottom: 10px;">
@@ -61,7 +61,7 @@
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
-                <div class="col" style="min-width: 800px; max-width: 800px; padding: 0px;">
+                <div class="col plot-width" style="padding: 0px;">
                     <!-- Movement buttons -->
 
                     <div class="wrapper" style="width: 793px;">
@@ -100,11 +100,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="col" style="margin-left: 50px; padding-left: 0px; min-width: 543px; max-width: 543px;"></div>
+                <div class="col control-width control-margin" style="padding-left: 0px;"></div>
             </div>
 
             <div class="row justify-content-md-center">
-                <div class="col" style="min-width: 800px; max-width: 800px;">
+                <div class="col plot-width">
 
                     <!-- Plots -->
 
@@ -137,12 +137,12 @@
 
                 </div>
 
-                <div class="col" style="margin-left: 50px; padding-left: 0px; min-width: 543px; max-width: 543px;">
+                <div class="col control-width control-margin" style="padding: 0px;">
 
                     <!-- Filtering -->
 
                     <div class="row">
-                        <div class="col-12" style="margin-top: 10px; ">
+                        <div class="col-12" style="margin-top: 10px;">
                             <div style="border: #cdcdcd thin solid; width: 100%;">
                                 <div class="row" style="margin-top: 8px;">
                                     <div class="col-8" style="text-align: left;">
@@ -345,40 +345,40 @@
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 50px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <h3 id='faqs'>FAQs</h3>
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <h5>Why won't my file load?</h5>
                 </div>
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     In order to be certain that any filtering and thresholding settings directly correlate to how they'd function on your AudioMoth device, the app must use files recorded on an AudioMoth.
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <h5>What is "amplitude thresholding"?</h5>
                 </div>
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     Amplitude threshold recording is a recording mode where an AudioMoth will only collect samples when their amplitude exceeds a certain value. Once a threshold has been selected, these samples are saved to SD card, as well as the lengths of the gaps between each acoustic event.
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     <h5>What changes when I set a minimum trigger duration?</h5>
                 </div>
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
-                <div class="col" style="max-width: 1393px; padding: 0px;">
+                <div class="col total-width">
                     Selecting a minimum trigger duration will make sure that all triggered recordings are at least this length, continuing to collect samples even after a triggered event has ended. This is useful for situations such as detecting bat calls, where the initial impulse can trigger a recording and the quieter tail of the sound is also required.
                 </div>
             </div>

@@ -60,3 +60,28 @@ input::-webkit-inner-spin-button {
   top: 0;
   left: 45px;
 }
+
+:root {
+  --plot-width-v: 800px;
+  --control-width-v: 543px;
+  --plot-control-gap-v: 30px;
+}
+
+.total-width {
+  max-width: calc(var(--plot-width-v) + var(--control-width-v) + var(--plot-control-gap-v));
+  padding: 0px;
+}
+
+.plot-width {
+  min-width: var(--plot-width-v);
+  max-width: var(--plot-width-v);
+}
+
+.control-width {
+  min-width: var(--control-width-v);
+  max-width: var(--control-width-v);
+}
+
+.control-margin {
+  margin-left: var(--plot-control-gap-v);
+}
