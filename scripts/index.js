@@ -36,8 +36,8 @@ const panRightButton = document.getElementById('pan-right-button');
 
 let zoom = 1.0;
 const ZOOM_INCREMENT = 2.0;
-const MIN_TIME_VIEW = 1.0;
-let MAX_ZOOM = 128.0;
+const MIN_TIME_VIEW = 0.01;
+let maxZoom = 128.0;
 
 let offset = 0.0;
 
@@ -718,14 +718,14 @@ function drawAxisLabels () {
     // Widen gap between labels as more audio is viewable to prevent squashed labels
     const displayedTime = totalLength / zoom;
 
-    const displayedTimeAmounts = [0.1, 0.25, 0.5, 1, 2, 5, 10, 30];
-    const labelIncrements = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5];
+    const displayedTimeAmounts = [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30];
+    const labelIncrements = [0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5];
 
     let labelIncrement = labelIncrements[0];
 
     for (let i = 0; i < displayedTimeAmounts.length; i++) {
 
-        if (displayedTime < displayedTimeAmounts[i]) {
+        if (displayedTime <= displayedTimeAmounts[i]) {
 
             break;
 
@@ -973,7 +973,7 @@ function updateZoomUI () {
 
     }
 
-    if (zoom >= MAX_ZOOM) {
+    if (zoom >= maxZoom) {
 
         zoomInButton.disabled = true;
 
@@ -1424,7 +1424,7 @@ function zoomIn () {
 
         newZoom = Math.pow(2, Math.round(Math.log(newZoom) / Math.log(2)));
 
-        if (newZoom <= MAX_ZOOM) {
+        if (newZoom <= maxZoom) {
 
             zoom = newZoom;
 
@@ -1770,8 +1770,11 @@ function updateMaxZoom () {
 
     const minSampleView = MIN_TIME_VIEW * sampleRate;
 
+    let newMaxZoom = sampleCount / minSampleView;
 
+    newMaxZoom = Math.pow(2, Math.floor(Math.log(newMaxZoom) / Math.log(2)));
 
+    maxZoom = newMaxZoom;
 
 }
 
@@ -2009,7 +2012,7 @@ function handleMouseUp (e) {
 
         let newOffset;
 
-        if (newZoom <= MAX_ZOOM) {
+        if (newZoom <= maxZoom) {
 
             // Calculate new offset value
 
@@ -2348,11 +2351,11 @@ if (!isChrome) {
 
 }
 
-// TODO: Calculate max x zoom based on minimum amount of time it can show
-
 // TODO: Add file size comparison
 
 // TODO: Export images
 
 // TODO: Play audio on screen and have tracking line
 // TODO: Play at slower sample rates
+
+// TODO: Example file
