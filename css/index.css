@@ -85,3 +85,14 @@ input::-webkit-inner-spin-button {
 .control-margin {
   margin-left: var(--plot-control-gap-v);
 }
+
+.button-icon {
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+}
+
+.nav-button {
+  width: 40px;
+  height: 37px;
+}

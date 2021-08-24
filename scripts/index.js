@@ -36,7 +36,8 @@ const panRightButton = document.getElementById('pan-right-button');
 
 let zoom = 1.0;
 const ZOOM_INCREMENT = 2.0;
-const MAX_ZOOM = 128.0;
+const MIN_TIME_VIEW = 1.0;
+let MAX_ZOOM = 128.0;
 
 let offset = 0.0;
 
@@ -47,13 +48,15 @@ let dragStartX = 0;
 
 // Waveform y axis navigation buttons
 
+const waveformHomeButton = document.getElementById('waveform-home-button');
 const waveformZoomInButton = document.getElementById('waveform-zoom-in-button');
 const waveformZoomOutButton = document.getElementById('waveform-zoom-out-button');
 
 // Waveform vertical navigation variables
 
 let waveformZoomY = 1.0;
-const waveformZoomYIncrement = 0.25;
+const waveformZoomYIncrement = 2.0;
+const MAX_ZOOM_Y = 256;
 
 // Spectrogram canvases
 
@@ -79,6 +82,7 @@ const waveformLabelSVG = document.getElementById('waveform-label-svg');
 
 let fileHandler;
 let unfilteredSamples;
+let filteredSamples;
 let sampleCount = 0;
 let sampleRate, processedSpectrumFrames;
 let spectrumMin = 0;
@@ -826,7 +830,7 @@ function drawAxisLabels () {
 
         for (let i = 0; i < waveformLabelTexts.length; i++) {
 
-            waveformLabelTexts[i] = (percentageValues[i] * waveformZoomY).toFixed(1) + '%';
+            waveformLabelTexts[i] = (percentageValues[i] / waveformZoomY).toFixed(1) + '%';
 
         }
 
@@ -838,7 +842,7 @@ function drawAxisLabels () {
 
         for (let i = 0; i < waveformLabelTexts.length; i++) {
 
-            waveformLabelTexts[i] = Math.round(a16bitValues[i] * waveformZoomY);
+            waveformLabelTexts[i] = Math.round(a16bitValues[i] / waveformZoomY);
 
         }
 
@@ -856,7 +860,7 @@ function drawAxisLabels () {
 
             }
 
-            const rawLog = 20 * Math.log10(rawSliderValues[i] * waveformZoomY);
+            const rawLog = 20 * Math.log10(rawSliderValues[i] / waveformZoomY);
 
             const decibelValue = 2 * Math.round(rawLog / 2);
 
@@ -913,11 +917,36 @@ function drawAxisHeadings () {
  * Clear a canvas of its contents and reset all transformations
  * @param {object} canvas The canvas to be cleared
  */
-function resetCanvas (canvas) {
+function resetCanvas (canvas, isWebGL) {
 
     // Setting the width/height of a canvas in any way wipes it clean and resets the context's transformations
     // eslint-disable-next-line no-self-assign
     canvas.width = canvas.width;
+
+    if (isWebGL) {
+
+        /** @type {WebGLRenderingContext} */
+        let gl = canvas.getContext('webgl');
+
+        if (!gl) {
+
+            console.log('Loading experimental WebGL context');
+            gl = canvas.getContext('experimental-webgl');
+
+        }
+
+        if (!gl) {
+
+            console.error('WebGL not supported by this browser');
+            return;
+
+        }
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    }
 
 }
 
@@ -1021,7 +1050,7 @@ function drawThresholdLines () {
     const w = waveformThresholdLineCanvas.width;
     const h = waveformThresholdLineCanvas.height;
 
-    resetCanvas(waveformThresholdLineCanvas);
+    resetCanvas(waveformThresholdLineCanvas, false);
 
     thresholdCtx.strokeStyle = 'grey';
     thresholdCtx.lineWidth = 1;
@@ -1029,7 +1058,7 @@ function drawThresholdLines () {
     const amplitudeThreshold = getAmplitudeThreshold();
 
     const centre = h / 2;
-    const offsetFromCentre = (amplitudeThreshold / 32768.0) * centre / waveformZoomY;
+    const offsetFromCentre = (amplitudeThreshold / 32768.0) * centre * waveformZoomY;
     const positiveY = centre - offsetFromCentre;
     const negativeY = centre + offsetFromCentre;
 
@@ -1117,8 +1146,6 @@ function drawLoadingImage (canvas) {
     const w = canvas.width;
     const h = canvas.height;
 
-    resetCanvas(canvas);
-
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
     ctx.fillText('Loading...', w / 2, h / 2);
@@ -1130,10 +1157,53 @@ function drawLoadingImage (canvas) {
  */
 function drawLoadingImages () {
 
-    resetCanvas(spectrogramCanvas);
+    resetCanvas(spectrogramCanvas, false);
     drawLoadingImage(spectrogramThresholdCanvas);
-    resetCanvas(waveformCanvas);
+    resetCanvas(waveformCanvas, true);
     drawLoadingImage(waveformThresholdCanvas);
+
+}
+
+/**
+ * Draw the waveform plot, its axis labels, and then re-enable all UI
+ */
+function drawWaveformPlotAndReenableUI (samples) {
+
+    const displayedSampleCount = getDisplayedSampleCount();
+    const startSample = Math.ceil(Math.abs(offset) * sampleRate);
+
+    console.log('Drawing waveform');
+    drawWaveform(samples, startSample, displayedSampleCount, waveformZoomY, () => {
+
+        resetCanvas(waveformThresholdCanvas, false);
+        resetCanvas(waveformThresholdLineCanvas, false);
+
+        if (amplitudeThresholdingCheckbox.checked) {
+
+            drawThresholdedPeriods();
+            drawThresholdLines();
+
+        }
+
+        drawAxisLabels();
+
+        drawing = false;
+
+        updateNavigationUI();
+        updateWaveformYUI();
+
+        filterCheckbox.disabled = false;
+        filterCheckboxLabel.style.color = '';
+        updateFilterUI();
+
+        amplitudeThresholdingCheckbox.disabled = false;
+        amplitudeThresholdingCheckboxLabel.style.color = '';
+        updateAmplitudeThresholdingUI();
+
+        resetButton.disabled = false;
+        exportButton.disabled = false;
+
+    });
 
 }
 
@@ -1144,43 +1214,9 @@ function drawPlots (samples) {
 
     drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async () => {
 
-        resetCanvas(spectrogramThresholdCanvas);
+        resetCanvas(spectrogramThresholdCanvas, false);
 
-        const displayedSampleCount = getDisplayedSampleCount();
-        const startSample = Math.ceil(Math.abs(offset) * sampleRate);
-
-        console.log('Drawing waveform');
-        drawWaveform(samples, startSample, displayedSampleCount, waveformZoomY, () => {
-
-            resetCanvas(waveformThresholdCanvas);
-            resetCanvas(waveformThresholdLineCanvas);
-
-            if (amplitudeThresholdingCheckbox.checked) {
-
-                drawThresholdedPeriods();
-                drawThresholdLines();
-
-            }
-
-            drawAxisLabels();
-
-            drawing = false;
-
-            updateNavigationUI();
-            updateWaveformYUI();
-
-            filterCheckbox.disabled = false;
-            filterCheckboxLabel.style.color = '';
-            updateFilterUI();
-
-            amplitudeThresholdingCheckbox.disabled = false;
-            amplitudeThresholdingCheckboxLabel.style.color = '';
-            updateAmplitudeThresholdingUI();
-
-            resetButton.disabled = false;
-            exportButton.disabled = false;
-
-        });
+        drawWaveformPlotAndReenableUI(samples);
 
     });
 
@@ -1197,15 +1233,9 @@ function getDisplayedSampleCount () {
 }
 
 /**
- * Temporarily disable UI then calculate spectrogram frames
- * @param {number[]} samples Samples to be processed
- * @param {number} sampleRate Sample rate of samples
+ * Turn off all UI elements so settings can't be changed during processing
  */
-function processContents (samples, sampleRate) {
-
-    drawing = true;
-
-    // Disable UI
+function disableUI () {
 
     homeButton.disabled = true;
     zoomInButton.disabled = true;
@@ -1223,6 +1253,21 @@ function processContents (samples, sampleRate) {
 
     resetButton.disabled = true;
     exportButton.disabled = true;
+
+}
+
+/**
+ * Temporarily disable UI then calculate spectrogram frames
+ * @param {number[]} samples Samples to be processed
+ * @param {number} sampleRate Sample rate of samples
+ */
+function processContents (samples, sampleRate) {
+
+    drawing = true;
+
+    // Disable UI
+
+    disableUI();
 
     // Wait short period to make sure UI is completely disabled before processing actually begins
 
@@ -1257,15 +1302,25 @@ function processContents (samples, sampleRate) {
 }
 
 /**
- * Reset zoom/pan settings
+ * Reset x axis zoom/pan settings
  */
-function resetTransformations () {
+function resetXTransformations () {
 
     zoom = 1.0;
     offset = 0;
     updateNavigationUI();
 
     homeButton.disabled = (sampleCount === 0);
+
+}
+
+/**
+ * Reset all zoom/pan settings
+ */
+function resetTransformations () {
+
+    resetXTransformations();
+    waveformZoomY = 1.0;
 
 }
 
@@ -1425,7 +1480,7 @@ function zoomOut () {
 
         } else {
 
-            resetTransformations();
+            resetXTransformations();
 
         }
 
@@ -1446,14 +1501,16 @@ function updateWaveformYUI () {
 
     if (sampleCount === 0) {
 
+        waveformHomeButton.disabled = true;
         waveformZoomInButton.disabled = true;
         waveformZoomOutButton.disabled = true;
         return;
 
     }
 
-    waveformZoomInButton.disabled = (waveformZoomY - waveformZoomYIncrement <= 0.0);
-    waveformZoomOutButton.disabled = (waveformZoomY + waveformZoomYIncrement > 1.0);
+    waveformHomeButton.disabled = (waveformZoomY / waveformZoomYIncrement < 1.0);
+    waveformZoomInButton.disabled = (waveformZoomY * waveformZoomYIncrement > MAX_ZOOM_Y);
+    waveformZoomOutButton.disabled = (waveformZoomY / waveformZoomYIncrement < 1.0);
 
 }
 
@@ -1464,13 +1521,25 @@ function zoomInWaveformY () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newZoom = waveformZoomY - waveformZoomYIncrement;
+        const newZoom = waveformZoomY * waveformZoomYIncrement;
 
-        if (newZoom > 0.0) {
+        if (newZoom <= MAX_ZOOM_Y) {
 
             waveformZoomY = newZoom;
 
-            updatePlots(false);
+            disableUI();
+
+            // Redraw just the waveform plot
+
+            if (!filteredSamples) {
+
+                drawWaveformPlotAndReenableUI(unfilteredSamples);
+
+            } else {
+
+                drawWaveformPlotAndReenableUI(filteredSamples);
+
+            }
 
             updateWaveformYUI();
 
@@ -1487,19 +1556,56 @@ function zoomOutWaveformY () {
 
     if (sampleCount !== 0 && !drawing) {
 
-        const newZoom = waveformZoomY + waveformZoomYIncrement;
+        const newZoom = waveformZoomY / waveformZoomYIncrement;
 
-        if (newZoom <= 1.0) {
+        if (newZoom >= 1.0) {
 
             waveformZoomY = newZoom;
 
-            updatePlots(false);
+            disableUI();
+
+            // Redraw just the waveform plot
+
+            if (!filteredSamples) {
+
+                drawWaveformPlotAndReenableUI(unfilteredSamples);
+
+            } else {
+
+                drawWaveformPlotAndReenableUI(filteredSamples);
+
+            }
 
             updateWaveformYUI();
 
         }
 
     }
+
+}
+
+/**
+ * Set y zoom level to default and redraw waveform plot
+ */
+function resetWaveformZoom () {
+
+    waveformZoomY = 1.0;
+
+    disableUI();
+
+    // Redraw just the waveform plot
+
+    if (!filteredSamples) {
+
+        drawWaveformPlotAndReenableUI(unfilteredSamples);
+
+    } else {
+
+        drawWaveformPlotAndReenableUI(filteredSamples);
+
+    }
+
+    updateWaveformYUI();
 
 }
 
@@ -1530,7 +1636,7 @@ async function updatePlots (resetColourMap) {
 
     }
 
-    let filteredSamples = [];
+    filteredSamples = [];
 
     // Apply low/band/high pass filter
 
@@ -1638,10 +1744,10 @@ async function readFromFile () {
 
         // Clear plots
 
-        resetCanvas(spectrogramThresholdCanvas);
-        resetCanvas(spectrogramCanvas);
-        resetCanvas(waveformThresholdCanvas);
-        resetCanvas(waveformCanvas);
+        resetCanvas(spectrogramThresholdCanvas, false);
+        resetCanvas(spectrogramCanvas, false);
+        resetCanvas(waveformThresholdCanvas, false);
+        resetCanvas(waveformCanvas, true);
 
         return;
 
@@ -1657,6 +1763,15 @@ async function readFromFile () {
     console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + lengthSecs + ' seconds)');
 
     return result.samples;
+
+}
+
+function updateMaxZoom () {
+
+    const minSampleView = MIN_TIME_VIEW * sampleRate;
+
+
+
 
 }
 
@@ -1702,7 +1817,7 @@ fileButton.addEventListener('click', async () => {
 
     resetTransformations();
 
-    resetCanvas(waveformThresholdLineCanvas);
+    resetCanvas(waveformThresholdLineCanvas, false);
 
     fileHandler = fileHandler[0];
 
@@ -1745,6 +1860,10 @@ fileButton.addEventListener('click', async () => {
     }
 
     thresholdPeriods = [];
+
+    // Work out what the maximum zoom level should be
+
+    updateMaxZoom();
 
     // Reset values used to calculate colour map
 
@@ -1881,16 +2000,34 @@ function handleMouseUp (e) {
         // Calculate new zoom value
 
         let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / canvas.width);
-        newZoom = (newZoom > MAX_ZOOM) ? MAX_ZOOM : newZoom;
-
-        // Calculate new offset value
 
         const totalLength = sampleCount / sampleRate;
         const displayedTime = totalLength / zoom;
 
         const dragLeft = Math.min(dragStartX, dragEndX);
+        const dragRight = Math.max(dragStartX, dragEndX);
 
-        const newOffset = offset + (-1 * displayedTime * dragLeft / canvas.width);
+        let newOffset;
+
+        if (newZoom <= MAX_ZOOM) {
+
+            // Calculate new offset value
+
+            newOffset = offset + (-1 * displayedTime * dragLeft / canvas.width);
+
+        } else {
+
+            // Don't zoom any further, just centre plot on selected centre
+
+            newZoom = zoom;
+
+            const dragDiff = dragRight - dragLeft;
+            const dragCentre = dragLeft + (dragDiff / 2);
+            const centredOffset = (displayedTime * dragCentre / canvas.width) - (displayedTime / 2);
+
+            newOffset = offset + (-1 * centredOffset);
+
+        }
 
         // Set new zoom/offset values
 
@@ -2049,7 +2186,7 @@ amplitudeThresholdingCheckbox.addEventListener('change', () => {
 
     } else {
 
-        resetCanvas(waveformThresholdLineCanvas);
+        resetCanvas(waveformThresholdLineCanvas, false);
 
     }
 
@@ -2074,7 +2211,6 @@ resetButton.addEventListener('click', () => {
     amplitudeThresholdingCheckbox.checked = false;
     updateAmplitudeThresholdingUI();
 
-    resetTransformations();
     sampleRateChange();
     updatePlots(true);
 
@@ -2097,6 +2233,8 @@ panLeftButton.addEventListener('click', panRight);
 panRightButton.addEventListener('click', panLeft);
 
 // Add navigation control for waveform y axis
+
+waveformHomeButton.addEventListener('click', resetWaveformZoom);
 
 waveformZoomInButton.addEventListener('click', zoomInWaveformY);
 waveformZoomOutButton.addEventListener('click', zoomOutWaveformY);
@@ -2183,7 +2321,6 @@ exportButton.addEventListener('click', () => {
 
 });
 
-
 // Start zoom and offset level on default values
 
 resetTransformations();
@@ -2196,6 +2333,7 @@ drawAxisHeadings();
 // Prepare filter UI
 
 filterCheckbox.checked = false;
+amplitudeThresholdScaleSelect.value = '2';
 updateFilterUI();
 updateFilterLabel();
 
@@ -2210,4 +2348,11 @@ if (!isChrome) {
 
 }
 
+// TODO: Calculate max x zoom based on minimum amount of time it can show
+
 // TODO: Add file size comparison
+
+// TODO: Export images
+
+// TODO: Play audio on screen and have tracking line
+// TODO: Play at slower sample rates

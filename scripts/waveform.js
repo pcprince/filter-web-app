@@ -154,7 +154,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         }
 
-        height /= yZoom;
+        height *= yZoom;
 
         // Is line an up or down stroke
 
