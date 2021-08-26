@@ -48,12 +48,12 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
     // Prepare WebGL
 
     /** @type {WebGLRenderingContext} */
-    let gl = wavCanvas.getContext('webgl');
+    let gl = wavCanvas.getContext('webgl', {preserveDrawingBuffer: true});
 
     if (!gl) {
 
         console.log('Loading experimental WebGL context');
-        gl = wavCanvas.getContext('experimental-webgl');
+        gl = wavCanvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
 
     }
 

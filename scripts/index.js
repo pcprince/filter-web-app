@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, saveSpectrogram, saveWaveform, playAudio, stopAudio, getTimestamp */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -60,10 +60,12 @@ const MAX_ZOOM_Y = 256;
 
 // Spectrogram canvases
 
+const spectrogramPlaybackCanvas = document.getElementById('spectrogram-playback-canvas'); // Canvas layer where playback progress
 const spectrogramDragCanvas = document.getElementById('spectrogram-drag-canvas'); // Canvas layer where zoom overlay is drawn
 const spectrogramThresholdCanvas = document.getElementById('spectrogram-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
 const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canvas layer where spectrogram is drawn
 
+const waveformPlaybackCanvas = document.getElementById('waveform-playback-canvas'); // Canvas layer where playback progress
 const waveformDragCanvas = document.getElementById('waveform-drag-canvas'); // Canvas layer where zoom overlay is drawn
 const waveformThresholdCanvas = document.getElementById('waveform-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
 const waveformThresholdLineCanvas = document.getElementById('waveform-threshold-line-canvas'); // Canvas layer where amplitude threshold value lines are drawn
@@ -162,6 +164,32 @@ let thresholdPeriods = [];
 
 const resetButton = document.getElementById('reset-button');
 const exportButton = document.getElementById('export-button');
+
+// Save plots buttons
+
+const saveWaveformButton = document.getElementById('save-waveform-button');
+const saveSpectrogramButton = document.getElementById('save-spectrogram-button');
+
+// Audio playback controls
+
+const playButton = document.getElementById('play-button');
+const playIcon = document.getElementById('play-icon');
+const stopIcon = document.getElementById('stop-icon');
+
+const playbackSpeedSlider = new Slider('#playback-speed-slider', {
+    ticks_labels: ['x1/16', 'x1/8', 'x1/4', 'x1/2', 'x1', 'x2'],
+    ticks: [0, 1, 2, 3, 4, 5],
+    value: 4
+});
+const playbackRates = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0];
+
+// Whether or not audio is currently playing
+
+let playing = false;
+
+// Timeout object which controls playback tracker animation frames
+
+let animationTimer;
 
 /**
  * Get index of radio button selected from a collection of radio buttons
@@ -779,7 +807,7 @@ function drawAxisLabels () {
     // Draw top and bottom label markers
 
     addSVGLine(spectrogramLabelSVG, specMarkerX, 1, spectrogramLabelSVG.width.baseVal.value, 1);
-    const endLabelY = spectrogramLabelSVG.height.baseVal.value - 1;
+    const endLabelY = spectrogramLabelSVG.height.baseVal.value - 2;
     addSVGLine(spectrogramLabelSVG, specMarkerX, endLabelY, spectrogramLabelSVG.width.baseVal.value, endLabelY);
 
     // Draw middle labels and markers
@@ -798,7 +826,7 @@ function drawAxisLabels () {
 
         if (i === Y_LABEL_COUNT) {
 
-            y += 4;
+            y += 5;
 
         }
 
@@ -926,12 +954,12 @@ function resetCanvas (canvas, isWebGL) {
     if (isWebGL) {
 
         /** @type {WebGLRenderingContext} */
-        let gl = canvas.getContext('webgl');
+        let gl = canvas.getContext('webgl', {preserveDrawingBuffer: true});
 
         if (!gl) {
 
             console.log('Loading experimental WebGL context');
-            gl = canvas.getContext('experimental-webgl');
+            gl = canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
 
         }
 
@@ -1203,6 +1231,11 @@ function drawWaveformPlotAndReenableUI (samples) {
         resetButton.disabled = false;
         exportButton.disabled = false;
 
+        saveSpectrogramButton.disabled = false;
+        saveWaveformButton.disabled = false;
+
+        playButton.disabled = false;
+
     });
 
 }
@@ -1253,6 +1286,22 @@ function disableUI () {
 
     resetButton.disabled = true;
     exportButton.disabled = true;
+
+    saveSpectrogramButton.disabled = true;
+    saveWaveformButton.disabled = true;
+
+    playButton.disabled = true;
+
+}
+
+/**
+ * Turn off just the UI which controls the waveform y axis zooming
+ */
+function disableWaveformYAxisUI () {
+
+    waveformHomeButton.disabled = true;
+    waveformZoomInButton.disabled = true;
+    waveformZoomOutButton.disabled = true;
 
 }
 
@@ -2324,6 +2373,173 @@ exportButton.addEventListener('click', () => {
 
 });
 
+// Save plot buttons
+
+saveSpectrogramButton.addEventListener('click', saveSpectrogram);
+saveWaveformButton.addEventListener('click', saveWaveform);
+
+/**
+ * Get playback rate value from slider
+ * @returns Rate to play audio at
+ */
+function getPlaybackRate () {
+
+    return playbackRates[playbackSpeedSlider.getValue()];
+
+}
+
+/**
+ * Draw a line which shows how far through a recording the playback is
+ */
+function playAnimation () {
+
+    const playbackRate = getPlaybackRate();
+
+    const displayedSampleCount = getDisplayedSampleCount();
+    const displayedTime = displayedSampleCount / sampleRate;
+    const progress = getTimestamp() / displayedTime * playbackRate;
+
+    // Draw on waveform canvas
+
+    const waveformCtx = waveformPlaybackCanvas.getContext('2d');
+    const waveformW = waveformPlaybackCanvas.width;
+    const waveformH = waveformPlaybackCanvas.height;
+
+    const x = progress * waveformW;
+
+    resetCanvas(waveformPlaybackCanvas, false);
+
+    waveformCtx.strokeStyle = 'red';
+    waveformCtx.lineWidth = 1;
+
+    waveformCtx.moveTo(x, 0);
+    waveformCtx.lineTo(x, waveformH);
+    waveformCtx.stroke();
+
+    // Draw on spectrogram canvas
+
+    const spectrogramCtx = spectrogramPlaybackCanvas.getContext('2d');
+    const spectrogramH = spectrogramPlaybackCanvas.height;
+
+    resetCanvas(spectrogramPlaybackCanvas, false);
+
+    spectrogramCtx.strokeStyle = 'red';
+    spectrogramCtx.lineWidth = 1;
+
+    spectrogramCtx.moveTo(x, 0);
+    spectrogramCtx.lineTo(x, spectrogramH);
+    spectrogramCtx.stroke();
+
+    // Set timer for next update
+
+    animationTimer = setTimeout(playAnimation, 50);
+
+}
+
+/**
+ * Event called when playback is either manually stopped or finishes
+ */
+function stopEvent () {
+
+    // Reenable UI
+
+    filterCheckbox.disabled = false;
+    filterCheckboxLabel.style.color = '';
+    updateFilterUI();
+
+    amplitudeThresholdingCheckbox.disabled = false;
+    amplitudeThresholdingCheckboxLabel.style.color = '';
+    updateAmplitudeThresholdingUI();
+
+    resetButton.disabled = false;
+    exportButton.disabled = false;
+
+    saveSpectrogramButton.disabled = false;
+    saveWaveformButton.disabled = false;
+
+    playButton.disabled = false;
+
+    updateWaveformYUI();
+    updateNavigationUI();
+
+    // Switch from stop icon to play icon
+
+    playIcon.style.display = '';
+    stopIcon.style.display = 'none';
+
+    // Switch colour of button
+
+    playButton.classList.remove('btn-danger');
+    playButton.classList.add('btn-success');
+
+    // Clear canvases
+
+    resetCanvas(waveformPlaybackCanvas, false);
+    resetCanvas(spectrogramPlaybackCanvas, false);
+
+    // Update playing status
+
+    playing = false;
+
+    // Stop animation loop
+
+    clearTimeout(animationTimer);
+
+}
+
+// Play audio button
+
+playButton.addEventListener('click', () => {
+
+    if (playing) {
+
+        // If already playing, stop
+
+        stopAudio();
+
+    } else {
+
+        // Otherwise, disable UI then play
+
+        disableUI();
+        disableWaveformYAxisUI();
+        playButton.disabled = false;
+
+        // Switch from play icon to stop icon
+
+        playIcon.style.display = 'none';
+        stopIcon.style.display = '';
+
+        // Switch play button colour
+
+        playButton.classList.remove('btn-success');
+        playButton.classList.add('btn-danger');
+
+        // Update playing status
+
+        playing = true;
+
+        // Get currently displayed samples to play
+
+        const samples = filteredSamples || unfilteredSamples;
+
+        const displayedSampleCount = getDisplayedSampleCount();
+        const startSample = Math.ceil(Math.abs(offset) * sampleRate);
+
+        // Play the samples
+
+        const playbackRate = getPlaybackRate();
+
+        playAudio(samples, startSample, displayedSampleCount, sampleRate, playbackRate, stopEvent);
+
+        // Start animation loop
+
+        playAnimation();
+
+    }
+
+});
+
 // Start zoom and offset level on default values
 
 resetTransformations();
@@ -2352,10 +2568,5 @@ if (!isChrome) {
 }
 
 // TODO: Add file size comparison
-
-// TODO: Export images
-
-// TODO: Play audio on screen and have tracking line
-// TODO: Play at slower sample rates
 
 // TODO: Example file

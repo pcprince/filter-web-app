@@ -66,14 +66,14 @@
 
                     <div class="wrapper" style="width: 793px;">
                         <div class="row">
-                            <div class="col-6" style="text-align: left;">
-                                <span style="margin-left: 5px; vertical-align: middle;">Waveform scale:</span>
-                                <select id="amplitude-threshold-scale-select" style="margin-left: 5px; vertical-align: middle;">
+                            <div class="col" style="text-align: left; padding-right: 0px;">
+                                <span style="vertical-align: middle;">Waveform scale:</span>
+                                <select id="amplitude-threshold-scale-select" style="vertical-align: middle;">
                                     <option value="0">16-Bit</option>
                                     <option value="1">Decibel</option>
                                     <option value="2" selected="selected">Percentage</option>
                                 </select>
-                                <button class="btn btn-success nav-button" id="waveform-home-button" disabled style="margin-left: 10px;">
+                                <button class="btn btn-success nav-button" id="waveform-home-button" disabled style="margin-left: 5px;">
                                     <img class="button-icon" src="./assets/house.svg" alt="Bootstrap">
                                 </button>
                                 <button class="btn btn-primary nav-button" id="waveform-zoom-in-button" disabled>
@@ -83,7 +83,7 @@
                                     <img class="button-icon" src="./assets/zoom-out.svg" alt="Bootstrap">
                                 </button>
                             </div>
-                            <div class="col-6" style="text-align: right;">
+                            <div class="col" style="text-align: right; padding-left: 0px;">
                                 <button class="btn btn-success nav-button" id="home-button" disabled>
                                     <img class="button-icon" src="./assets/house.svg" alt="Bootstrap">
                                 </button>
@@ -109,6 +109,10 @@
             <div class="row justify-content-md-center">
                 <div class="col plot-width">
 
+                    <div class="row" style="margin-top: 5px; text-align: center;">
+                        <span style="text-align: center; width: 780px;">Click and drag on either plot to zoom and pan to specific sections of your recording.</span>
+                    </div>
+
                     <!-- Plots -->
 
                     <div class="row" style="margin-top: 10px; height: 200px; text-align: center;">
@@ -117,6 +121,8 @@
                             <canvas class="plot-canvas" id="waveform-canvas" width="748" height="198" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="waveform-threshold-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="waveform-threshold-line-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="waveform-playback-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <!-- Drag canvas must be on top or it's not draggable -->
                             <canvas class="plot-canvas" id="waveform-drag-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
@@ -125,6 +131,8 @@
                             <svg class="label-canvas" id="spectrogram-label-svg" width="45" height="257" style="padding: 0%;"></svg>
                             <canvas class="plot-canvas" id="spectrogram-canvas" width="748" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="spectrogram-playback-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <!-- Drag canvas must be on top or it's not draggable -->
                             <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
@@ -134,8 +142,25 @@
                     <div class="row" style="margin-top: 0%; text-align: center;">
                         <svg id="time-axis-heading-svg" width="780" height="20" style="padding: 0%; margin-left: 30px;"></svg>
                     </div>
-                    <div class="row" style="margin-top: 0%; text-align: center;">
-                        <span style="text-align: center; width: 780px;">Click and drag on either plot to zoom and pan to specific sections of your recording.</span>
+
+                    <!-- Save plots buttons -->
+
+                    <div class="row" style="margin-top: 10px; text-align: center;">
+                        <div class="col-1">
+                            <button class="btn btn-success nav-button" id="play-button" disabled style="margin-right: 15px;">
+                                <img id="play-icon" class="button-icon" src="./assets/play.svg" alt="Bootstrap">
+                                <img id='stop-icon' class="button-icon" src="./assets/stop.svg" alt="Bootstrap" style="display: none;">
+                            </button>
+                        </div>
+                        <div class="col-5" style="padding-top: 5px; padding-right: 60px;">
+                            <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
+                        </div>
+                        <div class="col-3" style="padding-left: 0px;">
+                            <button class="btn btn-success" id="save-waveform-button" style="width: 100%;" disabled>Save Waveform</button>
+                        </div>
+                        <div class="col-3" style="padding-right: 0px;">
+                            <button class="btn btn-success" id="save-spectrogram-button" style="width: 100%;" disabled>Save Spectrogram</button>
+                        </div>
                     </div>
 
                 </div>
@@ -339,7 +364,7 @@
                             <button class="btn btn-primary" id="reset-button" style="width: 100%;" disabled>Reset</button>
                         </div>
                         <div class="col-6">
-                            <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export</button>
+                            <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export Configuration</button>
                         </div>
                     </div>
 
@@ -400,5 +425,7 @@
     <script src="scripts/spectrogram.js"></script>
     <script src="scripts/waveform.js"></script>
     <script src="scripts/amplitudeThresholding.js"></script>
+    <script src="scripts/savePlots.js"></script>
+    <script src="scripts/playAudio.js"></script>
     <script src="scripts/index.js"></script>
 </html>

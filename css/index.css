@@ -62,9 +62,9 @@ input::-webkit-inner-spin-button {
 }
 
 :root {
-  --plot-width-v: 800px;
+  --plot-width-v: 810px;
   --control-width-v: 543px;
-  --plot-control-gap-v: 30px;
+  --plot-control-gap-v: 20px;
 }
 
 .total-width {
