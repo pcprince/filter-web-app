@@ -183,8 +183,6 @@ const playbackSpeedSlider = new Slider('#playback-speed-slider', {
 });
 const playbackRates = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0];
 
-console.log(playbackRates);
-
 // Whether or not audio is currently playing
 
 let playing = false;
@@ -2572,3 +2570,5 @@ if (!isChrome) {
 // TODO: Add file size comparison
 
 // TODO: Example file
+
+console.log('Test');
