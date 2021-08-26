@@ -2570,5 +2570,3 @@ if (!isChrome) {
 // TODO: Add file size comparison
 
 // TODO: Example file
-
-console.log('Test');
