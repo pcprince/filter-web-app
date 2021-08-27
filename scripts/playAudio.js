@@ -61,7 +61,7 @@ function playAudio (samples, start, length, sampleRate, playbackRate, endEvent) 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioContext = new AudioContext();
 
-    const audioBuffer = audioContext.createBuffer(1, length, sampleRate);
+    const audioBuffer = audioContext.createBuffer(1, length, sampleRate * playbackRate);
 
     const nowBuffering = audioBuffer.getChannelData(0);
 
@@ -84,8 +84,6 @@ function playAudio (samples, start, length, sampleRate, playbackRate, endEvent) 
         });
 
         source.buffer = resampledBuffer;
-
-        source.playbackRate.value = playbackRate;
 
         source.connect(audioContext.destination);
 
