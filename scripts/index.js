@@ -1399,7 +1399,7 @@ function removeEndGap () {
  */
 function panRight () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         const offsetIncrement = getDisplayedSampleCount() / 2 / sampleRate;
 
@@ -1426,7 +1426,7 @@ function panRight () {
  */
 function panLeft () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         const offsetIncrement = getDisplayedSampleCount() / 2 / sampleRate;
 
@@ -1464,7 +1464,7 @@ function resetNavigation () {
  */
 function zoomIn () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         let displayedSampleCount = getDisplayedSampleCount();
         const oldCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
@@ -1503,7 +1503,7 @@ function zoomIn () {
  */
 function zoomOut () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         let displayedSampleCount = getDisplayedSampleCount();
         const oldCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
@@ -1568,7 +1568,7 @@ function updateWaveformYUI () {
  */
 function zoomInWaveformY () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         const newZoom = waveformZoomY * waveformZoomYIncrement;
 
@@ -1603,7 +1603,7 @@ function zoomInWaveformY () {
  */
 function zoomOutWaveformY () {
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         const newZoom = waveformZoomY / waveformZoomYIncrement;
 
@@ -1948,7 +1948,7 @@ function handleMouseDown (e) {
 
     // If samples have been loaded and drawing a plot isn't currently underway
 
-    if (sampleCount !== 0 && !drawing) {
+    if (sampleCount !== 0 && !drawing && !playing) {
 
         const canvas = e.target;
         const rect = canvas.getBoundingClientRect();
@@ -1993,7 +1993,7 @@ function handleMouseMove (e) {
 
     // If dragging has started, samples are available and a plot is not currently being drawn
 
-    if (isDragging && sampleCount !== 0 && !drawing) {
+    if (isDragging && sampleCount !== 0 && !drawing && !playing) {
 
         const canvas = e.target;
 
@@ -2025,7 +2025,7 @@ function handleMouseUp (e) {
 
     // If dragging has started, samples are available and a plot is not currently being drawn
 
-    if (isDragging && sampleCount !== 0 && !drawing) {
+    if (isDragging && sampleCount !== 0 && !drawing && !playing) {
 
         const canvas = e.target;
 
