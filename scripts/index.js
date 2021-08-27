@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, saveSpectrogram, saveWaveform, playAudio, stopAudio, getTimestamp */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readFileHandler, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -784,7 +784,12 @@ function drawAxisLabels () {
 
         }
 
-        const labelText = label.toFixed(2);
+        // Round to correct number of decimal places
+
+        let decimalPlaces = (labelIncrement < 0.01) ? 3 : 2;
+        decimalPlaces = (labelIncrement < 0.001) ? 4 : decimalPlaces;
+
+        const labelText = label.toFixed(decimalPlaces);
 
         addSVGText(timeLabelSVG, labelText, x, 10, 'middle');
         addSVGLine(timeLabelSVG, x, 0, x, xMarkerLength);
@@ -1220,6 +1225,8 @@ function drawWaveformPlotAndReenableUI (samples) {
         updateNavigationUI();
         updateWaveformYUI();
 
+        fileButton.disabled = false;
+
         filterCheckbox.disabled = false;
         filterCheckboxLabel.style.color = '';
         updateFilterUI();
@@ -1231,10 +1238,8 @@ function drawWaveformPlotAndReenableUI (samples) {
         resetButton.disabled = false;
         exportButton.disabled = false;
 
-        saveSpectrogramButton.disabled = false;
-        saveWaveformButton.disabled = false;
-
         playButton.disabled = false;
+        playbackSpeedSlider.enable();
 
     });
 
@@ -1270,6 +1275,8 @@ function getDisplayedSampleCount () {
  */
 function disableUI () {
 
+    fileButton.disabled = true;
+
     homeButton.disabled = true;
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
@@ -1287,10 +1294,8 @@ function disableUI () {
     resetButton.disabled = true;
     exportButton.disabled = true;
 
-    saveSpectrogramButton.disabled = true;
-    saveWaveformButton.disabled = true;
-
     playButton.disabled = true;
+    playbackSpeedSlider.disable();
 
 }
 
@@ -2373,11 +2378,6 @@ exportButton.addEventListener('click', () => {
 
 });
 
-// Save plot buttons
-
-saveSpectrogramButton.addEventListener('click', saveSpectrogram);
-saveWaveformButton.addEventListener('click', saveWaveform);
-
 /**
  * Get playback rate value from slider
  * @returns Rate to play audio at
@@ -2443,6 +2443,8 @@ function stopEvent () {
 
     // Reenable UI
 
+    fileButton.disabled = false;
+
     filterCheckbox.disabled = false;
     filterCheckboxLabel.style.color = '';
     updateFilterUI();
@@ -2458,6 +2460,7 @@ function stopEvent () {
     saveWaveformButton.disabled = false;
 
     playButton.disabled = false;
+    playbackSpeedSlider.enable();
 
     updateWaveformYUI();
     updateNavigationUI();
@@ -2504,6 +2507,7 @@ playButton.addEventListener('click', () => {
         disableUI();
         disableWaveformYAxisUI();
         playButton.disabled = false;
+        playbackSpeedSlider.enable();
 
         // Switch from play icon to stop icon
 
@@ -2570,3 +2574,5 @@ if (!isChrome) {
 // TODO: Add file size comparison
 
 // TODO: Example file
+
+// FIXME: Draw waveform correctly

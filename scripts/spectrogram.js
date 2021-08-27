@@ -57,7 +57,7 @@ function calculateSpectrogramFrames (sampleArray, offset, length) {
     let max = 0;
     let min = 1000000;
 
-    for (let i = 0; i < PIXEL_WIDTH; i += 1) { 
+    for (let i = 0; i < PIXEL_WIDTH; i += 1) {
 
         for (let k = 0; k < PIXEL_HEIGHT; k += 1) {
 

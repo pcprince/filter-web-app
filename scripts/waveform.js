@@ -8,6 +8,10 @@
 
 const BLOCK_SIZE = 32;
 
+// If more than this sample count is being rendered, group into columns rather than using raw data
+
+const MAX_RAW_PLOT_LENGTH = 10000;
+
 // WebGL shaders
 
 const waveformVertexShaderText =
@@ -38,12 +42,12 @@ const waveformFragmentShaderText =
 const wavCanvas = document.getElementById('waveform-canvas');
 
 /**
- * Draw waveform
- * @param {number[]} samples Samples being drawn
- * @param {number} gapLength Gap at the end of the plot in samples
- * @param {function} callback Function to be called once rendering is complete
+ * Draw the waveform plot
+ * @param {number[]} data Absolute values of samples to be plotted. Either raw data or grouped into columns.
+ * @param {number} yZoom Amount to zoom in the y axis
+ * @param {function} callback Function called on completion
  */
-function drawWaveform (samples, offset, length, yZoom, callback) {
+function renderWaveform (data, yZoom, callback) {
 
     // Prepare WebGL
 
@@ -102,38 +106,10 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
     }
 
-    // Create buffer
-
-    const blockCount = Math.ceil(length / BLOCK_SIZE);
-
-    const filteredData = [];
-
-    for (let i = 0; i < blockCount; i++) {
-
-        const blockStart = BLOCK_SIZE * i;
-        let max = 0;
-
-        for (let j = 0; j < BLOCK_SIZE; j++) {
-
-            if (blockStart + j > length) {
-
-                continue;
-
-            }
-
-            max = Math.max(max, Math.abs(samples[offset + blockStart + j]));
-
-        }
-
-        filteredData.push(max);
-
-    }
-
     // Scale data from -32767 to 32767, to -1 and 1
 
     const multiplier = Math.pow(32767, -1);
-    const normalisedData = filteredData.map(n => n * multiplier);
-
+    const normalisedData = data.map(n => n * multiplier);
     const width = 2.0 / normalisedData.length;
 
     const pointData = [];
@@ -193,5 +169,74 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
     gl.drawArrays(gl.LINE_STRIP, 0, pointData.length / 2);
 
     callback();
+
+}
+
+/**
+ * Group samples into columns, taking max of each group
+ * @param {number[]} samples Samples being drawn
+ * @param {number} offset Offset from start of samples array to convert
+ * @param {number} length Number of samples being converted
+ * @returns An array of max values for each column
+ */
+function createColumns (samples, offset, length) {
+
+    // Create buffer
+
+    const blockCount = Math.ceil(length / BLOCK_SIZE);
+
+    const filteredData = new Array(blockCount).fill(0);
+
+    for (let i = 0; i < blockCount; i++) {
+
+        const blockStart = BLOCK_SIZE * i;
+        let max = 0;
+
+        for (let j = 0; j < BLOCK_SIZE; j++) {
+
+            if (blockStart + j > length) {
+
+                continue;
+
+            }
+
+            max = Math.max(max, Math.abs(samples[offset + blockStart + j]));
+
+        }
+
+        filteredData[i] = max;
+
+    }
+
+    return filteredData;
+
+}
+
+/**
+ * Draw waveform array, grouping samples into columns if more than MAX_RAW_PLOT_LENGTH are to be rendered
+ * @param {number[]} samples Array of samples to be rendered
+ * @param {number} offset Offset from start of sample array to start rendering
+ * @param {number} length Number of samples to render
+ * @param {number} yZoom Amount to zoom in plot on y axis
+ * @param {function} callback Function called on completion
+ */
+function drawWaveform (samples, offset, length, yZoom, callback) {
+
+    let data;
+
+    if (length < MAX_RAW_PLOT_LENGTH) {
+
+        // Convert to float array so values can be scaled between -1 and 1 later
+
+        data = new Float32Array(samples.slice(offset, offset + length));
+        data = data.map(n => Math.abs(n));
+
+    } else {
+
+        data = createColumns(samples, offset, length);
+
+    }
+
+    renderWaveform(data, yZoom, callback);
 
 }
