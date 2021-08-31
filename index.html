@@ -43,7 +43,8 @@
             <div class="row justify-content-md-center" style="margin-top: 10px;">
                 <div class="col total-width">
                     <button class="btn btn-primary" id="file-button" style="vertical-align: middle;">Select Files</button>
-                    <span id="file-label" style="margin-left: 10px; vertical-align: middle;">No .WAV files selected.</span>
+                    <span id="file-span" style="margin-left: 10px; vertical-align: middle;">No .WAV file selected.</span>
+                    <span id="trimmed-span" style="color: red; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">File has been trimmed to initial 60 seconds.</span>
                 </div>
             </div>
 
@@ -263,60 +264,60 @@
                         </div>
                     </div>
 
-                    <!-- Amplitude thresholding -->
+                    <!-- Amplitude threshold -->
 
                     <div class="row" style="margin-top: 5px;">
                         <div class="col-12">
                             <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
                                 <div class="row" style="margin-top: 8px;">
                                     <div class="col-6" style="text-align: left;">
-                                        <span id="amplitude-thresholding-checkbox-label" class="settings-text" style="margin-left: 17px; color: grey;">Enable amplitude threshold:</span>
+                                        <span id="amplitude-threshold-checkbox-label" class="settings-text" style="margin-left: 17px; color: grey;">Enable amplitude threshold:</span>
                                     </div>
                                     <div class="col-6" style="text-align: right;">
-                                        <input class="settings-inputs" id="amplitude-thresholding-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
+                                        <input class="settings-inputs" id="amplitude-threshold-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
                                     </div>
                                 </div>
                             
                                 <div class="row" style="margin-top: 14px; margin-bottom: 8px;">
                                     <div class="col-12">
                                         <div style="margin-left: 5px; margin-right: 4px">
-                                            <table class="table" style="margin-bottom: 4px;" id="amplitude-thresholding-duration-table">
+                                            <table class="table" style="margin-bottom: 4px;" id="amplitude-threshold-duration-table">
                                                 <tr class="settings-text" style="font-size: 12px;" title="Minimum trigger length.">
                                                     <td align="center" style="padding: 0px; padding-left: 0px;"></td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">0</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">1</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">2</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">5</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">10</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">15</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">30</td>
-                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-thresholding-duration-radio-label">60</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">0</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">1</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">2</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">5</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">10</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">15</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">30</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="amplitude-threshold-duration-radio-label">60</td>
                                                 </tr>
                                                 <tr class="settings-text" title="Minimum trigger length.">
                                                     <td align="left" style="padding-top: 0px; padding-bottom: 0px;">Minimum trigger duration (s):</td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio0" value="0" name="amplitude-thresholding-duration-radio" checked>
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio0" value="0" name="amplitude-threshold-duration-radio" checked>
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio1" value="1" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio1" value="1" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio2" value="2" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio2" value="2" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio3" value="3" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio3" value="3" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio4" value="4" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio4" value="4" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio5" value="5" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio5" value="5" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio6" value="6" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio6" value="6" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                     <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                        <input class="settings-inputs" type="radio" id="amplitude-thresholding-duration-radio6" value="7" name="amplitude-thresholding-duration-radio">
+                                                        <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio6" value="7" name="amplitude-threshold-duration-radio">
                                                     </td>
                                                 </tr>
                                             </table>
@@ -326,19 +327,19 @@
                             
                                 <div class="row" style="margin-top: 16px; margin-bottom: 8px; display: flex; align-items: center;">
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
-                                        <span class="settings-text" id="amplitude-thresholding-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
+                                        <span class="settings-text" id="amplitude-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                     </div>
                                     <div class="col-8" style="padding-left: 0%; padding-right: 0%;" title="The amplitude threshold below which audio is not written to the SD card.">
-                                        <input class="settings-inputs" id="amplitude-thresholding-slider" data-slider-id="amplitude-thresholding-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" style="width: 100%;">
+                                        <input class="settings-inputs" id="amplitude-threshold-slider" data-slider-id="amplitude-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" style="width: 100%;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
-                                        <span class="settings-text" id="amplitude-thresholding-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
+                                        <span class="settings-text" id="amplitude-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
                                     </div>
                                 </div>
 
                                 <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
                                     <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="amplitude-thresholding-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a .WAV file.</label>
+                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a .WAV file.</label>
                                     </div>
                                 </div>
                             
@@ -349,7 +350,7 @@
                     <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 15px;">
                         <div class="row" style="margin-top: 5px; margin-bottom: 5px;">
                             <div class="col-12" id="life-display-holder" style="height: 40px;">
-                                <label id="life-display-panel" style="width: 100%; resize:none; text-align: center; font-weight: normal;">Each day this will produce 0 files, totalling 0 MB.<br/>Daily energy consumption will be approximately 0 mAh.</label>
+                                <label id="life-display-panel" style="width: 100%; resize:none; text-align: center; font-weight: normal;">No .WAV file selected.</label>
                             </div>
                         </div>
                     </div>
@@ -380,13 +381,13 @@
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
-                    In order to be certain that any filtering and thresholding settings directly correlate to how they'd function on your AudioMoth device, the app must use files recorded on an AudioMoth.
+                    In order to be certain that any filtering and threshold settings directly correlate to how they'd function on your AudioMoth device, the app must use files recorded on an AudioMoth.
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
                 <div class="col total-width">
-                    <h5>What is "amplitude thresholding"?</h5>
+                    <h5>What is "amplitude threshold"?</h5>
                 </div>
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
@@ -419,7 +420,7 @@
     <script src="scripts/stft.js"></script>
     <script src="scripts/spectrogram.js"></script>
     <script src="scripts/waveform.js"></script>
-    <script src="scripts/amplitudeThresholding.js"></script>
+    <script src="scripts/amplitudethreshold.js"></script>
     <script src="scripts/playAudio.js"></script>
     <script src="scripts/index.js"></script>
 </html>

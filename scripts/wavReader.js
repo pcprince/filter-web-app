@@ -282,9 +282,13 @@ async function readWav (fileHandler) {
 
     let samples;
 
+    let trimmed = false;
+
     if ((contents.byteLength / 2) - LENGTH_OF_WAV_HEADER > maxSamples) {
 
         console.log('Trimming to initial 60 seconds of recording');
+
+        trimmed = true;
 
         samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER, maxSamples);
 
@@ -298,7 +302,8 @@ async function readWav (fileHandler) {
         success: true,
         error: null,
         header: header,
-        samples: samples
+        samples: samples,
+        trimmed: trimmed
     };
 
 }

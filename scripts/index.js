@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readFileHandler, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -20,7 +20,8 @@ const errorText = document.getElementById('error-text');
 // File selection elements
 
 const fileButton = document.getElementById('file-button');
-const fileLabel = document.getElementById('file-label');
+const fileSpan = document.getElementById('file-span');
+const trimmedSpan = document.getElementById('trimmed-span');
 
 // Plot navigation buttons
 
@@ -127,17 +128,17 @@ let previousSelectionType = 1;
 
 const FILTER_SLIDER_STEPS = {8000: 100, 16000: 100, 32000: 100, 48000: 100, 96000: 200, 192000: 500, 250000: 500, 384000: 1000};
 
-// Amplitude thresholding elements
+// Amplitude threshold elements
 
-const amplitudeThresholdingMaxLabel = document.getElementById('amplitude-thresholding-max-label');
-const amplitudeThresholdingMinLabel = document.getElementById('amplitude-thresholding-min-label');
+const amplitudethresholdMaxLabel = document.getElementById('amplitude-threshold-max-label');
+const amplitudethresholdMinLabel = document.getElementById('amplitude-threshold-min-label');
 
-const amplitudeThresholdingCheckboxLabel = document.getElementById('amplitude-thresholding-checkbox-label');
-const amplitudeThresholdingCheckbox = document.getElementById('amplitude-thresholding-checkbox');
-const amplitudeThresholdingSlider = new Slider('#amplitude-thresholding-slider', {});
-const amplitudeThresholdingLabel = document.getElementById('amplitude-thresholding-label');
-const amplitudeThresholdingDurationTable = document.getElementById('amplitude-thresholding-duration-table');
-const amplitudeThresholdingRadioButtons = document.getElementsByName('amplitude-thresholding-duration-radio');
+const amplitudethresholdCheckboxLabel = document.getElementById('amplitude-threshold-checkbox-label');
+const amplitudethresholdCheckbox = document.getElementById('amplitude-threshold-checkbox');
+const amplitudethresholdSlider = new Slider('#amplitude-threshold-slider', {});
+const amplitudethresholdLabel = document.getElementById('amplitude-threshold-label');
+const amplitudethresholdDurationTable = document.getElementById('amplitude-threshold-duration-table');
+const amplitudethresholdRadioButtons = document.getElementsByName('amplitude-threshold-duration-radio');
 
 const amplitudeThresholdScaleSelect = document.getElementById('amplitude-threshold-scale-select');
 
@@ -149,9 +150,9 @@ const VALID_AMPLITUDE_VALUES = [0, 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
 
 const MINIMUM_TRIGGER_DURATIONS = [0, 1, 2, 5, 10, 15, 30, 60];
 
-// Amplitude thresholding scale enums
+// Amplitude threshold scale enums
 
-let amplitudeThresholdingScaleIndex = 2;
+let amplitudethresholdScaleIndex = 2;
 const AMPLITUDE_THRESHOLD_SCALE_16BIT = 0;
 const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 1;
 const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 2;
@@ -159,6 +160,10 @@ const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 2;
 // Blocks in pixel space representing audio below the threshold
 
 let thresholdPeriods = [];
+
+// Panel which states how much size reduction the amplitude threshold settings chosen will do
+
+const lifeDisplayPanel = document.getElementById('life-display-panel');
 
 // Other UI
 
@@ -382,7 +387,7 @@ function convertAmplitudeThreshold (rawSlider) {
 
     let exponent, mantissa, validAmplitude;
 
-    const sliderMax = amplitudeThresholdingSlider.getAttribute('max');
+    const sliderMax = amplitudethresholdSlider.getAttribute('max');
     const scaledSlider = rawSlider / sliderMax;
 
     const rawLog = (100 * scaledSlider - 100);
@@ -436,7 +441,7 @@ function convertAmplitudeThreshold (rawSlider) {
  */
 function getAmplitudeThreshold () {
 
-    return convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue()).amplitude;
+    return convertAmplitudeThreshold(amplitudethresholdSlider.getValue()).amplitude;
 
 }
 
@@ -467,57 +472,57 @@ function formatPercentage (mantissa, exponent) {
 /**
  * Update the information label which displays the amplitude threshold in a given scale
  */
-function updateAmplitudeThresholdingLabel () {
+function updateAmplitudethresholdLabel () {
 
-    const amplitudeThreshold = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue());
+    const amplitudeThreshold = convertAmplitudeThreshold(amplitudethresholdSlider.getValue());
 
-    amplitudeThresholdingLabel.textContent = 'Amplitude threshold of ';
+    amplitudethresholdLabel.textContent = 'Amplitude threshold of ';
 
-    switch (amplitudeThresholdingScaleIndex) {
+    switch (amplitudethresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
-        amplitudeThresholdingLabel.textContent += amplitudeThreshold.percentage + '%';
+        amplitudethresholdLabel.textContent += amplitudeThreshold.percentage + '%';
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_16BIT:
 
-        amplitudeThresholdingLabel.textContent += amplitudeThreshold.amplitude;
+        amplitudethresholdLabel.textContent += amplitudeThreshold.amplitude;
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
 
-        amplitudeThresholdingLabel.textContent += amplitudeThreshold.decibels + ' dB';
+        amplitudethresholdLabel.textContent += amplitudeThreshold.decibels + ' dB';
         break;
 
     }
 
-    amplitudeThresholdingLabel.textContent += ' will be used when generating T.WAV files.';
+    amplitudethresholdLabel.textContent += ' will be used when generating T.WAV files.';
 
 }
 
 /**
  * Update UI when amplitude threshold scale is changed
  */
-function updateAmplitudeThresholdingScale () {
+function updateAmplitudethresholdScale () {
 
-    updateAmplitudeThresholdingLabel();
+    updateAmplitudethresholdLabel();
 
-    switch (amplitudeThresholdingScaleIndex) {
+    switch (amplitudethresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
-        amplitudeThresholdingMinLabel.innerHTML = '0.001%';
-        amplitudeThresholdingMaxLabel.innerHTML = '100%';
+        amplitudethresholdMinLabel.innerHTML = '0.001%';
+        amplitudethresholdMaxLabel.innerHTML = '100%';
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_16BIT:
-        amplitudeThresholdingMinLabel.innerHTML = '0';
-        amplitudeThresholdingMaxLabel.innerHTML = '32768';
+        amplitudethresholdMinLabel.innerHTML = '0';
+        amplitudethresholdMaxLabel.innerHTML = '32768';
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
-        amplitudeThresholdingMinLabel.innerHTML = '-100 dB';
-        amplitudeThresholdingMaxLabel.innerHTML = '0 dB';
+        amplitudethresholdMinLabel.innerHTML = '-100 dB';
+        amplitudethresholdMaxLabel.innerHTML = '0 dB';
         break;
 
     }
@@ -527,46 +532,46 @@ function updateAmplitudeThresholdingScale () {
 /**
  * Handle a change to the amplitude threshold status/value
  */
-function updateAmplitudeThresholdingUI () {
+function updateAmplitudethresholdUI () {
 
-    if (amplitudeThresholdingCheckbox.checked && !amplitudeThresholdingCheckbox.disabled) {
+    if (amplitudethresholdCheckbox.checked && !amplitudethresholdCheckbox.disabled) {
 
-        amplitudeThresholdingSlider.enable();
-        amplitudeThresholdingMaxLabel.style.color = '';
-        amplitudeThresholdingMinLabel.style.color = '';
+        amplitudethresholdSlider.enable();
+        amplitudethresholdMaxLabel.style.color = '';
+        amplitudethresholdMinLabel.style.color = '';
 
-        amplitudeThresholdingLabel.style.color = '';
-        updateAmplitudeThresholdingLabel();
+        amplitudethresholdLabel.style.color = '';
+        updateAmplitudethresholdLabel();
 
-        amplitudeThresholdingDurationTable.style.color = '';
+        amplitudethresholdDurationTable.style.color = '';
 
-        for (let i = 0; i < amplitudeThresholdingRadioButtons.length; i++) {
+        for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
 
-            amplitudeThresholdingRadioButtons[i].disabled = false;
+            amplitudethresholdRadioButtons[i].disabled = false;
 
         }
 
     } else {
 
-        amplitudeThresholdingSlider.disable();
-        amplitudeThresholdingMaxLabel.style.color = 'grey';
-        amplitudeThresholdingMinLabel.style.color = 'grey';
+        amplitudethresholdSlider.disable();
+        amplitudethresholdMaxLabel.style.color = 'grey';
+        amplitudethresholdMinLabel.style.color = 'grey';
 
-        amplitudeThresholdingLabel.style.color = 'grey';
+        amplitudethresholdLabel.style.color = 'grey';
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
-        if (!amplitudeThresholdingCheckbox.disabled) {
+        if (!amplitudethresholdCheckbox.disabled) {
 
-            amplitudeThresholdingLabel.textContent = 'All audio will be written to a .WAV file.';
+            amplitudethresholdLabel.textContent = 'All audio will be written to a .WAV file.';
 
         }
 
-        amplitudeThresholdingDurationTable.style.color = 'grey';
+        amplitudethresholdDurationTable.style.color = 'grey';
 
-        for (let i = 0; i < amplitudeThresholdingRadioButtons.length; i++) {
+        for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
 
-            amplitudeThresholdingRadioButtons[i].disabled = true;
+            amplitudethresholdRadioButtons[i].disabled = true;
 
         }
 
@@ -855,7 +860,7 @@ function drawAxisLabels () {
     const a16bitValues = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
     const rawSliderValues = [1.0, 0.75, 0.5, 0.25, 0.0, 0.25, 0.5, 0.75, 1.0];
 
-    switch (amplitudeThresholdingScaleIndex) {
+    switch (amplitudethresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
@@ -1211,7 +1216,7 @@ function drawWaveformPlotAndReenableUI (samples) {
         resetCanvas(waveformThresholdCanvas, false);
         resetCanvas(waveformThresholdLineCanvas, false);
 
-        if (amplitudeThresholdingCheckbox.checked) {
+        if (amplitudethresholdCheckbox.checked) {
 
             drawThresholdedPeriods();
             drawThresholdLines();
@@ -1231,9 +1236,9 @@ function drawWaveformPlotAndReenableUI (samples) {
         filterCheckboxLabel.style.color = '';
         updateFilterUI();
 
-        amplitudeThresholdingCheckbox.disabled = false;
-        amplitudeThresholdingCheckboxLabel.style.color = '';
-        updateAmplitudeThresholdingUI();
+        amplitudethresholdCheckbox.disabled = false;
+        amplitudethresholdCheckboxLabel.style.color = '';
+        updateAmplitudethresholdUI();
 
         resetButton.disabled = false;
         exportButton.disabled = false;
@@ -1255,6 +1260,8 @@ function drawPlots (samples) {
         resetCanvas(spectrogramThresholdCanvas, false);
 
         drawWaveformPlotAndReenableUI(samples);
+
+        updateFileSizePanel();
 
     });
 
@@ -1287,9 +1294,9 @@ function disableUI () {
     filterCheckboxLabel.style.color = 'grey';
     updateFilterUI();
 
-    amplitudeThresholdingCheckbox.disabled = true;
-    amplitudeThresholdingCheckboxLabel.style.color = 'grey';
-    updateAmplitudeThresholdingUI();
+    amplitudethresholdCheckbox.disabled = true;
+    amplitudethresholdCheckboxLabel.style.color = 'grey';
+    updateAmplitudethresholdUI();
 
     resetButton.disabled = true;
     exportButton.disabled = true;
@@ -1682,7 +1689,7 @@ async function updatePlots (resetColourMap) {
 
     }
 
-    if (!filterCheckbox.checked && !amplitudeThresholdingCheckbox.checked) {
+    if (!filterCheckbox.checked && !amplitudethresholdCheckbox.checked) {
 
         processContents(unfilteredSamples, sampleRate);
 
@@ -1752,10 +1759,10 @@ async function updatePlots (resetColourMap) {
 
     // Apply amplitude threshold
 
-    if (amplitudeThresholdingCheckbox.checked) {
+    if (amplitudethresholdCheckbox.checked) {
 
         const threshold = getAmplitudeThreshold();
-        const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('amplitude-thresholding-duration-radio')];
+        const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('amplitude-threshold-duration-radio')];
         const minimumTriggerDurationSamples = minimumTriggerDurationSecs * sampleRate;
 
         console.log('Applying amplitude threshold');
@@ -1816,6 +1823,10 @@ async function readFromFile () {
 
     console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + lengthSecs + ' seconds)');
 
+    // If file has been trimmed, display warning
+
+    trimmedSpan.style.display = result.trimmed ? '' : 'none';
+
     return result.samples;
 
 }
@@ -1829,6 +1840,55 @@ function updateMaxZoom () {
     newMaxZoom = Math.pow(2, Math.floor(Math.log(newMaxZoom) / Math.log(2)));
 
     maxZoom = newMaxZoom;
+
+}
+
+/**
+ * Add unit to file size
+ * @param {number} fileSize File size in bytes
+ * @returns String with correct unit
+ */
+function formatFileSize (fileSize) {
+
+    fileSize = Math.round(fileSize / 1000);
+
+    return fileSize + ' kB';
+
+}
+
+/**
+ * Update panel with estimate of file size
+ */
+function updateFileSizePanel () {
+
+    const totalSeconds = unfilteredSamples.length / sampleRate;
+    const totalFileSize = sampleRate * 2 * totalSeconds;
+
+    if (amplitudethresholdCheckbox.checked) {
+
+        let thresholdedSamples = 0;
+
+        for (let i = 0; i < thresholdPeriods.length; i++) {
+
+            thresholdedSamples += thresholdPeriods[i].length;
+
+        }
+
+        const thresholdedSeconds = thresholdedSamples / sampleRate;
+
+        const thresholdedFileSize = sampleRate * 2 * (totalSeconds - thresholdedSeconds);
+
+        const percentageReduction = 100.0 - (thresholdedFileSize / totalFileSize * 100.0);
+
+        lifeDisplayPanel.innerHTML = 'Original file size: ' + formatFileSize(totalFileSize) + '. Thresholded file size: ' + formatFileSize(thresholdedFileSize) + '.<br>';
+        lifeDisplayPanel.innerHTML += 'Current amplitude threshold settings would reduce file size by ' + percentageReduction.toFixed(1) + '%.';
+
+    } else {
+
+        lifeDisplayPanel.innerHTML = 'File size: ' + formatFileSize(totalFileSize) + '.<br>';
+        lifeDisplayPanel.innerHTML += 'Enable amplitude thresholding to estimate file size reduction.';
+
+    }
 
 }
 
@@ -1867,7 +1927,7 @@ fileButton.addEventListener('click', async () => {
 
     if (!fileHandler) {
 
-        fileLabel.innerText = 'No .WAV files selected.';
+        fileSpan.innerText = 'No .WAV files selected.';
         return;
 
     }
@@ -1878,14 +1938,14 @@ fileButton.addEventListener('click', async () => {
 
     fileHandler = fileHandler[0];
 
-    fileLabel.innerText = fileHandler.name;
+    fileSpan.innerText = fileHandler.name;
 
     drawLoadingImages();
 
     // Disable UI whilst loading samples and processing
 
     filterCheckbox.checked = false;
-    amplitudeThresholdingCheckbox.checked = false;
+    amplitudethresholdCheckbox.checked = false;
 
     homeButton.disabled = true;
     zoomInButton.disabled = true;
@@ -1897,9 +1957,9 @@ fileButton.addEventListener('click', async () => {
     filterCheckboxLabel.style.color = 'grey';
     updateFilterUI();
 
-    amplitudeThresholdingCheckbox.disabled = true;
-    amplitudeThresholdingCheckboxLabel.style.color = 'grey';
-    updateAmplitudeThresholdingUI();
+    amplitudethresholdCheckbox.disabled = true;
+    amplitudethresholdCheckboxLabel.style.color = 'grey';
+    updateAmplitudethresholdUI();
 
     resetButton.disabled = true;
     exportButton.disabled = true;
@@ -2205,16 +2265,16 @@ for (let i = 0; i < filterRadioButtons.length; i++) {
 
 // Add listener which reacts to amplitude threshold being enabled/disabled
 
-amplitudeThresholdingCheckbox.addEventListener('change', updateAmplitudeThresholdingUI);
-updateAmplitudeThresholdingUI();
+amplitudethresholdCheckbox.addEventListener('change', updateAmplitudethresholdUI);
+updateAmplitudethresholdUI();
 
 // Add amplitude threshold scale listener
 
 amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
-    amplitudeThresholdingScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
+    amplitudethresholdScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
 
-    updateAmplitudeThresholdingScale();
+    updateAmplitudethresholdScale();
 
     drawAxisLabels();
 
@@ -2223,11 +2283,11 @@ amplitudeThresholdScaleSelect.addEventListener('change', function () {
 /**
  * Add listener which updates the amplitude threshold information label when the slider value is changed
  */
-amplitudeThresholdingSlider.on('change', updateAmplitudeThresholdingLabel);
+amplitudethresholdSlider.on('change', updateAmplitudethresholdLabel);
 
 // Add listener which updates the position of the lines on the waveform plot as the amplitude threshold slider moves
 
-amplitudeThresholdingSlider.on('change', drawThresholdLines);
+amplitudethresholdSlider.on('change', drawThresholdLines);
 
 /**
  * Run updatePlots function without refreshing the colour map
@@ -2247,13 +2307,13 @@ bandPassFilterSlider.on('slideStop', updatePlotsWithoutChangingColourMap);
 lowPassFilterSlider.on('slideStop', updatePlotsWithoutChangingColourMap);
 highPassFilterSlider.on('slideStop', updatePlotsWithoutChangingColourMap);
 
-amplitudeThresholdingCheckbox.addEventListener('change', () => {
+amplitudethresholdCheckbox.addEventListener('change', () => {
 
     updatePlots(false);
 
     // Draw or clear the amplitude threshold lines
 
-    if (amplitudeThresholdingCheckbox.checked) {
+    if (amplitudethresholdCheckbox.checked) {
 
         drawThresholdLines();
 
@@ -2265,15 +2325,15 @@ amplitudeThresholdingCheckbox.addEventListener('change', () => {
 
 });
 
-amplitudeThresholdingSlider.on('slideStop', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[0].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[1].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[2].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[3].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[4].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[5].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[6].addEventListener('change', updatePlotsWithoutChangingColourMap);
-amplitudeThresholdingRadioButtons[7].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdSlider.on('slideStop', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[0].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[1].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[2].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[3].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[4].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[5].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[6].addEventListener('change', updatePlotsWithoutChangingColourMap);
+amplitudethresholdRadioButtons[7].addEventListener('change', updatePlotsWithoutChangingColourMap);
 
 // Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
 
@@ -2281,8 +2341,8 @@ resetButton.addEventListener('click', () => {
 
     filterCheckbox.checked = false;
     updateFilterUI();
-    amplitudeThresholdingCheckbox.checked = false;
-    updateAmplitudeThresholdingUI();
+    amplitudethresholdCheckbox.checked = false;
+    updateAmplitudethresholdUI();
 
     sampleRateChange();
     updatePlots(true);
@@ -2335,16 +2395,16 @@ exportButton.addEventListener('click', () => {
 
     }
 
-    const minimumTriggerDuration = getSelectedRadioValue('amplitude-thresholding-duration-radio');
+    const minimumTriggerDuration = getSelectedRadioValue('amplitude-threshold-duration-radio');
 
     const filterTypes = ['low', 'band', 'high'];
     const amplitudeThresholdScales = ['percentage', '16bit', 'decibel'];
 
-    const amplitudeThresholdValues = convertAmplitudeThreshold(amplitudeThresholdingSlider.getValue());
+    const amplitudeThresholdValues = convertAmplitudeThreshold(amplitudethresholdSlider.getValue());
 
     let amplitudeThreshold = 0;
 
-    switch (amplitudeThresholdingScaleIndex) {
+    switch (amplitudethresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
@@ -2370,10 +2430,10 @@ exportButton.addEventListener('click', () => {
         filterType: filterTypes[filterIndex],
         lowerFilter: filterValue0,
         higherFilter: filterValue1,
-        amplitudeThresholdingEnabled: amplitudeThresholdingCheckbox.checked,
+        amplitudethresholdEnabled: amplitudethresholdCheckbox.checked,
         amplitudeThreshold: amplitudeThreshold,
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
-        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdingScaleIndex]
+        amplitudethresholdScale: amplitudeThresholdScales[amplitudethresholdScaleIndex]
     };
 
     const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
@@ -2465,9 +2525,9 @@ function stopEvent () {
     filterCheckboxLabel.style.color = '';
     updateFilterUI();
 
-    amplitudeThresholdingCheckbox.disabled = false;
-    amplitudeThresholdingCheckboxLabel.style.color = '';
-    updateAmplitudeThresholdingUI();
+    amplitudethresholdCheckbox.disabled = false;
+    amplitudethresholdCheckboxLabel.style.color = '';
+    updateAmplitudethresholdUI();
 
     resetButton.disabled = false;
     exportButton.disabled = false;
@@ -2586,9 +2646,3 @@ if (!isChrome) {
     fileButton.disabled = true;
 
 }
-
-// TODO: Add file size comparison
-
-// TODO: Example file
-
-// FIXME: Draw waveform correctly

@@ -46,7 +46,7 @@ input::-webkit-inner-spin-button {
   background: rgb(173, 189, 241);
 }
 
-#amplitude-thresholding-slider .slider-track {
+#amplitude-threshold-slider .slider-track {
   background: rgb(173, 189, 241);
 }
 
