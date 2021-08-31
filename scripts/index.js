@@ -1968,6 +1968,11 @@ function handleMouseDown (e) {
 
 }
 
+// Assign listeners to both spectrogram and waveform overlay canvases to allow a zoom drag to start on either
+
+spectrogramDragCanvas.addEventListener('mousedown', handleMouseDown);
+waveformDragCanvas.addEventListener('mousedown', handleMouseDown);
+
 /**
  * Draw the alpha-ed overlay rectangle to the given canvas
  * @param {object} canvas Canvas being drawn to
@@ -1991,19 +1996,14 @@ function drawZoomOverlay (canvas, dragCurrentX) {
 }
 
 /**
- * Handle the mouse movement when a drag is underway, drawing the area to both plots to show what will be zoomed in on
- * @param {event} e Drag event
+ * If drag is in process, update drag UI
+ * @param {number} dragCurrentX Current mouse location
  */
-function handleMouseMove (e) {
+function handleMouseMove (dragCurrentX) {
 
     // If dragging has started, samples are available and a plot is not currently being drawn
 
     if (isDragging && sampleCount !== 0 && !drawing && !playing) {
-
-        const canvas = e.target;
-
-        const rect = canvas.getBoundingClientRect();
-        const dragCurrentX = e.clientX - rect.left;
 
         // Draw zoom areas on each canvas
 
@@ -2015,37 +2015,24 @@ function handleMouseMove (e) {
 }
 
 /**
- * Handle the end of a zoom drag
- * @param {event} e Drag event
+ * End dragging action
+ * @param {number} dragEndX Location where mouse was lifted
  */
-function handleMouseUp (e) {
-
-    // If it's not a left click, ignore it
-
-    if (e.button !== 0) {
-
-        return;
-
-    }
+function handleMouseUp (dragEndX) {
 
     // If dragging has started, samples are available and a plot is not currently being drawn
 
     if (isDragging && sampleCount !== 0 && !drawing && !playing) {
 
-        const canvas = e.target;
-
         isDragging = false;
-
-        // Get end of zoom drag
-
-        const rect = canvas.getBoundingClientRect();
-        const dragEndX = Math.min(canvas.width, Math.max(0, e.clientX - rect.left));
 
         if (dragEndX === dragStartX) {
 
             return;
 
         }
+
+        console.log(dragStartX, dragEndX);
 
         // Clear zoom overlay canvases
 
@@ -2056,7 +2043,7 @@ function handleMouseUp (e) {
 
         // Calculate new zoom value
 
-        let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / canvas.width);
+        let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / spectrogramDragCanvas.width);
 
         const totalLength = sampleCount / sampleRate;
         const displayedTime = totalLength / zoom;
@@ -2070,7 +2057,7 @@ function handleMouseUp (e) {
 
             // Calculate new offset value
 
-            newOffset = offset + (-1 * displayedTime * dragLeft / canvas.width);
+            newOffset = offset + (-1 * displayedTime * dragLeft / spectrogramDragCanvas.width);
 
         } else {
 
@@ -2080,7 +2067,7 @@ function handleMouseUp (e) {
 
             const dragDiff = dragRight - dragLeft;
             const dragCentre = dragLeft + (dragDiff / 2);
-            const centredOffset = (displayedTime * dragCentre / canvas.width) - (displayedTime / 2);
+            const centredOffset = (displayedTime * dragCentre / spectrogramDragCanvas.width) - (displayedTime / 2);
 
             newOffset = offset + (-1 * centredOffset);
 
@@ -2107,17 +2094,46 @@ function handleMouseUp (e) {
 
 }
 
-// Assign drag listeners to both spectrogram and waveform overlay canvases to allow a zoom drag on either
+// Handle mouse events anywhere on the page
 
-spectrogramDragCanvas.addEventListener('mousedown', handleMouseDown);
-spectrogramDragCanvas.addEventListener('mousemove', handleMouseMove);
-spectrogramDragCanvas.addEventListener('mouseout', handleMouseUp);
-spectrogramDragCanvas.addEventListener('mouseup', handleMouseUp);
+document.addEventListener('mouseup', (e) => {
 
-waveformDragCanvas.addEventListener('mousedown', handleMouseDown);
-waveformDragCanvas.addEventListener('mousemove', handleMouseMove);
-waveformDragCanvas.addEventListener('mouseout', handleMouseUp);
-waveformDragCanvas.addEventListener('mouseup', handleMouseUp);
+    // If it's not a left click, ignore it
+
+    if (e.button !== 0 || !isDragging) {
+
+        return;
+
+    }
+
+    const w = spectrogramDragCanvas.width;
+
+    // Get end of zoom drag
+
+    const rect = spectrogramDragCanvas.getBoundingClientRect();
+    let dragEndX = Math.min(w, Math.max(0, e.clientX - rect.left));
+
+    dragEndX = (dragEndX < 0) ? 0 : dragEndX;
+    dragEndX = (dragEndX > w) ? w : dragEndX;
+
+    handleMouseUp(dragEndX);
+
+});
+
+document.addEventListener('mousemove', (e) => {
+
+    if (!isDragging) {
+
+        return;
+
+    }
+
+    const rect = spectrogramDragCanvas.getBoundingClientRect();
+    const dragCurrentX = e.clientX - rect.left;
+
+    handleMouseMove(dragCurrentX);
+
+});
 
 /**
  * Add keyboard controls to page
