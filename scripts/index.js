@@ -1524,7 +1524,7 @@ function zoomOut () {
             displayedSampleCount = getDisplayedSampleCount();
             const newCentre = (Math.abs(offset) * sampleRate) + (displayedSampleCount / 2);
 
-            const diffSecs = Math.abs((oldCentre - newCentre) / sampleRate);
+            const diffSecs = (oldCentre - newCentre) / sampleRate;
 
             offset -= diffSecs;
 
