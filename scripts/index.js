@@ -1833,7 +1833,7 @@ async function readFromFile (isExampleFile, callback) {
 
         const req = new XMLHttpRequest();
 
-        req.open('GET', '/assets/example.WAV', true);
+        req.open('GET', './assets/example.WAV', true);
         req.responseType = 'arraybuffer';
 
         req.onload = function (e) {
