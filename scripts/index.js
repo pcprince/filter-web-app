@@ -1228,6 +1228,12 @@ function drawWaveformPlotAndReenableUI (samples) {
 
         fileButton.disabled = false;
 
+        for (let i = 0; i < exampleLinks.length; i++) {
+
+            exampleLinks[i].disabled = false;
+
+        }
+
         filterCheckbox.disabled = false;
         filterCheckboxLabel.style.color = '';
         updateFilterUI();
@@ -1279,6 +1285,12 @@ function getDisplayedSampleCount () {
 function disableUI () {
 
     fileButton.disabled = true;
+
+    for (let i = 0; i < exampleLinks.length; i++) {
+
+        exampleLinks[i].disabled = true;
+
+    }
 
     homeButton.disabled = true;
     zoomInButton.disabled = true;
@@ -2598,6 +2610,12 @@ function stopEvent () {
 
     fileButton.disabled = false;
 
+    for (let i = 0; i < exampleLinks.length; i++) {
+
+        exampleLinks[i].disabled = false;
+
+    }
+
     filterCheckbox.disabled = false;
     filterCheckboxLabel.style.color = '';
     updateFilterUI();
@@ -2718,5 +2736,11 @@ if (!isChrome) {
 
     browserErrorDisplay.style.display = '';
     fileButton.disabled = true;
+
+    for (let i = 0; i < exampleLinks.length; i++) {
+
+        exampleLinks[i].disabled = true;
+
+    }
 
 }
