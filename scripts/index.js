@@ -23,6 +23,7 @@ const fileButton = document.getElementById('file-button');
 const fileSpan = document.getElementById('file-span');
 const trimmedSpan = document.getElementById('trimmed-span');
 const exampleLinks = [document.getElementById('example-link1'), document.getElementById('example-link2'), document.getElementById('example-link3')];
+const examplePaths = ['./assets/example.WAV'];
 
 // Plot navigation buttons
 
@@ -2078,11 +2079,15 @@ fileButton.addEventListener('click', () => {
 
 // Handle example files being selected
 
-exampleLinks[0].addEventListener('click', () => {
+for (let i = 0; i < examplePaths.length; i++) {
 
-    loadFile('./assets/example.WAV');
+    exampleLinks[i].addEventListener('click', () => {
 
-});
+        loadFile(examplePaths[i]);
+
+    });
+
+}
 
 /**
  * Handle start of a zoom drag event
