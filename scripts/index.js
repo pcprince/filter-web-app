@@ -2678,7 +2678,7 @@ playButton.addEventListener('click', () => {
         disableUI();
         disableWaveformYAxisUI();
         playButton.disabled = false;
-        playbackSpeedSlider.enable();
+        playbackSpeedSlider.disable();
 
         // Switch from play icon to stop icon
 
