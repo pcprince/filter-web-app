@@ -10,9 +10,9 @@ const BUFFER_LENGTH = 16000;
 
 /**
  * Apply amplitude trheshold to given samples
- * @param {*} samples Samples to be processed
- * @param {*} threshold Amplitude threshold value
- * @param {*} minTriggerDurationSamples Minimum trigger duration in samples
+ * @param {number[]} samples Samples to be processed
+ * @param {number} threshold Amplitude threshold value
+ * @param {number} minTriggerDurationSamples Minimum trigger duration in samples
  * @returns Samples with amplitude threshold applied
  */
 function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples) {
