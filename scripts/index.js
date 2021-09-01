@@ -22,6 +22,7 @@ const errorText = document.getElementById('error-text');
 const fileButton = document.getElementById('file-button');
 const fileSpan = document.getElementById('file-span');
 const trimmedSpan = document.getElementById('trimmed-span');
+const exampleLink = document.getElementById('example-link');
 
 // Plot navigation buttons
 
@@ -169,11 +170,6 @@ const lifeDisplayPanel = document.getElementById('life-display-panel');
 
 const resetButton = document.getElementById('reset-button');
 const exportButton = document.getElementById('export-button');
-
-// Save plots buttons
-
-const saveWaveformButton = document.getElementById('save-waveform-button');
-const saveSpectrogramButton = document.getElementById('save-spectrogram-button');
 
 // Audio playback controls
 
@@ -1779,15 +1775,7 @@ async function updatePlots (resetColourMap) {
 
 }
 
-/**
- * Read the contents of the file given by the current filehandler
- * @returns Samples read from file
- */
-async function readFromFile () {
-
-    console.log('Reading samples');
-
-    const result = await readWav(fileHandler);
+function processReadResult (result, callback) {
 
     if (!result.success) {
 
@@ -1810,7 +1798,7 @@ async function readFromFile () {
         resetCanvas(waveformThresholdCanvas, false);
         resetCanvas(waveformCanvas, true);
 
-        return;
+        callback();
 
     }
 
@@ -1827,7 +1815,53 @@ async function readFromFile () {
 
     trimmedSpan.style.display = result.trimmed ? '' : 'none';
 
-    return result.samples;
+    callback(result.samples);
+
+}
+
+/**
+ * Read the contents of the file given by the current filehandler
+ * @returns Samples read from file
+ */
+async function readFromFile (isExampleFile, callback) {
+
+    console.log('Reading samples');
+
+    let result;
+
+    if (isExampleFile) {
+
+        const req = new XMLHttpRequest();
+
+        req.open('GET', '/assets/example.WAV', true);
+        req.responseType = 'arraybuffer';
+
+        req.onload = function (e) {
+
+            const arrayBuffer = req.response; // Note: not oReq.responseText
+            console.log(arrayBuffer);
+            result = readWavContents(arrayBuffer);
+
+            processReadResult(result, callback);
+
+        };
+
+        req.send(null);
+
+    } else {
+
+        if (!fileHandler) {
+
+            console.error('No filehandler!');
+            return [];
+
+        }
+
+        result = await readWav(fileHandler);
+
+        processReadResult(result, callback);
+
+    }
 
 }
 
@@ -1892,108 +1926,158 @@ function updateFileSizePanel () {
 
 }
 
-// Handle a new file being selected
+// /**
+//  * Write 10 seconds of audio to a text file
+//  * @param {numer[]} samples Samples to be written to text file
+//  */
+// function samplesToFile (samples) {
 
-fileButton.addEventListener('click', async () => {
+//     const content = 'data:text/plain;charset=utf-8,' + samples.slice(0, sampleRate * 10);
 
-    const opts = {
-        types: [
-            {
-                description: 'WAV files',
-                accept: {
-                    'audio/wav': ['.wav']
+//     const encodedUri = encodeURI(content);
+
+//     // Create hidden <a> tag to apply download to
+
+//     const link = document.createElement('a');
+
+//     link.setAttribute('href', encodedUri);
+//     link.setAttribute('download', 'samples.txt');
+//     document.body.appendChild(link);
+
+//     // Click link
+
+//     link.click();
+
+// }
+
+async function loadFile (isExampleFile) {
+
+    if (isExampleFile) {
+
+        console.log('Loading example file');
+
+        fileSpan.innerText = 'example.WAV';
+
+    } else {
+
+        const opts = {
+            types: [
+                {
+                    description: 'WAV files',
+                    accept: {
+                        'audio/wav': ['.wav']
+                    }
                 }
-            }
-        ],
-        excludeAcceptAllOption: true,
-        multiple: false
-    };
+            ],
+            excludeAcceptAllOption: true,
+            multiple: false
+        };
 
-    // Display file picker
+        // Display file picker
 
-    try {
+        try {
 
-        fileHandler = await window.showOpenFilePicker(opts);
+            fileHandler = await window.showOpenFilePicker(opts);
 
-    } catch (error) {
+        } catch (error) {
 
-        console.error('Request was aborted.');
-        console.error(error);
-        return;
+            console.error('Request was aborted.');
+            console.error(error);
+            return;
+
+        }
+
+        // If no file was selected, return
+
+        if (!fileHandler) {
+
+            fileSpan.innerText = 'No .WAV files selected.';
+            return;
+
+        }
+
+        fileHandler = fileHandler[0];
+
+        fileSpan.innerText = fileHandler.name;
 
     }
-
-    // If no file was selected, return
-
-    if (!fileHandler) {
-
-        fileSpan.innerText = 'No .WAV files selected.';
-        return;
-
-    }
-
-    resetTransformations();
-
-    resetCanvas(waveformThresholdLineCanvas, false);
-
-    fileHandler = fileHandler[0];
-
-    fileSpan.innerText = fileHandler.name;
-
-    drawLoadingImages();
-
-    // Disable UI whilst loading samples and processing
-
-    filterCheckbox.checked = false;
-    amplitudethresholdCheckbox.checked = false;
-
-    homeButton.disabled = true;
-    zoomInButton.disabled = true;
-    zoomOutButton.disabled = true;
-    panRightButton.disabled = true;
-    panLeftButton.disabled = true;
-
-    filterCheckbox.disabled = true;
-    filterCheckboxLabel.style.color = 'grey';
-    updateFilterUI();
-
-    amplitudethresholdCheckbox.disabled = true;
-    amplitudethresholdCheckboxLabel.style.color = 'grey';
-    updateAmplitudethresholdUI();
-
-    resetButton.disabled = true;
-    exportButton.disabled = true;
 
     // Read samples
 
-    unfilteredSamples = await readFromFile();
+    unfilteredSamples = await readFromFile(isExampleFile, () => {
 
-    // If no samples can be read, return
+        resetTransformations();
 
-    if (!unfilteredSamples) {
+        resetCanvas(waveformThresholdLineCanvas, false);
 
-        return;
+        drawLoadingImages();
 
-    }
+        // Disable UI whilst loading samples and processing
 
-    thresholdPeriods = [];
+        filterCheckbox.checked = false;
+        amplitudethresholdCheckbox.checked = false;
 
-    // Work out what the maximum zoom level should be
+        homeButton.disabled = true;
+        zoomInButton.disabled = true;
+        zoomOutButton.disabled = true;
+        panRightButton.disabled = true;
+        panLeftButton.disabled = true;
 
-    updateMaxZoom();
+        filterCheckbox.disabled = true;
+        filterCheckboxLabel.style.color = 'grey';
+        updateFilterUI();
 
-    // Reset values used to calculate colour map
+        amplitudethresholdCheckbox.disabled = true;
+        amplitudethresholdCheckboxLabel.style.color = 'grey';
+        updateAmplitudethresholdUI();
 
-    spectrumMin = 0.0;
-    spectrumMax = 0.0;
+        resetButton.disabled = true;
+        exportButton.disabled = true;
 
-    // Update UI elements which change when a file at a new sample rate is loaded
+        // If no samples can be read, return
 
-    sampleRateChange();
+        if (!unfilteredSamples) {
 
-    // Generate spectrogram frames and draw plots
+            return;
 
-    processContents(unfilteredSamples, sampleRate);
+        }
+
+        // Reset thresholded periods
+
+        thresholdPeriods = [];
+
+        // Work out what the maximum zoom level should be
+
+        updateMaxZoom();
+
+        // Reset values used to calculate colour map
+
+        spectrumMin = 0.0;
+        spectrumMax = 0.0;
+
+        // Update UI elements which change when a file at a new sample rate is loaded
+
+        sampleRateChange();
+
+        // Generate spectrogram frames and draw plots
+
+        processContents(unfilteredSamples, sampleRate);
+
+    });
+
+}
+
+// Handle a new file being selected
+
+fileButton.addEventListener('click', () => {
+
+    loadFile(false);
+
+});
+
+exampleLink.addEventListener('click', () => {
+
+    loadFile(true);
 
 });
 
@@ -2531,9 +2615,6 @@ function stopEvent () {
 
     resetButton.disabled = false;
     exportButton.disabled = false;
-
-    saveSpectrogramButton.disabled = false;
-    saveWaveformButton.disabled = false;
 
     playButton.disabled = false;
     playbackSpeedSlider.enable();

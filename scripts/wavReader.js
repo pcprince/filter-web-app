@@ -207,27 +207,7 @@ function checkHeader (header, fileSize) {
 
 }
 
-async function readWav (fileHandler) {
-
-    /* Open input file */
-
-    let file, contents;
-
-    try {
-
-        file = await fileHandler.getFile();
-        contents = await file.arrayBuffer();
-
-    } catch (e) {
-
-        return {
-            success: false,
-            error: 'Could not read input file.',
-            header: null,
-            samples: null
-        };
-
-    }
+function readWavContents (contents) {
 
     const fileSize = contents.byteLength;
 
@@ -305,5 +285,31 @@ async function readWav (fileHandler) {
         samples: samples,
         trimmed: trimmed
     };
+
+}
+
+async function readWav (fileHandler) {
+
+    /* Open input file */
+
+    let file, contents;
+
+    try {
+
+        file = await fileHandler.getFile();
+        contents = await file.arrayBuffer();
+
+    } catch (e) {
+
+        return {
+            success: false,
+            error: 'Could not read input file.',
+            header: null,
+            samples: null
+        };
+
+    }
+
+    return readWavContents(contents);
 
 }

@@ -50,6 +50,18 @@ input::-webkit-inner-spin-button {
   background: rgb(173, 189, 241);
 }
 
+#playback-speed-slider .slider-track {
+  background: lightgray;
+}
+
+#playback-speed-slider .slider-selection {
+  background: lightgray;
+}
+
+#playback-speed-slider .slider-tick {
+  background: lightgray;
+}
+
 .wrapper {
   position: relative;
 }
