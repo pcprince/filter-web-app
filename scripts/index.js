@@ -1945,7 +1945,6 @@ function updateFileSizePanel () {
 
 }
 
-// TODO: Allow for multiple example files
 /**
  * Load a file either from a user-selected location or a hosted example file
  * @param {boolean} isExampleFile Is the filea user-chosen file or an example recording
