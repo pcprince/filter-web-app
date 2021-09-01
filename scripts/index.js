@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, designLowPassFilter, designHighPassFilter, designBandPassFilter, createFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyFilter, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -1775,6 +1775,11 @@ async function updatePlots (resetColourMap) {
 
 }
 
+/**
+ * Process the result of loading a file
+ * @param {object} result wavReader.js result object
+ * @param {function} callback Function called after completion
+ */
 function processReadResult (result, callback) {
 
     if (!result.success) {
@@ -1865,6 +1870,9 @@ async function readFromFile (isExampleFile, callback) {
 
 }
 
+/**
+ * Update what the maximum value for the zoom can be, based on the number of samples loaded
+ */
 function updateMaxZoom () {
 
     const minSampleView = MIN_TIME_VIEW * sampleRate;
@@ -1926,30 +1934,11 @@ function updateFileSizePanel () {
 
 }
 
-// /**
-//  * Write 10 seconds of audio to a text file
-//  * @param {numer[]} samples Samples to be written to text file
-//  */
-// function samplesToFile (samples) {
-
-//     const content = 'data:text/plain;charset=utf-8,' + samples.slice(0, sampleRate * 10);
-
-//     const encodedUri = encodeURI(content);
-
-//     // Create hidden <a> tag to apply download to
-
-//     const link = document.createElement('a');
-
-//     link.setAttribute('href', encodedUri);
-//     link.setAttribute('download', 'samples.txt');
-//     document.body.appendChild(link);
-
-//     // Click link
-
-//     link.click();
-
-// }
-
+// TODO: Allow for multiple example files
+/**
+ * Load a file either from a user-selected location or a hosted example file
+ * @param {boolean} isExampleFile Is the filea user-chosen file or an example recording
+ */
 async function loadFile (isExampleFile) {
 
     if (isExampleFile) {
@@ -2004,7 +1993,9 @@ async function loadFile (isExampleFile) {
 
     // Read samples
 
-    unfilteredSamples = await readFromFile(isExampleFile, () => {
+    await readFromFile(isExampleFile, (samples) => {
+
+        unfilteredSamples = samples;
 
         resetTransformations();
 
@@ -2074,6 +2065,8 @@ fileButton.addEventListener('click', () => {
     loadFile(false);
 
 });
+
+// Handle an example file being selected
 
 exampleLink.addEventListener('click', () => {
 
