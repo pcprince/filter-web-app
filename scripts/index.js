@@ -22,7 +22,7 @@ const errorText = document.getElementById('error-text');
 const fileButton = document.getElementById('file-button');
 const fileSpan = document.getElementById('file-span');
 const trimmedSpan = document.getElementById('trimmed-span');
-const exampleLink = document.getElementById('example-link');
+const exampleLinks = [document.getElementById('example-link1'), document.getElementById('example-link2'), document.getElementById('example-link3')];
 
 // Plot navigation buttons
 
@@ -1828,17 +1828,17 @@ function processReadResult (result, callback) {
  * Read the contents of the file given by the current filehandler
  * @returns Samples read from file
  */
-async function readFromFile (isExampleFile, callback) {
+async function readFromFile (exampleFilePath, callback) {
 
     console.log('Reading samples');
 
     let result;
 
-    if (isExampleFile) {
+    if (exampleFilePath) {
 
         const req = new XMLHttpRequest();
 
-        req.open('GET', './assets/example.WAV', true);
+        req.open('GET', exampleFilePath, true);
         req.responseType = 'arraybuffer';
 
         req.onload = function (e) {
@@ -1939,9 +1939,9 @@ function updateFileSizePanel () {
  * Load a file either from a user-selected location or a hosted example file
  * @param {boolean} isExampleFile Is the filea user-chosen file or an example recording
  */
-async function loadFile (isExampleFile) {
+async function loadFile (exampleFilePath) {
 
-    if (isExampleFile) {
+    if (exampleFilePath) {
 
         console.log('Loading example file');
 
@@ -1993,7 +1993,7 @@ async function loadFile (isExampleFile) {
 
     // Read samples
 
-    await readFromFile(isExampleFile, (samples) => {
+    await readFromFile(exampleFilePath, (samples) => {
 
         unfilteredSamples = samples;
 
@@ -2062,15 +2062,15 @@ async function loadFile (isExampleFile) {
 
 fileButton.addEventListener('click', () => {
 
-    loadFile(false);
+    loadFile();
 
 });
 
-// Handle an example file being selected
+// Handle example files being selected
 
-exampleLink.addEventListener('click', () => {
+exampleLinks[0].addEventListener('click', () => {
 
-    loadFile(true);
+    loadFile('./assets/example.WAV');
 
 });
 
