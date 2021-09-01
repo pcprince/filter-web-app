@@ -1856,7 +1856,6 @@ async function readFromFile (exampleFilePath, callback) {
         req.onload = function (e) {
 
             const arrayBuffer = req.response; // Note: not oReq.responseText
-            console.log(arrayBuffer);
             result = readWavContents(arrayBuffer);
 
             processReadResult(result, callback);
