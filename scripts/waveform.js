@@ -53,8 +53,18 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
     const halfH = h / 2;
 
     let multiplier = Math.pow(32767, -1);
+
+    // Scale in y axis to apply zoom
+
     multiplier *= yZoom;
+
+    // Scale to size of canvas
+
     multiplier *= halfH;
+
+    // Flip y axis
+
+    multiplier *= -1;
 
     const samplesPerPixel = Math.floor(length / w);
 
