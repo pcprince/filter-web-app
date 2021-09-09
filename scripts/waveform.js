@@ -1,41 +1,8 @@
 /****************************************************************************
  * waveform.js
  * openacousticdevices.info
- * June 2021
+ * September 2021
  *****************************************************************************/
-
-// Size of block samples are divided into for each peak/trough of the waveform
-
-const BLOCK_SIZE = 32;
-
-// If more than this sample count is being rendered, group into columns rather than using raw data
-
-const MAX_RAW_PLOT_LENGTH = 10000;
-
-// WebGL shaders
-
-const waveformVertexShaderText =
-[
-    'precision mediump float;',
-    '',
-    'attribute vec2 vertPosition;',
-    '',
-    'void main()',
-    '{',
-    '   gl_PointSize = 1.0;',
-    '   gl_Position = vec4(vertPosition, 0.0, 1.0);',
-    '}'
-].join('\n');
-
-const waveformFragmentShaderText =
-[
-    'precision mediump float;',
-    '',
-    'void main ()',
-    '{',
-    '   gl_FragColor = vec4(0.0, 0.3, 0.6, 1.0);',
-    '}'
-].join('\n');
 
 // Drawing canvas
 
@@ -47,168 +14,27 @@ const wavCanvas = document.getElementById('waveform-canvas');
  * @param {number} yZoom Amount to zoom in the y axis
  * @param {function} callback Function called on completion
  */
-function renderWaveform (data, yZoom, callback) {
+function renderWaveform (pointData, callback) {
 
-    // Prepare WebGL
+    const ctx = wavCanvas.getContext('2d');
 
-    /** @type {WebGLRenderingContext} */
-    let gl = wavCanvas.getContext('webgl', {preserveDrawingBuffer: true});
+    ctx.strokeStyle = '#004d99';
 
-    if (!gl) {
+    ctx.beginPath();
 
-        console.log('Loading experimental WebGL context');
-        gl = wavCanvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
+    const h = wavCanvas.height;
 
-    }
+    ctx.moveTo(0, h / 2);
 
-    if (!gl) {
+    for (let i = 0; i < pointData.length; i += 2) {
 
-        console.error('WebGL not supported by this browser');
-        return;
+        ctx.lineTo(pointData[i], pointData[i + 1]);
 
     }
 
-    gl.viewport(0, 0, wavCanvas.width, wavCanvas.height);
-
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-
-    gl.shaderSource(vertexShader, waveformVertexShaderText);
-    gl.shaderSource(fragmentShader, waveformFragmentShaderText);
-
-    gl.compileShader(vertexShader);
-    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-
-        console.error('Error compiling vertex shader', gl.getShaderInfoLog(vertexShader));
-        return;
-
-    }
-
-    gl.compileShader(fragmentShader);
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-
-        console.error('Error compiling fragment shader', gl.getShaderInfoLog(fragmentShader));
-        return;
-
-    }
-
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-
-        console.error('Error linking program', gl.getProgramInfoLog(program));
-        return;
-
-    }
-
-    // Scale data from -32767 to 32767, to -1 and 1
-
-    const multiplier = Math.pow(32767, -1);
-    const normalisedData = data.map(n => n * multiplier);
-    const width = 2.0 / normalisedData.length;
-
-    const pointData = [];
-
-    // Add start point
-
-    pointData.push(-1.0, 0.0);
-
-    for (let i = 0; i < normalisedData.length; i++) {
-
-        const x = width * i - 1.0;
-
-        let height = normalisedData[i];
-
-        if (height < 0) {
-
-            height = 0;
-
-        }
-
-        height *= yZoom;
-
-        // Is line an up or down stroke
-
-        const y = (i + 1) % 2 ? height : -height;
-
-        // Add top of peak
-
-        pointData.push(x + width / 2.0, y);
-
-        // Add line back down
-
-        pointData.push(x + width, 0.0);
-
-    }
-
-    const pointVertexBufferObject = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, pointVertexBufferObject);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointData), gl.STATIC_DRAW);
-
-    const positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
-
-    gl.vertexAttribPointer(
-        positionAttribLocation, // Attribute location
-        2, // Number of elements per attribute
-        gl.FLOAT, // Type of elements
-        gl.FALSE,
-        2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-        0 // Offset from the bgeinning of a single vertex to this attribute
-    );
-
-    gl.enableVertexAttribArray(positionAttribLocation);
-
-    // Render waveform
-
-    gl.useProgram(program);
-    gl.drawArrays(gl.LINE_STRIP, 0, pointData.length / 2);
+    ctx.stroke();
 
     callback();
-
-}
-
-/**
- * Group samples into columns, taking max of each group
- * @param {number[]} samples Samples being drawn
- * @param {number} offset Offset from start of samples array to convert
- * @param {number} length Number of samples being converted
- * @returns An array of max values for each column
- */
-function createColumns (samples, offset, length) {
-
-    // Create buffer
-
-    const blockCount = Math.ceil(length / BLOCK_SIZE);
-
-    const filteredData = new Array(blockCount).fill(0);
-
-    for (let i = 0; i < blockCount; i++) {
-
-        const blockStart = BLOCK_SIZE * i;
-        let max = 0;
-
-        for (let j = 0; j < BLOCK_SIZE; j++) {
-
-            if (blockStart + j > length) {
-
-                continue;
-
-            }
-
-            max = Math.max(max, Math.abs(samples[offset + blockStart + j]));
-
-        }
-
-        filteredData[i] = max;
-
-    }
-
-    return filteredData;
 
 }
 
@@ -222,21 +48,100 @@ function createColumns (samples, offset, length) {
  */
 function drawWaveform (samples, offset, length, yZoom, callback) {
 
-    let data;
+    const w = wavCanvas.width;
+    const h = wavCanvas.height;
+    const halfH = h / 2;
 
-    if (length < MAX_RAW_PLOT_LENGTH) {
+    let multiplier = Math.pow(32767, -1);
+    multiplier *= yZoom;
+    multiplier *= halfH;
 
-        // Convert to float array so values can be scaled between -1 and 1 later
+    const samplesPerPixel = Math.floor(length / w);
 
-        data = new Float32Array(samples.slice(offset, offset + length));
-        data = data.map(n => Math.abs(n));
+    // If one or fewer samples will be drawn per pixel
+
+    if (samplesPerPixel <= 1) {
+
+        console.log('Plotting raw sample data on waveform');
+
+        const pointData = new Array(length * 2).fill(0);
+
+        const width = w / length;
+
+        // Just draw lines between points
+
+        for (let i = 0; i < length; i++) {
+
+            // Evenly distribute points along canvas
+
+            const x = width * i;
+
+            // Get the sample
+
+            let y = samples[offset + i];
+
+            // Scale data from -32767 to 32767, to -1 and 1, scale on y axis and then scale to canvas height
+
+            y *= multiplier;
+
+            // Calculate the actual pixel height
+
+            y += halfH;
+
+            // Add to data for rendering
+
+            pointData[2 * i] = x;
+            pointData[(2 * i) + 1] = y;
+
+        }
+
+        renderWaveform(pointData, callback);
 
     } else {
 
-        data = createColumns(samples, offset, length);
+        console.log('Plotting max and min sample per pixel column on waveform');
+
+        // x and y for 2 * w points per column (max and then min)
+
+        const pointData = new Array(4 * w).fill(0);
+
+        for (let i = 0; i < w; i++) {
+
+            let max = 99999;
+            let min = 99999;
+
+            for (let j = -1; j < samplesPerPixel + 1; j++) {
+
+                let index = (i * samplesPerPixel) + j;
+
+                // Take the max and min of the samples within a pixel column, plus 1 sample either side
+
+                index = (j < 0) ? index + 1 : index;
+                index = (j >= samplesPerPixel) ? index - 1 : index;
+
+                const sample = samples[offset + index];
+
+                max = (sample > max || max === 99999) ? sample : max;
+                min = (sample < min || min === 99999) ? sample : min;
+
+            }
+
+            // Scale the heights and then offset the pixel value so they're drawn from the centre
+
+            const y0 = (max * multiplier) + halfH;
+            const y1 = (min * multiplier) + halfH;
+
+            // Add max and min to array for drawing
+
+            pointData[4 * i] = i;
+            pointData[(4 * i) + 1] = y0;
+            pointData[(4 * i) + 2] = i;
+            pointData[(4 * i) + 3] = y1;
+
+        }
+
+        renderWaveform(pointData, callback);
 
     }
-
-    renderWaveform(data, yZoom, callback);
 
 }

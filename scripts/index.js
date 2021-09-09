@@ -952,36 +952,11 @@ function drawAxisHeadings () {
  * Clear a canvas of its contents and reset all transformations
  * @param {object} canvas The canvas to be cleared
  */
-function resetCanvas (canvas, isWebGL) {
+function resetCanvas (canvas) {
 
     // Setting the width/height of a canvas in any way wipes it clean and resets the context's transformations
     // eslint-disable-next-line no-self-assign
     canvas.width = canvas.width;
-
-    if (isWebGL) {
-
-        /** @type {WebGLRenderingContext} */
-        let gl = canvas.getContext('webgl', {preserveDrawingBuffer: true});
-
-        if (!gl) {
-
-            console.log('Loading experimental WebGL context');
-            gl = canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
-
-        }
-
-        if (!gl) {
-
-            console.error('WebGL not supported by this browser');
-            return;
-
-        }
-
-        gl.viewport(0, 0, canvas.width, canvas.height);
-
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    }
 
 }
 
@@ -1085,7 +1060,7 @@ function drawThresholdLines () {
     const w = waveformThresholdLineCanvas.width;
     const h = waveformThresholdLineCanvas.height;
 
-    resetCanvas(waveformThresholdLineCanvas, false);
+    resetCanvas(waveformThresholdLineCanvas);
 
     thresholdCtx.strokeStyle = 'grey';
     thresholdCtx.lineWidth = 1;
@@ -1192,9 +1167,9 @@ function drawLoadingImage (canvas) {
  */
 function drawLoadingImages () {
 
-    resetCanvas(spectrogramCanvas, false);
+    resetCanvas(spectrogramCanvas);
     drawLoadingImage(spectrogramThresholdCanvas);
-    resetCanvas(waveformCanvas, true);
+    resetCanvas(waveformCanvas);
     drawLoadingImage(waveformThresholdCanvas);
 
 }
@@ -1208,10 +1183,13 @@ function drawWaveformPlotAndReenableUI (samples) {
     const startSample = Math.ceil(Math.abs(offset) * sampleRate);
 
     console.log('Drawing waveform');
+
+    resetCanvas(waveformCanvas);
+
     drawWaveform(samples, startSample, displayedSampleCount, waveformZoomY, () => {
 
-        resetCanvas(waveformThresholdCanvas, false);
-        resetCanvas(waveformThresholdLineCanvas, false);
+        resetCanvas(waveformThresholdCanvas);
+        resetCanvas(waveformThresholdLineCanvas);
 
         if (amplitudethresholdCheckbox.checked) {
 
@@ -1260,7 +1238,7 @@ function drawPlots (samples) {
 
     drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async () => {
 
-        resetCanvas(spectrogramThresholdCanvas, false);
+        resetCanvas(spectrogramThresholdCanvas);
 
         drawWaveformPlotAndReenableUI(samples);
 
@@ -1811,10 +1789,10 @@ function processReadResult (result, callback) {
 
         // Clear plots
 
-        resetCanvas(spectrogramThresholdCanvas, false);
-        resetCanvas(spectrogramCanvas, false);
-        resetCanvas(waveformThresholdCanvas, false);
-        resetCanvas(waveformCanvas, true);
+        resetCanvas(spectrogramThresholdCanvas);
+        resetCanvas(spectrogramCanvas);
+        resetCanvas(waveformThresholdCanvas);
+        resetCanvas(waveformCanvas);
 
         callback();
 
@@ -2010,7 +1988,7 @@ async function loadFile (exampleFilePath) {
 
         resetTransformations();
 
-        resetCanvas(waveformThresholdLineCanvas, false);
+        resetCanvas(waveformThresholdLineCanvas);
 
         drawLoadingImages();
 
@@ -2411,7 +2389,7 @@ amplitudethresholdCheckbox.addEventListener('change', () => {
 
     } else {
 
-        resetCanvas(waveformThresholdLineCanvas, false);
+        resetCanvas(waveformThresholdLineCanvas);
 
     }
 
@@ -2575,7 +2553,7 @@ function playAnimation () {
 
     const x = progress * waveformW;
 
-    resetCanvas(waveformPlaybackCanvas, false);
+    resetCanvas(waveformPlaybackCanvas);
 
     waveformCtx.strokeStyle = 'red';
     waveformCtx.lineWidth = 1;
@@ -2589,7 +2567,7 @@ function playAnimation () {
     const spectrogramCtx = spectrogramPlaybackCanvas.getContext('2d');
     const spectrogramH = spectrogramPlaybackCanvas.height;
 
-    resetCanvas(spectrogramPlaybackCanvas, false);
+    resetCanvas(spectrogramPlaybackCanvas);
 
     spectrogramCtx.strokeStyle = 'red';
     spectrogramCtx.lineWidth = 1;
@@ -2648,8 +2626,8 @@ function stopEvent () {
 
     // Clear canvases
 
-    resetCanvas(waveformPlaybackCanvas, false);
-    resetCanvas(spectrogramPlaybackCanvas, false);
+    resetCanvas(waveformPlaybackCanvas);
+    resetCanvas(spectrogramPlaybackCanvas);
 
     // Update playing status
 
