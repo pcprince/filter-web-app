@@ -1448,11 +1448,11 @@ function panLeft () {
 }
 
 /**
- * Reset zoom level and pan offset
+ * Reset zoom level and pan offset for the x axis
  */
 function resetNavigation () {
 
-    resetTransformations();
+    resetXTransformations();
     sampleRateChange();
     updatePlots(false);
 
