@@ -8,6 +8,9 @@
 
 const wavCanvas = document.getElementById('waveform-canvas');
 
+const WAV_PIXEL_WIDTH = wavCanvas.width;
+const WAV_PIXEL_HEIGHT = wavCanvas.height;
+
 /**
  * Draw the waveform plot
  * @param {number[]} data Absolute values of samples to be plotted. Either raw data or grouped into columns.
@@ -23,9 +26,7 @@ function renderRawWaveform (pointData, callback) {
 
     ctx.beginPath();
 
-    const h = wavCanvas.height;
-
-    ctx.moveTo(0, h / 2);
+    ctx.moveTo(0, WAV_PIXEL_HEIGHT / 2);
 
     let prevX = -1;
     let prevY = -1;
@@ -57,16 +58,13 @@ function renderRawWaveform (pointData, callback) {
  */
 function renderWaveform (data, callback) {
 
-    const w = wavCanvas.width;
-    const h = wavCanvas.height;
-
     const ctx = wavCanvas.getContext('2d');
 
-    const id = ctx.getImageData(0, 0, w, h);
+    const id = ctx.getImageData(0, 0, WAV_PIXEL_WIDTH, WAV_PIXEL_HEIGHT);
 
     const pixels = id.data;
 
-    for (let i = 0; i < w; i++) {
+    for (let i = 0; i < WAV_PIXEL_WIDTH; i++) {
 
         const y0 = data[2 * i];
         const y1 = data[(2 * i) + 1];
@@ -76,7 +74,7 @@ function renderWaveform (data, callback) {
 
         for (let j = min; j <= max; j++) {
 
-            const index = j * (w * 4) + i * 4;
+            const index = j * (WAV_PIXEL_WIDTH * 4) + i * 4;
 
             pixels[index] = 0;
             pixels[index + 1] = 77;
@@ -103,9 +101,7 @@ function renderWaveform (data, callback) {
  */
 function drawWaveform (samples, offset, length, yZoom, callback) {
 
-    const w = wavCanvas.width;
-    const h = wavCanvas.height;
-    const halfH = h / 2;
+    const halfHeight = WAV_PIXEL_HEIGHT / 2;
 
     let multiplier = Math.pow(32767, -1);
 
@@ -115,13 +111,13 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
     // Scale to size of canvas
 
-    multiplier *= halfH;
+    multiplier *= halfHeight;
 
     // Flip y axis
 
     multiplier *= -1;
 
-    const samplesPerPixel = Math.floor(length / w);
+    const samplesPerPixel = length / WAV_PIXEL_WIDTH;
 
     // If one or fewer samples will be drawn per pixel
 
@@ -131,7 +127,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         const pointData = new Array(length * 2).fill(0);
 
-        const width = w / length;
+        const width = WAV_PIXEL_WIDTH / length;
 
         // Just draw lines between points
 
@@ -151,7 +147,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
             // Calculate the actual pixel height
 
-            y += halfH;
+            y += halfHeight;
 
             // Add to data for rendering
 
@@ -166,40 +162,37 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         console.log('Plotting max and min sample per pixel column on waveform');
 
-        // x and y for 2 * w points per column (max and then min)
+        // Array to store the max and min y for each x
 
-        const pointData = new Array(2 * w).fill(0);
+        const pointData = new Array(2 * WAV_PIXEL_WIDTH).fill(0);
 
-        for (let i = 0; i < w; i++) {
+        for (let i = 0; i < WAV_PIXEL_WIDTH; i++) {
 
             let max = 99999;
             let min = 99999;
 
+            // Take the max and min of the samples within a pixel column, plus 1 sample either side
+
             for (let j = -1; j < samplesPerPixel + 1; j++) {
 
-                let index = (i * samplesPerPixel) + j;
+                let index = Math.round(offset + (i * samplesPerPixel) + j);
 
-                // Take the max and min of the samples within a pixel column, plus 1 sample either side
+                // Handle start and end of samples
 
-                index = (j < 0) ? index + 1 : index;
-                index = (j >= samplesPerPixel) ? index - 1 : index;
+                index = (index < 0) ? 0 : index;
+                index = (index >= samples.length) ? samples.length - 1 : index;
 
-                const sample = samples[offset + index];
+                const sample = samples[index];
 
                 max = (sample > max || max === 99999) ? sample : max;
                 min = (sample < min || min === 99999) ? sample : min;
 
             }
 
-            // Scale the heights and then offset the pixel value so they're drawn from the centre
+            // Scale the heights between the top and bottom of the canvas
 
-            const y0 = Math.round(max * multiplier) + halfH;
-            const y1 = Math.round(min * multiplier) + halfH;
-
-            // Add max and min to array for drawing
-
-            pointData[2 * i] = y0;
-            pointData[(2 * i) + 1] = y1;
+            pointData[2 * i] = Math.round(max * multiplier) + halfHeight;
+            pointData[(2 * i) + 1] = Math.round(min * multiplier) + halfHeight;
 
         }
 

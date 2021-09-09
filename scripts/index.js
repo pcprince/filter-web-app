@@ -2204,8 +2204,6 @@ function handleMouseUp (dragEndX) {
 
         }
 
-        console.log(dragStartX, dragEndX);
-
         // Clear zoom overlay canvases
 
         const specCtx = spectrogramDragCanvas.getContext('2d');
@@ -2770,4 +2768,4 @@ if (!isChrome) {
 
 }
 
-// TODO: Check waveform alignment
+// TODO: Double click to zoom x2 with centre on clicked location
