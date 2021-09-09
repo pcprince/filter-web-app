@@ -178,6 +178,7 @@ const playButton = document.getElementById('play-button');
 const playIcon = document.getElementById('play-icon');
 const stopIcon = document.getElementById('stop-icon');
 
+const playbackSpeedDiv = document.getElementById('playback-speed-div');
 const playbackSpeedSlider = new Slider('#playback-speed-slider', {
     ticks_labels: ['x1/16', 'x1/8', 'x1/4', 'x1/2', 'x1', 'x2'],
     ticks: [0, 1, 2, 3, 4, 5],
@@ -788,8 +789,7 @@ function drawAxisLabels () {
 
         // Round to correct number of decimal places
 
-        let decimalPlaces = (labelIncrement < 0.01) ? 3 : 2;
-        decimalPlaces = (labelIncrement < 0.001) ? 4 : decimalPlaces;
+        const decimalPlaces = (labelIncrement < 0.01) ? 4 : 2;
 
         const labelText = label.toFixed(decimalPlaces);
 
@@ -1105,7 +1105,7 @@ function drawThresholdedPeriods () {
 
     waveformCtx.resetTransform();
 
-    waveformCtx.fillStyle = 'lightgray';
+    waveformCtx.fillStyle = 'white';
     waveformCtx.globalAlpha = 0.75;
 
     spectrogramCtx.resetTransform();
@@ -1225,7 +1225,7 @@ function drawWaveformPlotAndReenableUI (samples) {
         exportButton.disabled = false;
 
         playButton.disabled = false;
-        playbackSpeedSlider.enable();
+        enablePlaybackSpeedSlider();
 
     });
 
@@ -1255,6 +1255,48 @@ function drawPlots (samples) {
 function getDisplayedSampleCount () {
 
     return Math.ceil(sampleCount / zoom);
+
+}
+
+/**
+ * Disable playback slider and change CSS to display disabled cursor on hover
+ */
+function disablePlaybackSpeedSlider () {
+
+    playbackSpeedSlider.disable();
+
+    const children = playbackSpeedDiv.getElementsByTagName('*');
+
+    for (let i = 0; i < children.length; i++) {
+
+        if (children[i].style) {
+
+            children[i].style.cursor = 'not-allowed';
+
+        }
+
+    }
+
+}
+
+/**
+ * Enable playback slider and reset CSS cursor
+ */
+function enablePlaybackSpeedSlider () {
+
+    playbackSpeedSlider.enable();
+
+    const children = playbackSpeedDiv.getElementsByTagName('*');
+
+    for (let i = 0; i < children.length; i++) {
+
+        if (children[i].style) {
+
+            children[i].style.cursor = '';
+
+        }
+
+    }
 
 }
 
@@ -1289,7 +1331,7 @@ function disableUI () {
     exportButton.disabled = true;
 
     playButton.disabled = true;
-    playbackSpeedSlider.disable();
+    disablePlaybackSpeedSlider();
 
 }
 
@@ -2176,7 +2218,7 @@ function handleMouseUp (dragEndX) {
         let newZoom = zoom / (Math.abs(dragStartX - dragEndX) / spectrogramDragCanvas.width);
 
         const totalLength = sampleCount / sampleRate;
-        const displayedTime = totalLength / zoom;
+        let displayedTime = totalLength / zoom;
 
         const dragLeft = Math.min(dragStartX, dragEndX);
         const dragRight = Math.max(dragStartX, dragEndX);
@@ -2191,9 +2233,11 @@ function handleMouseUp (dragEndX) {
 
         } else {
 
-            // Don't zoom any further, just centre plot on selected centre
+            // Zoom to max zoom level and centre plot on selected centre
 
-            newZoom = zoom;
+            newZoom = maxZoom;
+
+            displayedTime = totalLength / newZoom;
 
             const dragDiff = dragRight - dragLeft;
             const dragCentre = dragLeft + (dragDiff / 2);
@@ -2609,7 +2653,7 @@ function stopEvent () {
     exportButton.disabled = false;
 
     playButton.disabled = false;
-    playbackSpeedSlider.enable();
+    enablePlaybackSpeedSlider();
 
     updateWaveformYUI();
     updateNavigationUI();
@@ -2656,7 +2700,7 @@ playButton.addEventListener('click', () => {
         disableUI();
         disableWaveformYAxisUI();
         playButton.disabled = false;
-        playbackSpeedSlider.disable();
+        disablePlaybackSpeedSlider();
 
         // Switch from play icon to stop icon
 
@@ -2683,7 +2727,7 @@ playButton.addEventListener('click', () => {
 
         const playbackRate = getPlaybackRate();
 
-        playAudio(samples, startSample, displayedSampleCount, sampleRate, playbackRate, stopEvent);
+        playAudio(samples, thresholdPeriods, startSample, displayedSampleCount, sampleRate, playbackRate, stopEvent);
 
         // Start animation loop
 
@@ -2725,3 +2769,5 @@ if (!isChrome) {
     }
 
 }
+
+// TODO: Check waveform alignment

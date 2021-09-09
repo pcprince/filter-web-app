@@ -56,7 +56,7 @@ function resample (audioBuffer, targetSampleRate, onComplete) {
  * @param {number} sampleRate Sample rate of audio
  * @param {function} endEvent Callback for when playback ends or is manually stopped
  */
-function playAudio (samples, start, length, sampleRate, playbackRate, endEvent) {
+function playAudio (samples, thresholdPeriods, start, length, sampleRate, playbackRate, endEvent) {
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioContext = new AudioContext();
@@ -67,7 +67,23 @@ function playAudio (samples, start, length, sampleRate, playbackRate, endEvent) 
 
     for (let i = 0; i < length; i++) {
 
-        nowBuffering[i] = scaleValue(samples[start + i], -32768, 32768);
+        const index = start + i;
+
+        let thresholded = false;
+
+        for (let j = 0; j < thresholdPeriods.length; j++) {
+
+            if (index >= thresholdPeriods[j].start && index <= thresholdPeriods[j].start + thresholdPeriods[j].length) {
+
+                thresholded = true;
+
+                break;
+
+            }
+
+        }
+
+        nowBuffering[i] = thresholded ? 0 : scaleValue(samples[index], -32768, 32768);
 
     }
 
