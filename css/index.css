@@ -60,6 +60,7 @@ input::-webkit-inner-spin-button {
 
 #playback-speed-slider .slider-tick {
   background: lightgray;
+  opacity: 1.0;
 }
 
 .wrapper {
