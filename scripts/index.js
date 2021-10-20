@@ -815,7 +815,7 @@ function updateGoertzelFilterLabel () {
 
     const currentGoertzelSliderLower = Math.min(...goertzelFilterSlider.getValue()) / 1000;
     const currentGoertzelSliderHigher = Math.max(...goertzelFilterSlider.getValue()) / 1000;
-    filterLabel.textContent = 'Recordings will be filtered to frequencies between ' + currentGoertzelSliderLower.toFixed(1) + ' and ' + currentGoertzelSliderHigher.toFixed(1) + ' kHz.';
+    goertzelFilterLabel.textContent = 'Recordings will be filtered to frequencies between ' + currentGoertzelSliderLower.toFixed(1) + ' and ' + currentGoertzelSliderHigher.toFixed(1) + ' kHz.';
 
 }
 
@@ -835,6 +835,8 @@ function updateGoertzelFilterUI () {
         goertzelFilterMaxLabel.style.color = '';
         goertzelFilterMinLabel.style.color = '';
 
+        goertzelFilterLabel.style.color = '';
+
     } else {
 
         goertzelFilterWindowTable.style.color = '#D3D3D3';
@@ -848,6 +850,8 @@ function updateGoertzelFilterUI () {
         disableSlider(goertzelFilterSlider, goertzelFilterSliderHolder);
         goertzelFilterMaxLabel.style.color = '#D3D3D3';
         goertzelFilterMinLabel.style.color = '#D3D3D3';
+
+        goertzelFilterLabel.style.color = '#D3D3D3';
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
@@ -3459,5 +3463,3 @@ if (!isChrome) {
 }
 
 loadExampleFiles();
-
-// TODO: Implement some way of switching between dragging modes for amplitude threshold selection and Goertzel filter selection
