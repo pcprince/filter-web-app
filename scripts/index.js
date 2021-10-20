@@ -2853,8 +2853,9 @@ for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
 
 function handleGoertzelFilterChange () {
 
-    // TODO: Draw Goertzel filter plot
+    updateGoertzelFilterLabel();
 
+    // TODO: Draw Goertzel filter plot
     console.log('handleGoertzelFilterChange()');
 
 }
