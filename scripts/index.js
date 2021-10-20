@@ -256,7 +256,6 @@ let skippingXCoords = [];
 // Goertzel filter UI
 
 const goertzelFilterSlider = new Slider('#goertzel-filter-slider', {});
-const goertzelFilterRow = document.getElementById('goertzel-filter-row');
 const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
 const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
 const goertzelFilterSliderHolder = document.getElementById('goertzel-filter-slider-holder');
