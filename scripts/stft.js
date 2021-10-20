@@ -32,10 +32,6 @@ function STFT (pixelWidth, pixelHeight) {
 
     this._csize = this._size << 1;
 
-    // Generate internal padding array
-
-    this._padding = new Array(8).fill(0);
-
     // Generate internal ouput arrays
 
     this._out = new Array(this._csize);
@@ -55,6 +51,18 @@ function STFT (pixelWidth, pixelHeight) {
     }
 
     this._table = table;
+
+    // Generate Hann window coefficients
+
+    const coefficients = new Array(this._size);
+
+    for (let i = 0; i < coefficients.length; i += 1) {
+
+        coefficients[i] = Math.sin(Math.PI * i / (coefficients.length - 1));
+
+    }
+
+    this._coefficients = coefficients;
 
     // Find size in power of twos
 
@@ -104,7 +112,9 @@ STFT.prototype.calculate = function calculateSync (data, offset, length, out) {
 
             const constrainedStart = Math.max(0, Math.min(data.length - this._size, start));
 
-            this._realTransform4(constrainedStart);
+            this._start = constrainedStart;
+
+            this._realTransform4();
 
             for (let k = 0; k < this._pixelHeight; k += 1) {
 
@@ -131,7 +141,7 @@ STFT.prototype.calculate = function calculateSync (data, offset, length, out) {
 
 };
 
-STFT.prototype._realTransform4 = function _realTransform4 (start) {
+STFT.prototype._realTransform4 = function _realTransform4 () {
 
     const out = this._out;
     const size = this._csize;
@@ -146,7 +156,7 @@ STFT.prototype._realTransform4 = function _realTransform4 (start) {
 
         for (let outOff = 0, t = 0; outOff < size; outOff += len, t++) {
 
-            this._singleRealTransform2(outOff, start + (bitrev[t] >>> 1), step >>> 1);
+            this._singleRealTransform2(outOff, bitrev[t] >>> 1, step >>> 1);
 
         }
 
@@ -154,7 +164,7 @@ STFT.prototype._realTransform4 = function _realTransform4 (start) {
 
         for (let outOff = 0, t = 0; outOff < size; outOff += len, t++) {
 
-            this._singleRealTransform4(outOff, start + (bitrev[t] >>> 1), step >>> 1);
+            this._singleRealTransform4(outOff, bitrev[t] >>> 1, step >>> 1);
 
         }
 
@@ -275,8 +285,8 @@ STFT.prototype._singleRealTransform2 = function _singleRealTransform2 (outOff, o
     const out = this._out;
     const data = this._data;
 
-    const evenR = data[off];
-    const oddR = data[off + step];
+    const evenR = data[this._start + off] * this._coefficients[off];
+    const oddR = data[this._start + off + step] * this._coefficients[off + step];
 
     const leftR = evenR + oddR;
     const rightR = evenR - oddR;
@@ -295,10 +305,10 @@ STFT.prototype._singleRealTransform4 = function _singleRealTransform4 (outOff, o
     const out = this._out;
     const data = this._data;
 
-    const Ar = data[off];
-    const Br = data[off + step];
-    const Cr = data[off + 2 * step];
-    const Dr = data[off + 3 * step];
+    const Ar = data[this._start + off] * this._coefficients[off];
+    const Br = data[this._start + off + step] * this._coefficients[off + step];
+    const Cr = data[this._start + off + 2 * step] * this._coefficients[off + 2 * step];
+    const Dr = data[this._start + off + 3 * step] * this._coefficients[off + 3 * step];
 
     const T0r = Ar + Cr;
     const T1r = Ar - Cr;

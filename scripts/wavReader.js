@@ -4,6 +4,8 @@
  * June 2021
  *****************************************************************************/
 
+const MAX_FILE_SIZE = 488 + 2 * 60 * 384000;
+
 /* WAV header constants */
 
 const UINT16_LENGTH = 2;
@@ -264,13 +266,24 @@ function readWavContents (contents) {
 
     let trimmed = false;
 
-    if ((contents.byteLength / 2) - LENGTH_OF_WAV_HEADER > maxSamples) {
+    const sampleCount = (contents.byteLength - LENGTH_OF_WAV_HEADER) / 2;
+
+    if (sampleCount > maxSamples) {
 
         console.log('Trimming to initial 60 seconds of recording');
 
         trimmed = true;
 
         samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER, maxSamples);
+
+    } else if (sampleCount <= 0) {
+
+        return {
+            success: false,
+            error: 'Input file has no audio samples.',
+            header: null,
+            samples: null
+        };
 
     } else {
 
@@ -297,6 +310,18 @@ async function readWav (fileHandler) {
     try {
 
         file = await fileHandler.getFile();
+
+        if (file.size > MAX_FILE_SIZE) {
+
+            return {
+                success: false,
+                error: 'File is too large. Use the Split function in the AudioMoth Configuration App to split your recording into 60 second sections.',
+                header: null,
+                samples: null
+            };
+
+        }
+
         contents = await file.arrayBuffer();
 
     } catch (e) {

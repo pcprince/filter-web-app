@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Filter web app</title>
+        <title>AudioMoth Filter Playground</title>
+        <link rel="icon" type="image/png" href="assets/favicon.png">
         <link rel="stylesheet" href="css/external/bootstrap.min.css">
-        <link rel="stylesheet" href="css/index.css">
         <link rel="stylesheet" href="css/external/bootstrap-slider.css">
+        <link rel="stylesheet" href="css/index.css">
     </head>
     <body style="font-size: 10pt;">
         <div class="container-fluid" style="padding: 11px; margin-left: 0px; margin-right: 0px;">
@@ -22,9 +23,9 @@
             <div id="browser-error-display" class="row justify-content-md-center" style="display: none; margin-top: 15px;">
                 <div class="col total-width">
                     <div class="card text-white bg-danger mb-3" style="width: 100%;">
-                        <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>Current browser is not supported.</b></div>
+                        <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>Current browser is not fully supported.</b></div>
                         <div class="card-body" style="padding-top: 10px; padding-bottom: 10px;">
-                            <p class="card-text">Switch to Google Chrome to use this web app.</p>
+                            <p class="card-text">Switch to Google Chrome to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline; color: white; font-weight: bold;">example files</a>.</p>
                         </div>
                     </div>
                 </div>
@@ -32,18 +33,19 @@
 
             <!-- File selection description -->
 
-            <div class="row justify-content-md-center" style="margin-top: 5px;">
+            <div id="file-selection-title-div" class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
-                    <span>Select a file up to 60 seconds in length:</span>
+                    <span>Select an AudioMoth WAV file up to 60 seconds in length:</span>
                 </div>
             </div>
 
             <!-- File selection -->
 
-            <div class="row justify-content-md-center" style="margin-top: 10px;">
+            <div id="file-selection-div" class="row justify-content-md-center" style="margin-top: 10px;">
                 <div class="col total-width">
                     <button class="btn btn-primary" id="file-button" style="vertical-align: middle;">Select File</button>
-                    <span id="file-span" style="margin-left: 10px; vertical-align: middle;">No .WAV file selected.</span>
+                    <button class="btn btn-primary" id="disabled-file-button" style="vertical-align: middle; display: none;" disabled>Select File</button>
+                    <span id="file-span" style="margin-left: 10px; vertical-align: middle;">No WAV file selected.</span>
                     <span id="trimmed-span" style="color: red; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">File has been trimmed to initial 60 seconds.</span>
                 </div>
             </div>
@@ -77,10 +79,10 @@
                                 <button class="btn btn-primary nav-button" id="waveform-zoom-out-button" disabled>
                                     <img class="button-icon" src="./assets/zoom-out.svg" alt="Bootstrap">
                                 </button>
-                                <select id="amplitude-threshold-scale-select" style="vertical-align: middle; height: 35px;">
-                                    <option value="0">16-Bit</option>
-                                    <option value="1">Decibel</option>
-                                    <option value="2" selected="selected">Percentage</option>
+                                <select class="custom-select" id="amplitude-threshold-scale-select" style="vertical-align: middle; height: 35px; width: 120px; font-size: 10pt;">
+                                    <option value="1">16-Bit</option>
+                                    <option value="2">Decibel</option>
+                                    <option value="0" selected>Percentage</option>
                                 </select>
                             </div>
                             <div class="col" style="text-align: right; padding-left: 0px;">
@@ -118,6 +120,7 @@
                             <canvas class="plot-canvas" id="waveform-threshold-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="waveform-threshold-line-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="waveform-playback-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="waveform-loading-svg" width="750" height="200"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
                             <canvas class="plot-canvas" id="waveform-drag-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
@@ -128,8 +131,20 @@
                             <canvas class="plot-canvas" id="spectrogram-canvas" width="748" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="spectrogram-playback-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="spectrogram-loading-svg" width="750" height="257"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
                             <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top: 10px; height: 258px; text-align: center;">
+                        <div class="wrapper" style="width: 793px; height: 256px;">
+                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="257" style="padding: 0%;"></svg>
+                            <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-playback-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="goertzel-loading-svg" width="750" height="257"></svg>
+                            <!-- Drag canvas must be on top or it's not draggable -->
+                            <canvas class="plot-canvas" id="goertzel-drag-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
                     <div class="row" style="margin-top: 0%; text-align: center;">
@@ -137,21 +152,6 @@
                     </div>
                     <div class="row" style="margin-top: 0%; text-align: center;">
                         <svg id="time-axis-heading-svg" width="780" height="20" style="padding: 0%; margin-left: 30px;"></svg>
-                    </div>
-
-                    <!-- Save plots buttons -->
-
-                    <div class="row" style="margin-top: 10px; text-align: center;">
-                        <div class="col-1">
-                            <button class="btn btn-success nav-button" id="play-button" disabled style="margin-right: 15px;">
-                                <img id="play-icon" class="button-icon" src="./assets/play.svg" alt="Bootstrap">
-                                <img id='stop-icon' class="button-icon" src="./assets/stop.svg" alt="Bootstrap" style="display: none;">
-                            </button>
-                        </div>
-                        <div id='playback-speed-div' class="col-5" style="padding-top: 5px; padding-right: 60px;">
-                            <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
-                        </div>
-                        <div class="col-6" style="padding-left: 0px;"></div>
                     </div>
 
                 </div>
@@ -165,7 +165,7 @@
                             <div style="border: #cdcdcd thin solid; width: 100%;">
                                 <div class="row" style="margin-top: 8px;">
                                     <div class="col-8" style="text-align: left;">
-                                        <span style="margin-left: 17px; color: grey;" id="filter-checkbox-label">Enable filtering:</span>
+                                        <span style="margin-left: 17px; color: #D3D3D3;" id="filter-checkbox-label">Enable filtering:</span>
                                     </div>
                                     <div class="col-4" style="text-align: right;">
                                         <input id="filter-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
@@ -214,8 +214,8 @@
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
                                         <span class="settings-text" id="high-pass-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                     </div>
-                                    <div class="col-8" title="The cut-off frequency of the high-pass filter." style="padding-left: 0px; padding-right: 0px;">
-                                        <input id="high-pass-filter-slider" data-slider-id="high-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="18000" style="width: 100%;">
+                                    <div id="high-pass-filter-slider-holder" class="col-8 config-slider" title="The cut-off frequency of the high-pass filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <input id="high-pass-filter-slider" data-slider-id="high-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="18000" data-slider-selection="after" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="high-pass-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
@@ -227,8 +227,8 @@
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
                                         <span class="settings-text" id="low-pass-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                     </div>
-                                    <div class="col-8" title="The cut-off frequency of the low-pass filter." style="padding-left: 0px; padding-right: 0px;">
-                                        <input id="low-pass-filter-slider" data-slider-id="low-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="6000" style="width: 100%;">
+                                    <div id="low-pass-filter-slider-holder" class="col-8 config-slider" title="The cut-off frequency of the low-pass filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <input id="low-pass-filter-slider" data-slider-id="low-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="6000" data-slider-selection="before" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="low-pass-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
@@ -240,8 +240,8 @@
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
                                         <span class="settings-text" id="band-pass-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                     </div>
-                                    <div class="col-8" title="The low and high cut-off frequencies of the band-pass filter." style="padding-left: 0px; padding-right: 0px;">
-                                        <input id="band-pass-filter-slider" data-slider-id="band-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" style="width: 100%;">
+                                    <div id="band-pass-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the band-pass filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <input id="band-pass-filter-slider" data-slider-id="band-pass-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" data-slider-selection="before" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="band-pass-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
@@ -251,7 +251,7 @@
                             
                                 <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
                                     <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="filter-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">Recordings will be filtered to frequencies above 0.0 kHz.</label>
+                                        <label class="settings-text" id="filter-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">Recordings will not be filtered.</label>
                                     </div>
                                 </div>
                             
@@ -266,7 +266,7 @@
                             <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
                                 <div class="row" style="margin-top: 8px;">
                                     <div class="col-6" style="text-align: left;">
-                                        <span id="amplitude-threshold-checkbox-label" class="settings-text" style="margin-left: 17px; color: grey;">Enable amplitude threshold:</span>
+                                        <span id="amplitude-threshold-checkbox-label" class="settings-text" style="margin-left: 17px; color: #D3D3D3;">Enable amplitude threshold:</span>
                                     </div>
                                     <div class="col-6" style="text-align: right;">
                                         <input class="settings-inputs" id="amplitude-threshold-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
@@ -324,8 +324,8 @@
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
                                         <span class="settings-text" id="amplitude-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                     </div>
-                                    <div class="col-8" style="padding-left: 0%; padding-right: 0%;" title="The amplitude threshold below which audio is not written to the SD card.">
-                                        <input class="settings-inputs" id="amplitude-threshold-slider" data-slider-id="amplitude-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" style="width: 100%;">
+                                    <div id="amplitude-threshold-slider-holder" class="col-8 config-slider" style="padding-left: 0%; padding-right: 0%;" title="The amplitude threshold below which audio is not written to the SD card.">
+                                        <input class="settings-inputs" id="amplitude-threshold-slider" data-slider-id="amplitude-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" data-slider-selection="after" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="amplitude-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
@@ -334,7 +334,90 @@
 
                                 <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
                                     <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a .WAV file.</label>
+                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a WAV file.</label>
+                                    </div>
+                                </div>
+                            
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Goertzel filter -->
+
+                    <div class="row" style="margin-top: 5px;">
+                        <div class="col-12">
+                            <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
+                                <div class="row" style="margin-top: 8px;">
+                                    <div class="col-6" style="text-align: left;">
+                                        <span id="goertzel-filter-checkbox-label" class="settings-text" style="margin-left: 17px; color: #D3D3D3;">Enable Goertzel filter:</span>
+                                    </div>
+                                    <div class="col-6" style="text-align: right;">
+                                        <input class="settings-inputs" id="goertzel-filter-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
+                                    </div>
+                                </div>
+                            
+                                <div class="row" style="margin-top: 14px; margin-bottom: 8px;">
+                                    <div class="col-12">
+                                        <div style="margin-left: 5px; margin-right: 4px">
+                                            <table class="table" style="margin-bottom: 4px;" id="goertzel-filter-window-table">
+                                                <tr class="settings-text" style="font-size: 12px;" title="Minimum trigger length.">
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;"></td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">64</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">128</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">256</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">512</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">1024</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">2048</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">4096</td>
+                                                    <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">8192</td>
+                                                </tr>
+                                                <tr class="settings-text" title="Window length.">
+                                                    <td align="left" style="padding-top: 0px; padding-bottom: 0px;">Window length (samples):</td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio0" value="0" name="goertzel-filter-window-radio" checked>
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio1" value="1" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio2" value="2" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio3" value="3" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio4" value="4" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio5" value="5" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="6" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="7" name="goertzel-filter-window-radio">
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            
+                                <div class="row" id="goertzel-filter-row" style="margin-top: 8px; margin-bottom: 8px; display: flex; align-items: center;">
+                                    <div class="col-2" style="text-align: left; padding-right: 0px;">
+                                        <span class="settings-text" id="goertzel-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
+                                    </div>
+                                    <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" data-slider-selection="before" style="width: 370px;">
+                                    </div>
+                                    <div class="col-2" style="text-align: right;">
+                                        <span class="settings-text" id="goertzel-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
+                                    </div>
+                                </div>
+
+                                <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
+                                    <div class="col-12" style="margin-left: 16px;">
+                                        <label class="settings-text" id="goertzel-filter-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">Recordings will not be filtered.</label>
                                     </div>
                                 </div>
                             
@@ -344,17 +427,20 @@
 
                     <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 15px;">
                         <div class="row" style="margin-top: 5px; margin-bottom: 5px;">
-                            <div class="col-12" id="life-display-holder" style="height: 40px;">
-                                <label id="life-display-panel" style="width: 100%; resize:none; text-align: center; font-weight: normal;">No .WAV file selected.</label>
+                            <div class="col-12">
+                                <div style="display: table-cell; vertical-align: middle; width: 543px; height: 58px; text-align: center;">
+                                    <label id="size-information-panel" style="width: 100%; resize:none; text-align: center; font-weight: normal;">No WAV file selected.</label>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="row" style="margin-top: 15px;">
-                        <div class="col-6">
+                        <!-- <div class="col-6"> -->
+                        <div class="col-12">
                             <button class="btn btn-primary" id="reset-button" style="width: 100%;" disabled>Reset</button>
                         </div>
-                        <div class="col-6">
+                        <div class="col-6" style="display: none;">
                             <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export Configuration</button>
                         </div>
                     </div>
@@ -363,25 +449,71 @@
                 </div>
             </div>
 
-            <div class="row justify-content-md-center" style="margin-top: 50px;">
+            <div class="row justify-content-md-center" style="margin-top: 5px;">
+                <div class="col plot-width" style="padding: 0px;">
+                    <div class="wrapper" style="width: 793px;">
+                        <div class="row">
+                            <div class="col-1">
+                                <button class="btn btn-success nav-button" id="play-button" disabled style="margin-right: 15px; margin-left: 5px;">
+                                    <img id="play-icon" class="button-icon" src="./assets/play.svg" alt="Bootstrap">
+                                    <img id='stop-icon' class="button-icon" src="./assets/stop.svg" alt="Bootstrap" style="display: none;">
+                                </button>
+                            </div>
+                            <div class="col-3" style="padding: 0px; text-align: left;">
+                                <select class="custom-select" id="playback-mode-select" style="vertical-align: middle; width: 185px; height: 35px; font-size: 10pt;">
+                                    <option id="playback-mode-option-all" value="0" selected="selected">Play original WAV file</option>
+                                    <option id="playback-mode-option-mute" value="1">Play resulting T.WAV file</option>
+                                    <option id="playback-mode-option-skip" value="2">Play expanded T.WAV file</option>
+                                </select>
+                            </div>
+                            <div id='playback-speed-div' class="col-4 playback-slider" style="padding-top: 5px;">
+                                <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
+                            </div>
+                            <div class="col-4" style="padding-left: 0px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col control-width control-margin" style="padding-left: 0px;"></div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 15px;">
+                <div class="col total-width">
+                    <h3 id="instructions">Instructions</h3>
+                </div>
+            </div>
+            <div class="row justify-content-md-center" style="margin-top: 15px;">
+                <div class="col total-width">
+                    <p>The AudioMoth Filter Playground allows you to explore filter and amplitude threshold settings on existing AudioMoth WAV files before applying them in the files.</p>
+                    
+                    <p>Select a file recorded on an AudioMoth which is up to 60 seconds in length. Longer files, up to 43.9 MB, will still load but will be truncated. Once the file has loaded, you can navigate through your recording using the buttons above the plot, or by clicking and dragging to select the area you wish to see in detail. You can also double click on either plot to zoom in and centre on specific features of interest.</p>
+                    
+                    <p>Add a low, high, or band pass filter using the controls on the right; ticking the checkbox to enable the filter and then dragging the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
+                    
+                    <p>Apply an amplitude threshold in the same way; ticking the checkbox and then dragging the slider to set the threshold. The threshold will be drawn onto the waveform plot to show you which parts of the signal will trigger. You can change the units used to display this threshold using the drop-down menu at the top left of the plots. Once a threshold has been set, the plot will automatically grey out parts of the recording which fall below the threshold.</p>
+                    
+                    <!-- <p>Once you are happy with the filter and amplitude threshold settings, click <b>Export Configuration</b> to download a .config which can be loaded in the AudioMoth Configuration App (version 1.6.0 onwards).</p> -->
+                </div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 10px;">
                 <div class="col total-width">
                     <h3>Example files</h3>
                 </div>
             </div>
-
             <div class="row justify-content-md-center" style="margin-top: 5px;">
-                <div class="col total-width">
+                <div id="examples" class="col total-width">
+                    <p>You can use these example files to explore settings if you do not currently have an AudioMoth file to use.</p>
                     <ul>
-                        <li><a href="#" id="example-link1">Example 1</a> - Keys</li>
-                        <li><a href="#" id="example-link2">Example 2</a> - ?</li>
-                        <li><a href="#" id="example-link3">Example 3</a> - ?</li>
+                        <li><a href="#" id="example-link1">Example 1</a> - Bat</li>
+                        <li><a href="#" id="example-link2">Example 2</a> - Frequency sweep</li>
+                        <li><a href="#" id="example-link3">Example 3</a> - Metronome</li>
                     </ul> 
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 10px;">
                 <div class="col total-width">
-                    <h3 id='faqs'>FAQs</h3>
+                    <h3 id="faqs">FAQs</h3>
                 </div>
             </div>
 
@@ -392,13 +524,24 @@
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
-                    In order to be certain that any filtering and threshold settings directly correlate to how they'd function on your AudioMoth device, the app must use files recorded on an AudioMoth.
+                    In order to be certain that any filtering and threshold settings directly correlate to how they'd function on your AudioMoth device, the app only accepts WAV files recorded on an AudioMoth.
                 </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
                 <div class="col total-width">
-                    <h5>What is "amplitude threshold"?</h5>
+                    <h5>How do I reduce the size of my recordings?</h5>
+                </div>
+            </div>
+            <div class="row justify-content-md-center" style="margin-top: 5px;">
+                <div class="col total-width">
+                    Recordings can be no longer than 60 seconds and must be split into shorter files if they exceed this limit. In order to remain readable by the AudioMoth Filter Playground, recordings must be split using the Split function found in the AudioMoth Configuration App. Select "<b>File</b>" and then "<b>Split AudioMoth WAV Recordings</b>" to access it.
+                </div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 15px;">
+                <div class="col total-width">
+                    <h5>What is "amplitude threshold" recording?</h5>
                 </div>
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
@@ -425,7 +568,14 @@
             </div>
             <div class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
-                    You can navigate through your recording using the buttons above the plot, or move to a specific part by clicking and dragging on either plot to highlight the area you wish to see in detail.
+                    You can navigate through your recording using the buttons above the plot, or move to a specific part by clicking and dragging or double clicking on either plot to highlight the area you wish to see in detail.
+                </div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 25px;">
+                <div class="col total-width" style="text-align: center;">
+                    <a href="https://github.com/OpenAcousticDevices/AudioMoth-Filter-Playground"><img src="./assets/GitHub-Mark-32px.png"></a>
+                    <a href="https://openacousticdevices.info" style="margin-left: 5px;"><img src="./assets/icon.png"></a>
                 </div>
             </div>
 

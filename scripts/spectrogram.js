@@ -102,7 +102,7 @@ function calculateSpectrogramFrames (sampleArray, offset, length) {
  */
 function drawSpectrogram (spectrogram, min, max, callback) {
 
-    // // const startTime = new Date();
+    const startTime = new Date();
 
     const ctx = specCanvas.getContext('2d');
 
@@ -142,10 +142,9 @@ function drawSpectrogram (spectrogram, min, max, callback) {
 
     ctx.putImageData(id, 0, 0);
 
-    callback();
+    const endTime = new Date();
+    const diff = endTime - startTime;
 
-    // const endTime = new Date();
-    // const diff = endTime - startTime;
-    // console.log('Rendering time:', diff);
+    callback(diff);
 
 }

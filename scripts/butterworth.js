@@ -221,106 +221,91 @@ function designFilter (filterType, sampleRate, freq1, freq2) {
 
 }
 
-function designLowPassFilter (sampleRate, freq) {
+function applyLowPassFilter (input, output, sampleRate, freq) {
 
-    return designFilter(LOW_PASS_FILTER, sampleRate, freq, 0);
+    const length = input.length;
 
-}
+    const filterCoefficients = designFilter(LOW_PASS_FILTER, sampleRate, freq, 0);
 
-function designBandPassFilter (sampleRate, freq1, freq2) {
+    const filter = {
+        xv: [0.0, 0.0, 0.0],
+        yv: [0.0, 0.0, 0.0]
+    };
 
-    return designFilter(BAND_PASS_FILTER, sampleRate, freq1, freq2);
+    for (let i = 0; i < length; i += 1) {
 
-}
+        filter.xv[0] = filter.xv[1];
+        filter.xv[1] = input[i] * filterCoefficients.gain;
 
-function designHighPassFilter (sampleRate, freq) {
+        filter.yv[0] = filter.yv[1];
+        filter.yv[1] = filter.xv[0] + filter.xv[1] + filterCoefficients.yc[0] * filter.yv[0];
 
-    return designFilter(HIGH_PASS_FILTER, sampleRate, freq, 0);
-
-}
-
-function createFilter () {
-
-    return {xv: [0.0, 0.0, 0.0], yv: [0.0, 0.0, 0.0]};
-
-}
-
-function initialiseFilter (filter) {
-
-    for (let i = 0; i < 3; i++) {
-
-        filter.xv[i] = 0.0;
-        filter.yv[i] = 0.0;
+        output[i] = filter.yv[1];
 
     }
 
 }
 
-function applyLowPassFilter (sample, filter, filterCoefficients) {
+function applyBandPassFilter (input, output, sampleRate, freq1, freq2) {
 
-    filter.xv[0] = filter.xv[1];
-    filter.xv[1] = sample * filterCoefficients.gain;
+    const length = input.length;
 
-    filter.yv[0] = filter.yv[1];
-    filter.yv[1] = filter.xv[0] + filter.xv[1] + filterCoefficients.yc[0] * filter.yv[0];
+    if (freq1 === freq2) {
 
-    return {
-        filter: filter,
-        filteredSample: filter.yv[1]
-    };
+        for (let i = 0; i < length; i += 1) {
 
-}
+            output[i] = 0;
 
-function applyBandPassFilter (sample, filter, filterCoefficients) {
+        }
 
-    filter.xv[0] = filter.xv[1];
-    filter.xv[1] = filter.xv[2];
-    filter.xv[2] = sample * filterCoefficients.gain;
-
-    filter.yv[0] = filter.yv[1];
-    filter.yv[1] = filter.yv[2];
-    filter.yv[2] = filter.xv[2] - filter.xv[0] + filterCoefficients.yc[0] * filter.yv[0] + filterCoefficients.yc[1] * filter.yv[1];
-
-    return {
-        filter: filter,
-        filteredSample: filter.yv[2]
-    };
-
-}
-
-function applyHighPassFilter (sample, filter, filterCoefficients) {
-
-    filter.xv[0] = filter.xv[1];
-    filter.xv[1] = sample * filterCoefficients.gain;
-
-    filter.yv[0] = filter.yv[1];
-    filter.yv[1] = filter.xv[1] - filter.xv[0] + filterCoefficients.yc[0] * filter.yv[0];
-
-    return {
-        filter: filter,
-        filteredSample: filter.yv[1]
-    };
-
-}
-
-function applyFilter (sample, filter, filterCoefficients, filterType) {
-
-    let result;
-
-    switch (filterType) {
-
-    case LOW_PASS_FILTER:
-        result = applyLowPassFilter(sample, filter, filterCoefficients);
-        break;
-    case HIGH_PASS_FILTER:
-        result = applyHighPassFilter(sample, filter, filterCoefficients);
-        break;
-    case BAND_PASS_FILTER:
-        result = applyBandPassFilter(sample, filter, filterCoefficients);
-        break;
+        return;
 
     }
 
-    return result;
+    const filterCoefficients = designFilter(BAND_PASS_FILTER, sampleRate, freq1, freq2);
+
+    const filter = {
+        xv: [0.0, 0.0, 0.0],
+        yv: [0.0, 0.0, 0.0]
+    };
+
+    for (let i = 0; i < length; i += 1) {
+
+        filter.xv[0] = filter.xv[1];
+        filter.xv[1] = filter.xv[2];
+        filter.xv[2] = input[i] * filterCoefficients.gain;
+
+        filter.yv[0] = filter.yv[1];
+        filter.yv[1] = filter.yv[2];
+        filter.yv[2] = filter.xv[2] - filter.xv[0] + filterCoefficients.yc[0] * filter.yv[0] + filterCoefficients.yc[1] * filter.yv[1];
+
+        output[i] = filter.yv[2];
+
+    }
+
+}
+
+function applyHighPassFilter (input, output, sampleRate, freq) {
+
+    const length = input.length;
+
+    const filterCoefficients = designFilter(HIGH_PASS_FILTER, sampleRate, freq, 0);
+
+    const filter = {
+        xv: [0.0, 0.0, 0.0],
+        yv: [0.0, 0.0, 0.0]
+    };
+
+    for (let i = 0; i < length; i += 1) {
+
+        filter.xv[0] = filter.xv[1];
+        filter.xv[1] = input[i] * filterCoefficients.gain;
+
+        filter.yv[0] = filter.yv[1];
+        filter.yv[1] = filter.xv[1] - filter.xv[0] + filterCoefficients.yc[0] * filter.yv[0];
+
+        output[i] = filter.yv[1];
+
+    }
 
 }

@@ -182,6 +182,21 @@
   padding-right: 4px;
 }
 
+.config-slider .slider.slider-disabled .slider-handle {
+  background-color: #cfcfcf;
+  background-image: -moz-linear-gradient(top, #DFDFDF, #BEBEBE);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#DFDFDF), to(#BEBEBE));
+  background-image: -webkit-linear-gradient(top, #DFDFDF, #BEBEBE);
+  background-image: -o-linear-gradient(top, #DFDFDF, #BEBEBE);
+  background-image: linear-gradient(to bottom, #DFDFDF, #BEBEBE);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#DFDFDF', endColorstr='#BEBEBE',GradientType=0);
+}
+
+.playback-slider .slider.slider-disabled .slider-handle {
+  background-image: linear-gradient(to bottom, #acaaaa, #8f8f8f);
+}
+
 .slider.slider-disabled .slider-track {
   background-color: #e7e7e7;
   background-image: -moz-linear-gradient(top, #E5E5E5, #E9E9E9);

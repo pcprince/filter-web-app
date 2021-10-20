@@ -1,13 +1,13 @@
 {
-    "name": "filter-web-app",
-    "version": "0.0.0",
-    "description": "",
+    "name": "audiomoth-filter-playground",
+    "version": "1.0.0",
+    "description": "A web-based analysis tool for experimenting with filter and amplitude threshold settings available in the AudioMoth Configuration App.",
     "license": "MIT",
-    "homepage": "https://github.com/pcprince/wav-spectrogram",
-    "author": {
-        "name": "pcprince",
-        "email": "peter@pcprince.co.uk",
-        "url": "http://pcprince.co.uk"
+    "homepage": "https://playground.openacousticdevices.info/",
+    "author": "openacousticdevices.info",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/OpenAcousticDevices/AudioMoth-Configuration-App.git"
     },
     "devDependencies": {
         "eslint": "^7.28.0",
@@ -18,12 +18,5 @@
         "eslint-plugin-standard": "^5.0.0"
     },
     "dependencies": {},
-    "engines": {},
-    "maintainers": [
-        {
-            "name": "pcprince",
-            "email": "peter@pcprince.co.uk",
-            "url": "http://pcprince.co.uk"
-        }
-    ]
+    "engines": {}
 }

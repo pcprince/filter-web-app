@@ -6,7 +6,7 @@
 
 // 32 KB buffer, 16-bit samples
 
-const BUFFER_LENGTH = 16000;
+const AMPLITUDE_THRESHOLD_BUFFER_LENGTH = 16384;
 
 /**
  * Apply amplitude trheshold to given samples
@@ -15,90 +15,68 @@ const BUFFER_LENGTH = 16000;
  * @param {number} minTriggerDurationSamples Minimum trigger duration in samples
  * @returns Samples with amplitude threshold applied
  */
-function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples) {
+function applyAmplitudeThreshold (samples, threshold, minTriggerDurationSamples, output) {
 
     // Convert minimum trigger duration buffers
 
-    const minTriggerDurationBuffers = Math.ceil(minTriggerDurationSamples / BUFFER_LENGTH);
+    const minTriggerDurationBuffers = Math.ceil(minTriggerDurationSamples / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
 
     let triggerDuration = 0;
 
-    // Boolean array denoting a period is above the amplitude threshold
-
-    const buffersAreAboveThreshold = [];
-
     let aboveThreshold = false;
 
-    for (let i = 0; i < samples.length; i++) {
+    let n = 0;
 
-        if (i !== 0) {
+    let index = 0;
 
-            if (i % BUFFER_LENGTH === 0 || i === samples.length - 1) {
+    let thresholdedSampleCount = 0;
 
-                buffersAreAboveThreshold.push(aboveThreshold);
+    while (index < samples.length) {
 
-                if (aboveThreshold) {
+        const limit = Math.min(samples.length, index + AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
 
-                    if (triggerDuration > 0) {
+        while (index < limit) {
 
-                        triggerDuration--;
+            if (Math.abs(samples[index]) > threshold) {
 
-                    } else {
+                aboveThreshold = true;
 
-                        aboveThreshold = false;
-
-                    }
-
-                }
+                triggerDuration = minTriggerDurationBuffers;
 
             }
 
-        }
-
-        if (Math.abs(samples[i]) > threshold) {
-
-            aboveThreshold = true;
-
-            triggerDuration = (minTriggerDurationBuffers > 0) ? minTriggerDurationBuffers : 0;
+            index++;
 
         }
 
-    }
+        output[n] = aboveThreshold;
 
-    // Convert the array of booleans for each buffer to a set of periods which define where the gaps are
-    // Gaps are the things being drawn, so they need to be returned
-    // [{start: x, length: n}, {start: x, length: n}, ...]
+        n++;
 
-    const buffersBelowThreshold = [];
+        if (aboveThreshold) {
 
-    // Check if first buffer is below threshold and start array if it is
+            if (triggerDuration > 1) {
 
-    if (!buffersAreAboveThreshold[0]) {
-
-        buffersBelowThreshold.push({start: 0, length: BUFFER_LENGTH});
-
-    }
-
-    for (let j = 1; j < buffersAreAboveThreshold.length; j++) {
-
-        if (!buffersAreAboveThreshold[j]) {
-
-            // If the previous buffer was below, combine it
-
-            if (!buffersAreAboveThreshold[j - 1]) {
-
-                buffersBelowThreshold[buffersBelowThreshold.length - 1].length += BUFFER_LENGTH;
+                triggerDuration--;
 
             } else {
 
-                buffersBelowThreshold.push({start: j * BUFFER_LENGTH, length: BUFFER_LENGTH});
+                aboveThreshold = false;
 
             }
+
+        } else {
+
+            thresholdedSampleCount++;
 
         }
 
     }
 
-    return buffersBelowThreshold;
+    thresholdedSampleCount *= AMPLITUDE_THRESHOLD_BUFFER_LENGTH;
+
+    thresholdedSampleCount = Math.min(thresholdedSampleCount, samples.length);
+
+    return thresholdedSampleCount;
 
 }

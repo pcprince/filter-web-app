@@ -14,10 +14,10 @@ const WAV_PIXEL_HEIGHT = wavCanvas.height;
 /**
  * Draw the waveform plot
  * @param {number[]} data Absolute values of samples to be plotted. Either raw data or grouped into columns.
- * @param {number} yZoom Amount to zoom in the y axis
+ * @param {number} startTime Time when render started
  * @param {function} callback Function called on completion
  */
-function renderRawWaveform (pointData, callback) {
+function renderRawWaveform (pointData, startTime, callback) {
 
     const ctx = wavCanvas.getContext('2d');
 
@@ -46,17 +46,20 @@ function renderRawWaveform (pointData, callback) {
 
     ctx.stroke();
 
-    callback();
+    const endTime = new Date();
+    const diff = endTime - startTime;
+
+    callback(diff);
 
 }
 
 /**
  * Draw the waveform plot
  * @param {number[]} data Absolute values of samples to be plotted. Either raw data or grouped into columns.
- * @param {number} yZoom Amount to zoom in the y axis
+ * @param {number} startTime Time when render started
  * @param {function} callback Function called on completion
  */
-function renderWaveform (data, callback) {
+function renderWaveform (data, startTime, callback) {
 
     const ctx = wavCanvas.getContext('2d');
 
@@ -87,7 +90,10 @@ function renderWaveform (data, callback) {
 
     ctx.putImageData(id, 0, 0);
 
-    callback();
+    const endTime = new Date();
+    const diff = endTime - startTime;
+
+    callback(diff);
 
 }
 
@@ -119,19 +125,21 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
     const samplesPerPixel = length / WAV_PIXEL_WIDTH;
 
+    const startTime = new Date();
+
     // If one or fewer samples will be drawn per pixel
 
     if (samplesPerPixel <= 1) {
 
         console.log('Plotting raw sample data on waveform');
 
-        const pointData = new Array(length * 2).fill(0);
+        const pointData = new Array((length * 2) + 2).fill(0);
 
         const width = WAV_PIXEL_WIDTH / length;
 
         // Just draw lines between points
 
-        for (let i = 0; i < length; i++) {
+        for (let i = 0; i < length + 1; i++) {
 
             // Evenly distribute points along canvas
 
@@ -156,7 +164,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         }
 
-        renderRawWaveform(pointData, callback);
+        renderRawWaveform(pointData, startTime, callback);
 
     } else {
 
@@ -196,7 +204,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         }
 
-        renderWaveform(pointData, callback);
+        renderWaveform(pointData, startTime, callback);
 
     }
 

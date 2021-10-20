@@ -4,10 +4,23 @@
  * August 2021
  *****************************************************************************/
 
-/* global OfflineAudioContext */
+/* global AMPLITUDE_THRESHOLD_BUFFER_LENGTH */
 
 let audioContext;
 let source;
+
+let startTime = 0.0;
+
+// Range of sample rates guaranteed to be supported by browsers
+
+const MIN_SAMPLE_RATE = 8000;
+const MAX_SAMPLE_RATE = 96000;
+
+// Modes which dictate how amplitude thresholded periods are handled
+
+const PLAYBACK_MODE_ALL = 0;
+const PLAYBACK_MODE_SKIP = 1;
+const PLAYBACK_MODE_MUTE = 2;
 
 /**
  * Scale a given value between a max and min
@@ -22,29 +35,17 @@ function scaleValue (x, max, min) {
 
 }
 
-/**
- * Resample an audio buffer to a given target sample rate and then run callback
- * @param {object} audioBuffer Audio buffer containing samples
- * @param {number} targetSampleRate Sample rate buffer should be resampled to
- * @param {function} onComplete Callback function
- */
-function resample (audioBuffer, targetSampleRate, onComplete) {
+function createAudioContext () {
 
-    const channel = audioBuffer.numberOfChannels;
-    const samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
 
-    const offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
-    const bufferSource = offlineContext.createBufferSource();
-    bufferSource.buffer = audioBuffer;
+    if (audioContext) {
 
-    bufferSource.connect(offlineContext.destination);
-    bufferSource.start(0);
+        audioContext.close();
 
-    offlineContext.startRendering().then((renderedBuffer) => {
+    }
 
-        onComplete(renderedBuffer);
-
-    });
+    audioContext = new AudioContext();
 
 }
 
@@ -56,56 +57,150 @@ function resample (audioBuffer, targetSampleRate, onComplete) {
  * @param {number} sampleRate Sample rate of audio
  * @param {function} endEvent Callback for when playback ends or is manually stopped
  */
-function playAudio (samples, thresholdPeriods, start, length, sampleRate, playbackRate, endEvent) {
+function playAudio (samples, samplesAboveThreshold, start, length, sampleRate, playbackRate, mode, playbackBufferLength, endEvent) {
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioContext = new AudioContext();
+    startTime = audioContext.currentTime;
 
-    const audioBuffer = audioContext.createBuffer(1, length, sampleRate * playbackRate);
+    const targetSampleRate = sampleRate * playbackRate;
+
+    let multiplier = 0.0;
+    let acceptedSampleRate = targetSampleRate;
+
+    while (acceptedSampleRate < MIN_SAMPLE_RATE || acceptedSampleRate > MAX_SAMPLE_RATE) {
+
+        multiplier += (targetSampleRate < MIN_SAMPLE_RATE) ? 1 : -1;
+
+        acceptedSampleRate = targetSampleRate * Math.pow(2, multiplier);
+
+    }
+
+    const powMultiplier = Math.pow(2, multiplier);
+    const positivePowMultiplier = Math.pow(2, Math.abs(multiplier));
+
+    const audioBuffer = audioContext.createBuffer(1, playbackBufferLength * powMultiplier, acceptedSampleRate);
 
     const nowBuffering = audioBuffer.getChannelData(0);
+
+    let total = 0;
+
+    let unthresholdedSampleIndex = 0;
+    let downsampledBufferIndex = 0;
 
     for (let i = 0; i < length; i++) {
 
         const index = start + i;
 
+        // Check if sample is in a thresholded period
+
         let thresholded = false;
 
-        for (let j = 0; j < thresholdPeriods.length; j++) {
+        if (mode === PLAYBACK_MODE_MUTE || mode === PLAYBACK_MODE_SKIP) {
 
-            if (index >= thresholdPeriods[j].start && index <= thresholdPeriods[j].start + thresholdPeriods[j].length) {
+            const bufferIndex = Math.floor(index / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
 
-                thresholded = true;
+            thresholded = !samplesAboveThreshold[bufferIndex];
 
-                break;
+        }
+
+        // Duplicate/average out samples if needed
+
+        if (powMultiplier > 1.0) {
+
+            if (mode === PLAYBACK_MODE_SKIP) {
+
+                if (!thresholded) {
+
+                    for (let j = 0; j < powMultiplier; j++) {
+
+                        nowBuffering[unthresholdedSampleIndex] = scaleValue(samples[index], -32768, 32767);
+
+                        unthresholdedSampleIndex++;
+
+                    }
+
+                }
+
+            } else {
+
+                for (let j = 0; j < powMultiplier; j++) {
+
+                    nowBuffering[(i * powMultiplier) + j] = thresholded ? 0 : scaleValue(samples[index], -32768, 32767);
+
+                }
+
+            }
+
+        } else if (powMultiplier < 1.0) {
+
+            if (mode === PLAYBACK_MODE_SKIP) {
+
+                if (!thresholded) {
+
+                    total += scaleValue(samples[index], -32768, 32767);
+
+                    if (unthresholdedSampleIndex % positivePowMultiplier === 0) {
+
+                        nowBuffering[downsampledBufferIndex] = total / positivePowMultiplier;
+
+                        total = 0;
+
+                        downsampledBufferIndex++;
+
+                    }
+
+                    unthresholdedSampleIndex++;
+
+                }
+
+            } else {
+
+                total += thresholded ? 0 : scaleValue(samples[index], -32768, 32767);
+
+                if (i % positivePowMultiplier === 0) {
+
+                    nowBuffering[i / positivePowMultiplier] = total / positivePowMultiplier;
+
+                    total = 0;
+
+                }
+
+            }
+
+        } else {
+
+            if (mode === PLAYBACK_MODE_SKIP) {
+
+                if (!thresholded) {
+
+                    nowBuffering[unthresholdedSampleIndex] = scaleValue(samples[index], -32768, 32767);
+
+                    unthresholdedSampleIndex++;
+
+                }
+
+            } else {
+
+                nowBuffering[i] = thresholded ? 0 : scaleValue(samples[index], -32768, 32767);
 
             }
 
         }
 
-        nowBuffering[i] = thresholded ? 0 : scaleValue(samples[index], -32768, 32768);
-
     }
 
-    resample(audioBuffer, audioContext.sampleRate, (resampledBuffer) => {
+    source = audioContext.createBufferSource();
 
-        source = audioContext.createBufferSource();
+    source.addEventListener('ended', () => {
 
-        source.addEventListener('ended', () => {
-
-            audioContext.close();
-
-            endEvent();
-
-        });
-
-        source.buffer = resampledBuffer;
-
-        source.connect(audioContext.destination);
-
-        source.start();
+        endEvent();
 
     });
+
+    source.buffer = audioBuffer;
+
+    source.connect(audioContext.destination);
+
+    source.start();
 
 }
 
@@ -124,6 +219,6 @@ function stopAudio () {
  */
 function getTimestamp () {
 
-    return audioContext.getOutputTimestamp().contextTime;
+    return audioContext.currentTime - startTime;
 
 }
