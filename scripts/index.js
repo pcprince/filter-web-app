@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext, applyGoertzelFilter */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -255,6 +255,8 @@ let skippingXCoords = [];
 
 // Goertzel filter UI
 
+const GOERTZEL_FILTER_WINDOW_LENGTHS = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
+
 const goertzelFilterSlider = new Slider('#goertzel-filter-slider', {});
 const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
 const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
@@ -264,6 +266,12 @@ const goertzelFilterCheckbox = document.getElementById('goertzel-filter-checkbox
 const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
 const goertzelFilterRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
 const goertzelFilterLabel = document.getElementById('goertzel-filter-label');
+const goertzelFilterThresholdLabel = document.getElementById('goertzel-filter-threshold-label');
+const goertzelFilterThresholdInput = document.getElementById('goertzel-filter-threshold-input');
+
+// Array of Goertzel responses
+
+let goertzelValues;
 
 /**
  * Get index of radio button selected from a collection of radio buttons
@@ -815,7 +823,8 @@ function updateGoertzelFilterLabel () {
 
     const currentGoertzelSliderLower = Math.min(...goertzelFilterSlider.getValue()) / 1000;
     const currentGoertzelSliderHigher = Math.max(...goertzelFilterSlider.getValue()) / 1000;
-    goertzelFilterLabel.textContent = 'Recordings will be filtered to frequencies between ' + currentGoertzelSliderLower.toFixed(1) + ' and ' + currentGoertzelSliderHigher.toFixed(1) + ' kHz.';
+    const goertzelThreshold = goertzelFilterThresholdInput.value;
+    goertzelFilterLabel.textContent = 'Recordings will be filtered to audio where frequencies between ' + currentGoertzelSliderLower.toFixed(1) + ' and ' + currentGoertzelSliderHigher.toFixed(1) + ' kHz exceed ' + goertzelThreshold + '.';
 
 }
 
@@ -835,6 +844,11 @@ function updateGoertzelFilterUI () {
         goertzelFilterMaxLabel.style.color = '';
         goertzelFilterMinLabel.style.color = '';
 
+        goertzelFilterThresholdLabel.style.color = '';
+        goertzelFilterThresholdInput.style.color = '';
+
+        goertzelFilterThresholdInput.disabled = false;
+
         goertzelFilterLabel.style.color = '';
 
     } else {
@@ -850,6 +864,10 @@ function updateGoertzelFilterUI () {
         disableSlider(goertzelFilterSlider, goertzelFilterSliderHolder);
         goertzelFilterMaxLabel.style.color = '#D3D3D3';
         goertzelFilterMinLabel.style.color = '#D3D3D3';
+
+        goertzelFilterThresholdLabel.style.color = '#D3D3D3';
+        goertzelFilterThresholdInput.style.color = '#D3D3D3';
+        goertzelFilterThresholdInput.disabled = true;
 
         goertzelFilterLabel.style.color = '#D3D3D3';
 
@@ -1974,6 +1992,21 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
 
     }
 
+    if (goertzelFilterCheckbox.checked) {
+
+        const freq1 = Math.min(...goertzelFilterSlider.getValue());
+        const freq2 = Math.max(...goertzelFilterSlider.getValue());
+
+        const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
+
+        goertzelValues = new Array(Math.ceil(sampleCount / windowLength));
+
+        applyGoertzelFilter(renderSamples, freq1, freq2, windowLength, goertzelValues);
+
+        console.log(goertzelValues);
+
+    }
+
     return renderSamples;
 
 }
@@ -2023,7 +2056,7 @@ async function updatePlots (resetColourMap, updateSpectrogram, updateThresholded
 
     }
 
-    if (!filterCheckbox.checked && !amplitudeThresholdCheckbox.checked) {
+    if (!filterCheckbox.checked && !amplitudeThresholdCheckbox.checked && !goertzelFilterCheckbox.checked) {
 
         processContents(unfilteredSamples, false, true);
 
@@ -2859,8 +2892,7 @@ function handleGoertzelFilterChange () {
 
     updateGoertzelFilterLabel();
 
-    // TODO: Draw Goertzel filter plot
-    console.log('handleGoertzelFilterChange()');
+    updatePlots(false, false, true, false);
 
 }
 
@@ -2889,6 +2921,8 @@ for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
     goertzelFilterRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
 
 }
+
+goertzelFilterThresholdInput.addEventListener('change', handleGoertzelFilterChange);
 
 // Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
 
