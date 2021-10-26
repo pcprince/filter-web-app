@@ -259,19 +259,64 @@
                         </div>
                     </div>
 
+                    <!-- Filter selection -->
+
+                    <div class="row" style="margin-top: 5px;">
+                        <div class="col-12">
+                            <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
+                            
+                                <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
+                                    <div class="col-12">
+                                        <div style="margin-left: 5px; margin-right: 4px">
+                                            <table class="table" style="margin-bottom: 4px;" title="Type of threshold." id="threshold-type-table">
+                                                <tr class="settings-text" style="font-size: 12px;">
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px"></td>
+                                                    <td align="center" style="padding: 0px" name="threshold-radio-label">None</td>                     
+                                                    <td align="center" style="padding: 0px" name="threshold-radio-label">Amplitude</td>
+                                                    <td align="center" style="padding: 0px" name="threshold-radio-label">Goertzel</td>
+                                                </tr>
+                                                <tr class="settings-text">
+                                                    <td align="left" style="padding-top: 0px; padding-bottom: 0px;" id="threshold-type-label">Threshold type:</td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px"></td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px"></td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px"></td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px"></td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px"></td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input type="radio" value="0" name="threshold-type-radio" checked>
+                                                    </td>                        
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input type="radio" value="1" name="threshold-type-radio">
+                                                    </td>
+                                                    <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                        <input type="radio" value="2" name="threshold-type-radio">
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
+                                    <div class="col-12" style="margin-left: 16px;">
+                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a WAV file.</label>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Amplitude threshold -->
 
                     <div class="row" style="margin-top: 5px;">
                         <div class="col-12">
                             <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
-                                <div class="row" style="margin-top: 8px;">
-                                    <div class="col-6" style="text-align: left;">
-                                        <span id="amplitude-threshold-checkbox-label" class="settings-text" style="margin-left: 17px; color: #D3D3D3;">Enable amplitude threshold:</span>
-                                    </div>
-                                    <div class="col-6" style="text-align: right;">
-                                        <input class="settings-inputs" id="amplitude-threshold-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
-                                    </div>
-                                </div>
                             
                                 <div class="row" style="margin-top: 14px; margin-bottom: 8px;">
                                     <div class="col-12">
@@ -320,7 +365,7 @@
                                     </div>
                                 </div>
                             
-                                <div class="row" style="margin-top: 16px; margin-bottom: 8px; display: flex; align-items: center;">
+                                <div class="row" style="margin-top: 16px; margin-bottom: 16px; display: flex; align-items: center;">
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
                                         <span class="settings-text" id="amplitude-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                     </div>
@@ -329,12 +374,6 @@
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="amplitude-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
-                                    </div>
-                                </div>
-
-                                <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
-                                    <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a WAV file.</label>
                                     </div>
                                 </div>
                             
@@ -347,12 +386,16 @@
                     <div class="row" style="margin-top: 5px;">
                         <div class="col-12">
                             <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
-                                <div class="row" style="margin-top: 8px;">
-                                    <div class="col-6" style="text-align: left;">
-                                        <span id="goertzel-filter-checkbox-label" class="settings-text" style="margin-left: 17px; color: #D3D3D3;">Enable Goertzel filter:</span>
+
+                                <div class="row" id="goertzel-filter-row" style="margin-top: 16px; margin-bottom: 8px; display: flex; align-items: center;">
+                                    <div class="col-2" style="text-align: left; padding-right: 0px;">
+                                        <span class="settings-text" id="goertzel-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                     </div>
-                                    <div class="col-6" style="text-align: right;">
-                                        <input class="settings-inputs" id="goertzel-filter-checkbox" type="checkbox" style="margin-right: 16px;" disabled>
+                                    <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" data-slider-selection="before" style="width: 370px;">
+                                    </div>
+                                    <div class="col-2" style="text-align: right;">
+                                        <span class="settings-text" id="goertzel-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
                                     </div>
                                 </div>
                             
@@ -402,31 +445,16 @@
                                         </div>
                                     </div>
                                 </div>
-                            
-                                <div class="row" id="goertzel-filter-row" style="margin-top: 8px; margin-bottom: 8px; display: flex; align-items: center;">
+
+                                <div class="row" style="margin-top: 16px; margin-bottom: 16px; display: flex; align-items: center;">
                                     <div class="col-2" style="text-align: left; padding-right: 0px;">
-                                        <span class="settings-text" id="goertzel-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
+                                        <span class="settings-text" id="goertzel-filter-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0</span>
                                     </div>
-                                    <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
-                                        <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" data-slider-selection="before" style="width: 370px;">
+                                    <div id="goertzel-filter-threshold-slider-holder" class="col-8 config-slider" style="padding-left: 0%; padding-right: 0%;">
+                                        <input class="settings-inputs" id="goertzel-filter-threshold-slider" data-slider-id="goertzel-filter-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" data-slider-selection="after" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
-                                        <span class="settings-text" id="goertzel-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
-                                    </div>
-                                </div>
-
-                                <div class="row" style="margin-top: 8px;">
-                                    <div class="col-6" style="text-align: left;">
-                                        <span id="goertzel-filter-threshold-label" class="settings-text" style="margin-left: 17px; color: #D3D3D3;">Threshold:</span>
-                                    </div>
-                                    <div class="col-6" style="text-align: right;">
-                                        <input class="settings-inputs" id="goertzel-filter-threshold-input" type="number" style="margin-right: 16px; width: 120px; text-align: right;" value="0" disabled>
-                                    </div>
-                                </div>
-
-                                <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
-                                    <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="goertzel-filter-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">Recordings will not be filtered.</label>
+                                        <span class="settings-text" id="goertzel-filter-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">420</span>
                                     </div>
                                 </div>
                             

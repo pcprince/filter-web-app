@@ -166,13 +166,21 @@ let previousSelectionType = 1;
 
 const FILTER_SLIDER_STEPS = {8000: 100, 16000: 100, 32000: 100, 48000: 100, 96000: 200, 192000: 500, 250000: 500, 384000: 1000};
 
+// Threshold type elements
+
+const thresholdTypeLabel = document.getElementById('threshold-type-label');
+const thresholdTypeRadioButtons = document.getElementsByName('threshold-type-radio');
+const thresholdTypeTable = document.getElementById('threshold-type-table');
+
+const THRESHOLD_TYPE_NONE = 0;
+const THRESHOLD_TYPE_AMPLITUDE = 1;
+const THRESHOLD_TYPE_GOERTZEL = 2;
+
 // Amplitude threshold elements
 
 const amplitudethresholdMaxLabel = document.getElementById('amplitude-threshold-max-label');
 const amplitudethresholdMinLabel = document.getElementById('amplitude-threshold-min-label');
 
-const amplitudethresholdCheckboxLabel = document.getElementById('amplitude-threshold-checkbox-label');
-const amplitudeThresholdCheckbox = document.getElementById('amplitude-threshold-checkbox');
 const amplitudethresholdSliderHolder = document.getElementById('amplitude-threshold-slider-holder');
 const amplitudethresholdSlider = new Slider('#amplitude-threshold-slider', {});
 const amplitudethresholdLabel = document.getElementById('amplitude-threshold-label');
@@ -261,13 +269,12 @@ const goertzelFilterSlider = new Slider('#goertzel-filter-slider', {});
 const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
 const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
 const goertzelFilterSliderHolder = document.getElementById('goertzel-filter-slider-holder');
-const goertzelFilterCheckboxLabel = document.getElementById('goertzel-filter-checkbox-label');
-const goertzelFilterCheckbox = document.getElementById('goertzel-filter-checkbox');
 const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
 const goertzelFilterRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
-const goertzelFilterLabel = document.getElementById('goertzel-filter-label');
-const goertzelFilterThresholdLabel = document.getElementById('goertzel-filter-threshold-label');
-const goertzelFilterThresholdInput = document.getElementById('goertzel-filter-threshold-input');
+const goertzelFilterThresholdSliderHolder = document.getElementById('goertzel-filter-threshold-slider-holder');
+const goertzelFilterThresholdSlider = new Slider('#goertzel-filter-threshold-slider', {});
+const goertzelFilterThresholdMaxLabel = document.getElementById('goertzel-filter-threshold-max-label');
+const goertzelFilterThresholdMinLabel = document.getElementById('goertzel-filter-threshold-min-label');
 
 // Array of Goertzel responses
 
@@ -648,7 +655,9 @@ function updateAmplitudethresholdLabel () {
  */
 function updateAmplitudethresholdScale () {
 
-    if (amplitudeThresholdCheckbox.checked) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
         updateAmplitudethresholdLabel();
 
@@ -679,15 +688,61 @@ function updateAmplitudethresholdScale () {
 
 }
 
+function updateThresholdTypeUI () {
+
+    if (sampleCount !== 0 && !drawing && !playing) {
+
+        thresholdTypeLabel.style.color = '';
+
+        thresholdTypeTable.style.color = '';
+
+        for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+            thresholdTypeRadioButtons[i].disabled = false;
+
+        }
+
+        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+        if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE || thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+
+            playbackModeOptionMute.disabled = false;
+            playbackModeOptionSkip.disabled = false;
+
+        } else {
+
+            playbackModeOptionMute.disabled = true;
+            playbackModeOptionSkip.disabled = true;
+
+        }
+
+    } else {
+
+        thresholdTypeLabel.style.color = '#D3D3D3';
+
+        thresholdTypeTable.style.color = '#D3D3D3';
+
+        for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+            thresholdTypeRadioButtons[i].disabled = true;
+
+        }
+
+        playbackModeOptionMute.disabled = true;
+        playbackModeOptionSkip.disabled = true;
+
+    }
+
+}
+
 /**
  * Handle a change to the amplitude threshold status/value
  */
 function updateAmplitudethresholdUI () {
 
-    if (amplitudeThresholdCheckbox.checked && sampleCount !== 0 && !drawing && !playing) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
 
-        playbackModeOptionMute.disabled = false;
-        playbackModeOptionSkip.disabled = false;
+    if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && sampleCount !== 0 && !drawing && !playing) {
 
         enableSlider(amplitudethresholdSlider, amplitudethresholdSliderHolder);
         amplitudethresholdMaxLabel.style.color = '';
@@ -706,9 +761,6 @@ function updateAmplitudethresholdUI () {
 
     } else {
 
-        playbackModeOptionMute.disabled = true;
-        playbackModeOptionSkip.disabled = true;
-
         disableSlider(amplitudethresholdSlider, amplitudethresholdSliderHolder);
         amplitudethresholdMaxLabel.style.color = '#D3D3D3';
         amplitudethresholdMinLabel.style.color = '#D3D3D3';
@@ -717,11 +769,12 @@ function updateAmplitudethresholdUI () {
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
-        if (!amplitudeThresholdCheckbox.disabled) {
+        // FIXME: Work out how this applies to new setup
+        // if (!amplitudeThresholdCheckbox.disabled) {
 
-            amplitudethresholdLabel.textContent = 'All audio will be written to a WAV file.';
+        //     amplitudethresholdLabel.textContent = 'All audio will be written to a WAV file.';
 
-        }
+        // }
 
         amplitudethresholdDurationTable.style.color = '#D3D3D3';
 
@@ -819,18 +872,11 @@ function updateFilterSliders () {
 
 }
 
-function updateGoertzelFilterLabel () {
-
-    const currentGoertzelSliderLower = Math.min(...goertzelFilterSlider.getValue()) / 1000;
-    const currentGoertzelSliderHigher = Math.max(...goertzelFilterSlider.getValue()) / 1000;
-    const goertzelThreshold = goertzelFilterThresholdInput.value;
-    goertzelFilterLabel.textContent = 'Recordings will be filtered to audio where frequencies between ' + currentGoertzelSliderLower.toFixed(1) + ' and ' + currentGoertzelSliderHigher.toFixed(1) + ' kHz exceed ' + goertzelThreshold + '.';
-
-}
-
 function updateGoertzelFilterUI () {
 
-    if (goertzelFilterCheckbox.checked && sampleCount !== 0 && !drawing && !playing) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL && sampleCount !== 0 && !drawing && !playing) {
 
         goertzelFilterWindowTable.style.color = '';
 
@@ -844,12 +890,9 @@ function updateGoertzelFilterUI () {
         goertzelFilterMaxLabel.style.color = '';
         goertzelFilterMinLabel.style.color = '';
 
-        goertzelFilterThresholdLabel.style.color = '';
-        goertzelFilterThresholdInput.style.color = '';
-
-        goertzelFilterThresholdInput.disabled = false;
-
-        goertzelFilterLabel.style.color = '';
+        enableSlider(goertzelFilterThresholdSlider, goertzelFilterThresholdSliderHolder);
+        goertzelFilterThresholdMaxLabel.style.color = '';
+        goertzelFilterThresholdMinLabel.style.color = '';
 
     } else {
 
@@ -865,19 +908,18 @@ function updateGoertzelFilterUI () {
         goertzelFilterMaxLabel.style.color = '#D3D3D3';
         goertzelFilterMinLabel.style.color = '#D3D3D3';
 
-        goertzelFilterThresholdLabel.style.color = '#D3D3D3';
-        goertzelFilterThresholdInput.style.color = '#D3D3D3';
-        goertzelFilterThresholdInput.disabled = true;
-
-        goertzelFilterLabel.style.color = '#D3D3D3';
+        disableSlider(goertzelFilterThresholdSlider, goertzelFilterThresholdSliderHolder);
+        goertzelFilterThresholdMaxLabel.style.color = '#D3D3D3';
+        goertzelFilterThresholdMinLabel.style.color = '#D3D3D3';
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
-        if (!goertzelFilterCheckbox.disabled) {
+        // FIXME: Incorporate this into the filter label
+        // if (!goertzelFilterCheckbox.disabled) {
 
-            goertzelFilterLabel.textContent = 'Recordings will not be filtered.';
+        //     goertzelFilterLabel.textContent = 'Recordings will not be filtered.';
 
-        }
+        // }
 
     }
 
@@ -1523,7 +1565,9 @@ function drawWaveformPlotAndReenableUI (samples, isInitialRender, spectrogramCom
         resetCanvas(waveformThresholdLineCanvas);
         clearSVG(waveformLoadingSVG);
 
-        if (amplitudeThresholdCheckbox.checked) {
+        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+        if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
             drawThresholdedPeriods();
             drawThresholdLines();
@@ -1546,12 +1590,17 @@ function drawWaveformPlotAndReenableUI (samples, isInitialRender, spectrogramCom
         filterCheckboxLabel.style.color = '';
         updateFilterUI();
 
-        amplitudeThresholdCheckbox.disabled = false;
-        amplitudethresholdCheckboxLabel.style.color = '';
+        thresholdTypeLabel.style.color = '';
+        for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+            thresholdTypeRadioButtons[i].disabled = false;
+
+        }
+
+        updateThresholdTypeUI();
+
         updateAmplitudethresholdUI();
 
-        goertzelFilterCheckbox.disabled = false;
-        goertzelFilterCheckboxLabel.style.color = '';
         updateGoertzelFilterUI();
 
         resetButton.disabled = false;
@@ -1609,6 +1658,7 @@ function drawPlots (samples, isInitialRender) {
 function disableUI () {
 
     updateFilterUI();
+    updateThresholdTypeUI();
     updateAmplitudethresholdUI();
     updateGoertzelFilterUI();
 
@@ -1976,9 +2026,11 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
 
     const renderSamples = (filterCheckbox.checked) ? filteredSamples : unfilteredSamples;
 
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
     // Apply amplitude threshold
 
-    if (amplitudeThresholdCheckbox.checked && updateThresholdedSampleArray) {
+    if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && updateThresholdedSampleArray) {
 
         const threshold = getAmplitudeThreshold();
         const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('amplitude-threshold-duration-radio')];
@@ -1992,7 +2044,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
 
     }
 
-    if (goertzelFilterCheckbox.checked) {
+    if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
 
         const freq1 = Math.min(...goertzelFilterSlider.getValue());
         const freq2 = Math.max(...goertzelFilterSlider.getValue());
@@ -2056,7 +2108,9 @@ async function updatePlots (resetColourMap, updateSpectrogram, updateThresholded
 
     }
 
-    if (!filterCheckbox.checked && !amplitudeThresholdCheckbox.checked && !goertzelFilterCheckbox.checked) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    if (!filterCheckbox.checked && thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
         processContents(unfilteredSamples, false, true);
 
@@ -2211,7 +2265,9 @@ function updateFileSizePanel () {
     const totalSeconds = unfilteredSamples.length / getSampleRate();
     const totalFileSize = getSampleRate() * 2 * totalSeconds;
 
-    if (amplitudeThresholdCheckbox.checked) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    if (thresholdTypeIndex !== THRESHOLD_TYPE_NONE) {
 
         const thresholdedSeconds = thresholdedSampleCount / getSampleRate();
 
@@ -2379,8 +2435,6 @@ async function loadFile (exampleFilePath, exampleName) {
 
             updateGoertzelFilterUI();
 
-            updateGoertzelFilterLabel();
-
         }
 
         // Enable "Are you sure you wish to navigate away from the page?" alert
@@ -2397,7 +2451,9 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Generate spectrogram frames and draw plots
 
-        if (!filterCheckbox.checked && !amplitudeThresholdCheckbox.checked) {
+        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+        if (!filterCheckbox.checked && thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
             processContents(unfilteredSamples, true, true);
 
@@ -2775,7 +2831,6 @@ for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
     goertzelFilterRadioButtons[i].addEventListener('change', function () {
 
         updateGoertzelFilterUI();
-        updateGoertzelFilterLabel();
 
     });
 
@@ -2841,7 +2896,7 @@ bandPassFilterSlider.on('slideStop', handleFilterChange);
 lowPassFilterSlider.on('slideStop', handleFilterChange);
 highPassFilterSlider.on('slideStop', handleFilterChange);
 
-amplitudeThresholdCheckbox.addEventListener('change', (e) => {
+function handleThresholdTypeChange (e) {
 
     if (sampleCount === 0 || drawing || playing) {
 
@@ -2852,13 +2907,17 @@ amplitudeThresholdCheckbox.addEventListener('change', (e) => {
 
     }
 
+    updateThresholdTypeUI();
     updateAmplitudethresholdUI();
+    updateGoertzelFilterUI();
 
     updatePlots(false, false, true, false);
 
     // Draw or clear the amplitude threshold lines
 
-    if (amplitudeThresholdCheckbox.checked) {
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
         drawThresholdLines();
 
@@ -2869,7 +2928,13 @@ amplitudeThresholdCheckbox.addEventListener('change', (e) => {
 
     }
 
-});
+}
+
+for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+    thresholdTypeRadioButtons[i].addEventListener('change', handleThresholdTypeChange);
+
+}
 
 /**
  * Run updatePlots function without refreshing the colour map, recalculating the spectrogram frames
@@ -2890,29 +2955,9 @@ for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
 
 function handleGoertzelFilterChange () {
 
-    updateGoertzelFilterLabel();
-
     updatePlots(false, false, true, false);
 
 }
-
-goertzelFilterCheckbox.addEventListener('change', (e) => {
-
-    if (sampleCount === 0 || drawing || playing) {
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        return;
-
-    }
-
-    updateGoertzelFilterUI();
-    updateGoertzelFilterLabel();
-
-    handleGoertzelFilterChange();
-
-});
 
 goertzelFilterSlider.on('slideStop', handleGoertzelFilterChange);
 
@@ -2922,7 +2967,7 @@ for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
 
 }
 
-goertzelFilterThresholdInput.addEventListener('change', handleGoertzelFilterChange);
+goertzelFilterThresholdSlider.on('slideStop', handleGoertzelFilterChange);
 
 // Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
 
@@ -2939,10 +2984,10 @@ function reset () {
         previousSelectionType = 1;
 
         filterCheckbox.checked = false;
+        thresholdTypeRadioButtons[0].checked = true;
         updateFilterUI();
-        amplitudeThresholdCheckbox.checked = false;
+        updateThresholdTypeUI();
         updateAmplitudethresholdUI();
-        goertzelFilterCheckbox.checked = false;
         updateGoertzelFilterUI();
 
         playbackModeSelect.value = 0;
@@ -3046,6 +3091,8 @@ function exportConfig () {
 
     }
 
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
     const settings = {
         webApp: true,
         sampleRate: getSampleRate(),
@@ -3053,7 +3100,7 @@ function exportConfig () {
         filterType: filterTypes[filterIndex],
         lowerFilter: filterValue0,
         higherFilter: filterValue1,
-        amplitudeThresholdingEnabled: amplitudeThresholdCheckbox.checked,
+        amplitudeThresholdingEnabled: thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE,
         amplitudeThreshold: amplitudeThreshold,
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
         amplitudeThresholdingScale: amplitudeThresholdScales[amplitudethresholdScaleIndex]
@@ -3101,7 +3148,9 @@ function getPlaybackMode () {
 
     // If amplitude threshold isn't on, all modes are equivalent to playing all samples
 
-    playbackMode = (amplitudeThresholdCheckbox.checked) ? playbackMode : PLAYBACK_MODE_ALL;
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    playbackMode = (thresholdTypeIndex !== THRESHOLD_TYPE_NONE) ? playbackMode : PLAYBACK_MODE_ALL;
 
     return playbackMode;
 
@@ -3203,12 +3252,15 @@ function stopEvent () {
     filterCheckboxLabel.style.color = '';
     updateFilterUI();
 
-    amplitudeThresholdCheckbox.disabled = false;
-    amplitudethresholdCheckboxLabel.style.color = '';
-    updateAmplitudethresholdUI();
+    thresholdTypeLabel.style.color = '';
+    for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
 
-    goertzelFilterCheckbox.disabled = false;
-    goertzelFilterCheckboxLabel.style.color = '';
+        thresholdTypeRadioButtons[i].disabled = false;
+
+    }
+
+    updateThresholdTypeUI();
+    updateAmplitudethresholdUI();
     updateGoertzelFilterUI();
 
     enableSlider(playbackSpeedSlider, playbackSpeedDiv);
@@ -3329,7 +3381,12 @@ playButton.addEventListener('click', () => {
             waveformZoomOutButton.disabled = true;
 
             filterCheckbox.disabled = true;
-            amplitudeThresholdCheckbox.disabled = true;
+
+            for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+                thresholdTypeRadioButtons[i].disabled = true;
+
+            }
 
             resetButton.disabled = true;
             exportButton.disabled = true;
@@ -3455,22 +3512,17 @@ resetTransformations();
 drawAxisLabels();
 drawAxisHeadings();
 
-// Prepare amplitude threshold UI
+// Prepare threshold UI
 
-amplitudeThresholdCheckbox.checked = false;
+updateThresholdTypeUI();
 updateAmplitudethresholdUI();
+updateGoertzelFilterUI();
 
 // Prepare filter UI
 
 filterCheckbox.checked = false;
 updateFilterUI();
 updateFilterLabel();
-
-// Prepare Goertzel filter UI
-
-goertzelFilterCheckbox.checked = false;
-updateGoertzelFilterUI();
-updateGoertzelFilterLabel();
 
 // Disable playback controls until file is loaded
 
@@ -3497,3 +3549,5 @@ if (!isChrome) {
 }
 
 loadExampleFiles();
+
+// TODO: Remove threshold status text from amplitude threshold/Goertzel and have a single one below
