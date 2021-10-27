@@ -98,7 +98,7 @@ const waveformLoadingSVG = document.getElementById('waveform-loading-svg');
 const goertzelPlaybackCanvas = document.getElementById('goertzel-playback-canvas'); // Canvas layer where playback progress
 const goertzelDragCanvas = document.getElementById('goertzel-drag-canvas'); // Canvas layer where zoom overlay is drawn
 const goertzelThresholdCanvas = document.getElementById('goertzel-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
-const goertzelCanvas = document.getElementById('goertzel-canvas'); // Canvas layer where spectrogram is drawn
+const goertzelResponseCanvas = document.getElementById('goertzel-canvas'); // Canvas layer where spectrogram is drawn
 const goertzelLoadingSVG = document.getElementById('goertzel-loading-svg');
 
 const timeLabelSVG = document.getElementById('time-axis-label-svg');
@@ -175,6 +175,9 @@ const thresholdTypeTable = document.getElementById('threshold-type-table');
 const THRESHOLD_TYPE_NONE = 0;
 const THRESHOLD_TYPE_AMPLITUDE = 1;
 const THRESHOLD_TYPE_GOERTZEL = 2;
+
+const amplitudeThresholdHolder = document.getElementById('amplitude-threshold-holder');
+const goertzelFilterThresholdHolder = document.getElementById('goertzel-filter-threshold-holder');
 
 // Amplitude threshold elements
 
@@ -270,11 +273,13 @@ const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-labe
 const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
 const goertzelFilterSliderHolder = document.getElementById('goertzel-filter-slider-holder');
 const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
-const goertzelFilterRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
+const goertzelFilterWindowRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
 const goertzelFilterThresholdSliderHolder = document.getElementById('goertzel-filter-threshold-slider-holder');
 const goertzelFilterThresholdSlider = new Slider('#goertzel-filter-threshold-slider', {});
 const goertzelFilterThresholdMaxLabel = document.getElementById('goertzel-filter-threshold-max-label');
 const goertzelFilterThresholdMinLabel = document.getElementById('goertzel-filter-threshold-min-label');
+const goertzelFilterDurationTable = document.getElementById('goertzel-filter-duration-table');
+const goertzelFilterDurationRadioButtons = document.getElementsByName('goertzel-filter-duration-radio');
 
 // Array of Goertzel responses
 
@@ -690,6 +695,8 @@ function updateAmplitudethresholdScale () {
 
 function updateThresholdTypeUI () {
 
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
     if (sampleCount !== 0 && !drawing && !playing) {
 
         thresholdTypeLabel.style.color = '';
@@ -701,8 +708,6 @@ function updateThresholdTypeUI () {
             thresholdTypeRadioButtons[i].disabled = false;
 
         }
-
-        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
 
         if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE || thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
 
@@ -730,6 +735,31 @@ function updateThresholdTypeUI () {
 
         playbackModeOptionMute.disabled = true;
         playbackModeOptionSkip.disabled = true;
+
+    }
+
+    switch (thresholdTypeIndex) {
+
+    case THRESHOLD_TYPE_NONE:
+
+        amplitudeThresholdHolder.style.display = 'none';
+        goertzelFilterThresholdHolder.style.display = 'none';
+
+        break;
+
+    case THRESHOLD_TYPE_AMPLITUDE:
+
+        amplitudeThresholdHolder.style.display = '';
+        goertzelFilterThresholdHolder.style.display = 'none';
+
+        break;
+
+    case THRESHOLD_TYPE_GOERTZEL:
+
+        amplitudeThresholdHolder.style.display = 'none';
+        goertzelFilterThresholdHolder.style.display = '';
+
+        break;
 
     }
 
@@ -880,15 +910,23 @@ function updateGoertzelFilterUI () {
 
         goertzelFilterWindowTable.style.color = '';
 
-        for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
+        for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
 
-            goertzelFilterRadioButtons[i].disabled = false;
+            goertzelFilterWindowRadioButtons[i].disabled = false;
 
         }
 
         enableSlider(goertzelFilterSlider, goertzelFilterSliderHolder);
         goertzelFilterMaxLabel.style.color = '';
         goertzelFilterMinLabel.style.color = '';
+
+        goertzelFilterDurationTable.style.color = '';
+
+        for (let i = 0; i < goertzelFilterDurationRadioButtons.length; i++) {
+
+            goertzelFilterDurationRadioButtons[i].disabled = false;
+
+        }
 
         enableSlider(goertzelFilterThresholdSlider, goertzelFilterThresholdSliderHolder);
         goertzelFilterThresholdMaxLabel.style.color = '';
@@ -898,15 +936,23 @@ function updateGoertzelFilterUI () {
 
         goertzelFilterWindowTable.style.color = '#D3D3D3';
 
-        for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
+        for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
 
-            goertzelFilterRadioButtons[i].disabled = true;
+            goertzelFilterWindowRadioButtons[i].disabled = true;
 
         }
 
         disableSlider(goertzelFilterSlider, goertzelFilterSliderHolder);
         goertzelFilterMaxLabel.style.color = '#D3D3D3';
         goertzelFilterMinLabel.style.color = '#D3D3D3';
+
+        goertzelFilterDurationTable.style.color = '#D3D3D3';
+
+        for (let i = 0; i < goertzelFilterDurationRadioButtons.length; i++) {
+
+            goertzelFilterDurationRadioButtons[i].disabled = true;
+
+        }
 
         disableSlider(goertzelFilterThresholdSlider, goertzelFilterThresholdSliderHolder);
         goertzelFilterThresholdMaxLabel.style.color = '#D3D3D3';
@@ -2824,18 +2870,6 @@ for (let i = 0; i < filterRadioButtons.length; i++) {
 
 }
 
-// Add listeners which react to Goertzel filter window length radio buttons changing
-
-for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
-
-    goertzelFilterRadioButtons[i].addEventListener('change', function () {
-
-        updateGoertzelFilterUI();
-
-    });
-
-}
-
 // Add amplitude threshold scale listener
 
 amplitudeThresholdScaleSelect.addEventListener('change', function () {
@@ -2955,15 +2989,22 @@ for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
 
 function handleGoertzelFilterChange () {
 
+    updateGoertzelFilterUI();
     updatePlots(false, false, true, false);
 
 }
 
 goertzelFilterSlider.on('slideStop', handleGoertzelFilterChange);
 
-for (let i = 0; i < goertzelFilterRadioButtons.length; i++) {
+for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
 
-    goertzelFilterRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
+    goertzelFilterWindowRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
+
+}
+
+for (let i = 0; i < goertzelFilterDurationRadioButtons.length; i++) {
+
+    goertzelFilterDurationRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
 
 }
 
@@ -3550,4 +3591,5 @@ if (!isChrome) {
 
 loadExampleFiles();
 
-// TODO: Remove threshold status text from amplitude threshold/Goertzel and have a single one below
+// TODO: Hide threshold type not in use
+// TODO: Combine threshold into a single box
