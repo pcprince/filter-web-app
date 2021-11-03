@@ -43,8 +43,8 @@
 
             <div id="file-selection-div" class="row justify-content-md-center" style="margin-top: 10px;">
                 <div class="col total-width">
-                    <button class="btn btn-primary" id="file-button" style="vertical-align: middle;">Select File</button>
-                    <button class="btn btn-primary" id="disabled-file-button" style="vertical-align: middle; display: none;" disabled>Select File</button>
+                    <button class="btn btn-primary" id="file-button" style="vertical-align: middle; display: none;">Select File</button>
+                    <button class="btn btn-primary" id="disabled-file-button" style="vertical-align: middle;" disabled>Select File</button>
                     <span id="file-span" style="margin-left: 10px; vertical-align: middle;">No WAV file selected.</span>
                     <span id="trimmed-span" style="color: red; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">File has been trimmed to initial 60 seconds.</span>
                 </div>
@@ -136,7 +136,7 @@
                             <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
-                    <div class="row" style="margin-top: 10px; height: 258px; text-align: center;">
+                    <div id="goertzel-canvas-holder" class="row" style="margin-top: 10px; height: 258px; text-align: center; display: none;">
                         <div class="wrapper" style="width: 793px; height: 256px;">
                             <svg class="label-canvas" id="goertzel-label-svg" width="45" height="257" style="padding: 0%;"></svg>
                             <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
@@ -391,25 +391,25 @@
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px; width: 13px;">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio1" value="1" name="goertzel-filter-window-radio" checked>
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio1" value="0" name="goertzel-filter-window-radio" checked>
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio2" value="2" name="goertzel-filter-window-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio2" value="1" name="goertzel-filter-window-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio3" value="3" name="goertzel-filter-window-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio3" value="2" name="goertzel-filter-window-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio4" value="4" name="goertzel-filter-window-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio4" value="3" name="goertzel-filter-window-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio5" value="5" name="goertzel-filter-window-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio5" value="4" name="goertzel-filter-window-radio">
+                                                        </td>
+                                                        <td align="center" style="padding-top: 0px; padding-bottom: 0px">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="5" name="goertzel-filter-window-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
                                                             <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="6" name="goertzel-filter-window-radio">
-                                                        </td>
-                                                        <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="7" name="goertzel-filter-window-radio">
                                                         </td>
                                                     </tr>
                                                 </table>
@@ -422,7 +422,7 @@
                                             <span class="settings-text" id="goertzel-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                         </div>
                                         <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
-                                            <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="[6000,18000]" data-slider-selection="before" style="width: 370px;">
+                                            <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="0" data-slider-selection="before" style="width: 370px;">
                                         </div>
                                         <div class="col-2" style="text-align: right;">
                                             <span class="settings-text" id="goertzel-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
@@ -432,43 +432,43 @@
                                     <div class="row" style="margin-top: 14px; margin-bottom: 8px;">
                                         <div class="col-12">
                                             <div style="margin-left: 5px; margin-right: 4px">
-                                                <table class="table" style="margin-bottom: 4px;" id="goertzel-filter-duration-table">
+                                                <table class="table" style="margin-bottom: 4px;" id="goertzel-duration-table">
                                                     <tr class="settings-text" style="font-size: 12px;" title="Minimum trigger length.">
                                                         <td align="center" style="padding: 0px; padding-left: 0px;"></td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">0</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">1</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">2</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">5</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">10</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">15</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">30</td>
-                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-duration-radio-label">60</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">0</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">1</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">2</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">5</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">10</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">15</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">30</td>
+                                                        <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-duration-radio-label">60</td>
                                                     </tr>
                                                     <tr class="settings-text" title="Minimum trigger length.">
                                                         <td align="left" style="padding-top: 0px; padding-bottom: 0px;">Minimum trigger duration (s):</td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio0" value="0" name="goertzel-filter-duration-radio" checked>
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio0" value="0" name="goertzel-duration-radio" checked>
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio1" value="1" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio1" value="1" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio2" value="2" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio2" value="2" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio3" value="3" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio3" value="3" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio4" value="4" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio4" value="4" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio5" value="5" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio5" value="5" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio6" value="6" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio6" value="6" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-duration-radio6" value="7" name="goertzel-filter-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio6" value="7" name="goertzel-duration-radio">
                                                         </td>
                                                     </tr>
                                                 </table>
@@ -478,13 +478,13 @@
 
                                     <div class="row" style="margin-top: 16px; margin-bottom: 16px; display: flex; align-items: center;">
                                         <div class="col-2" style="text-align: left; padding-right: 0px;">
-                                            <span class="settings-text" id="goertzel-filter-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.01%</span>
+                                            <span class="settings-text" id="goertzel-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                         </div>
-                                        <div id="goertzel-filter-threshold-slider-holder" class="col-8 config-slider" style="padding-left: 0%; padding-right: 0%;">
-                                            <input class="settings-inputs" id="goertzel-filter-threshold-slider" data-slider-id="goertzel-filter-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" data-slider-selection="after" style="width: 370px;">
+                                        <div id="goertzel-threshold-slider-holder" class="col-8 config-slider" style="padding-left: 0%; padding-right: 0%;">
+                                            <input class="settings-inputs" id="goertzel-threshold-slider" data-slider-id="goertzel-threshold-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="10000" data-slider-step="1" data-slider-value="0" data-slider-selection="after" style="width: 370px;">
                                         </div>
                                         <div class="col-2" style="text-align: right;">
-                                            <span class="settings-text" id="goertzel-filter-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
+                                            <span class="settings-text" id="goertzel-threshold-max-label" style="font-weight: bold; text-align: right; padding-right: 18px;">100%</span>
                                         </div>
                                     </div>
 
@@ -492,7 +492,7 @@
 
                                 <div class="row" style="margin-top: 8px; margin-bottom: 8px;">
                                     <div class="col-12" style="margin-left: 16px;">
-                                        <label class="settings-text" id="amplitude-threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a WAV file.</label>
+                                        <label class="settings-text" id="threshold-label" style="width: 100%; resize:none; text-align: left; font-weight: normal;">All audio will be written to a WAV file.</label>
                                     </div>
                                 </div>
 

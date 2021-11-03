@@ -6,49 +6,84 @@
 
 // Drawing canvas
 
-const goertzelCanvas = document.getElementById('waveform-canvas');
+const goertzelPlotCanvas = document.getElementById('goertzel-canvas');
 
-const GOERTZEL_PIXEL_WIDTH = goertzelCanvas.width;
-const GOERTZEL_PIXEL_HEIGHT = goertzelCanvas.height;
+const GOERTZEL_PIXEL_WIDTH = goertzelPlotCanvas.width;
+const GOERTZEL_PIXEL_HEIGHT = goertzelPlotCanvas.height;
 
-function applyGoertzelFilter (samples, freq1, freq2, windowLength, output) {
+const TWO_PI = 2.0 * Math.PI;
 
-    console.log('Applying Goertzel filter between ' + freq1 + ' and ' + freq2 + '.');
+function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
-    let n = 0;
+    console.log('Applying Goertzel filter at ' + freq + '.');
+
+    // Generate Hamming filter
+
+    const HAMMING_VALUES = new Array(N);
+
+    let hammingTotal = 0;
+
+    for (let i = 0; i < N; i++) {
+
+        HAMMING_VALUES[i] = 0.54 - 0.46 * Math.cos(TWO_PI * i / (N - 1));
+        hammingTotal += HAMMING_VALUES[i];
+
+    }
+
+    const HAMMING_MEAN = hammingTotal / N;
+
+    // Apply filter
+
+    const c = 2.0 * Math.cos(2.0 * Math.PI * freq / sampleRate);
+
+    const maximum = N * 32768.0 * HAMMING_MEAN / 2.0;
+    const scaler = Math.pow(maximum, -1);
+
+    let i = 0;
     let index = 0;
 
-    let max = 0;
+    let d1 = 0.0;
+    let d2 = 0.0;
 
-    while (index < samples.length) {
+    let y;
 
-        if (n % windowLength === 0) {
+    while (i < samples.length) {
 
-            const goertzelValue = n % 5;
+        y = HAMMING_VALUES[i % N] * samples[i] + c * d1 - d2;
+        d2 = d1;
+        d1 = y;
 
-            max = (goertzelValue > max) ? goertzelValue : max;
+        if (i % N === N - 1) {
 
-            output[index] = goertzelValue;
+            const goertzelValue = Math.sqrt((d1 * d1) + (d2 * d2) - c * d1 * d2);
+
+            d1 = 0.0;
+            d2 = 0.0;
+
+            output[index] = goertzelValue * scaler;
 
             index++;
 
         }
 
-        n++;
+        i++;
 
     }
 
 }
 
-function drawGoertzelPlot (goertzelValues, offset, length, callback) {
+function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callback) {
 
-    const pointData = new Array((length * 2) + 2).fill(0);
+    const windowedLength = Math.floor(length / windowLength);
+    const windowedOffset = Math.floor(offset / windowLength);
 
-    const width = GOERTZEL_PIXEL_WIDTH / length;
+    const pointData = new Array((windowedLength * 2) + 2).fill(0);
+
+    const width = GOERTZEL_PIXEL_WIDTH / windowedLength;
 
     // Just draw lines between points
 
-    for (let i = 0; i < length + 1; i++) {
+    for (let i = 0; i < windowedLength + 1; i++) {
 
         // Evenly distribute points along canvas
 
@@ -56,7 +91,7 @@ function drawGoertzelPlot (goertzelValues, offset, length, callback) {
 
         // Get the sample
 
-        const y = goertzelValues[offset + i];
+        const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[windowedOffset + i] * GOERTZEL_PIXEL_HEIGHT);
 
         // Add to data for rendering
 
@@ -65,14 +100,14 @@ function drawGoertzelPlot (goertzelValues, offset, length, callback) {
 
     }
 
-    const ctx = goertzelCanvas.getContext('2d');
+    const ctx = goertzelPlotCanvas.getContext('2d');
 
     ctx.strokeStyle = '#004d99';
     ctx.lineWidth = 1;
 
     ctx.beginPath();
 
-    ctx.moveTo(0, GOERTZEL_PIXEL_HEIGHT / 2);
+    ctx.moveTo(0, GOERTZEL_PIXEL_HEIGHT);
 
     let prevX = -1;
     let prevY = -1;
