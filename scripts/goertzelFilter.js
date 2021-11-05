@@ -4,6 +4,8 @@
  * October 2021
  *****************************************************************************/
 
+const GOERTZEL_THRESHOLD_BUFFER_LENGTH = 16384;
+
 // Drawing canvas
 
 const goertzelPlotCanvas = document.getElementById('goertzel-canvas');
@@ -19,24 +21,24 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
     // Generate Hamming filter
 
-    const HAMMING_VALUES = new Array(N);
+    const hammingValues = new Array(N);
 
     let hammingTotal = 0;
 
     for (let i = 0; i < N; i++) {
 
-        HAMMING_VALUES[i] = 0.54 - 0.46 * Math.cos(TWO_PI * i / (N - 1));
-        hammingTotal += HAMMING_VALUES[i];
+        hammingValues[i] = 0.54 - 0.46 * Math.cos(TWO_PI * i / (N - 1));
+        hammingTotal += hammingValues[i];
 
     }
 
-    const HAMMING_MEAN = hammingTotal / N;
+    const hammingMean = hammingTotal / N;
 
     // Apply filter
 
     const c = 2.0 * Math.cos(2.0 * Math.PI * freq / sampleRate);
 
-    const maximum = N * 32768.0 * HAMMING_MEAN / 2.0;
+    const maximum = N * 32768.0 * hammingMean / 2.0;
     const scaler = Math.pow(maximum, -1);
 
     let i = 0;
@@ -49,7 +51,7 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
     while (i < samples.length) {
 
-        y = HAMMING_VALUES[i % N] * samples[i] + c * d1 - d2;
+        y = hammingValues[i % N] * samples[i] + c * d1 - d2;
         d2 = d1;
         d1 = y;
 
@@ -131,8 +133,70 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callbac
 
 }
 
-function applyGoertzelThreshold (goertzelValues, threshold, output) {
+function applyGoertzelThreshold (goertzelValues, threshold, windowLength, minTriggerDurationSamples, output) {
 
-    
+    // Convert minimum trigger duration buffers
+
+    const minTriggerDurationBuffers = Math.ceil(minTriggerDurationSamples / GOERTZEL_THRESHOLD_BUFFER_LENGTH);
+
+    let triggerDuration = 0;
+
+    let aboveThreshold = false;
+
+    let n = 0;
+
+    let index = 0;
+
+    let thresholdedValueCount = 0;
+
+    const goertzelBufferLength = GOERTZEL_THRESHOLD_BUFFER_LENGTH / windowLength;
+
+    while (index < goertzelValues.length) {
+
+        const limit = Math.min(goertzelValues.length, index + goertzelBufferLength);
+
+        while (index < limit) {
+
+            if (Math.abs(goertzelValues[index]) > threshold) {
+
+                aboveThreshold = true;
+
+                triggerDuration = minTriggerDurationBuffers;
+
+            }
+
+            index++;
+
+        }
+
+        output[n] = aboveThreshold;
+
+        n++;
+
+        if (aboveThreshold) {
+
+            if (triggerDuration > 1) {
+
+                triggerDuration--;
+
+            } else {
+
+                aboveThreshold = false;
+
+            }
+
+        } else {
+
+            thresholdedValueCount++;
+
+        }
+
+    }
+
+    thresholdedValueCount *= goertzelBufferLength;
+
+    thresholdedValueCount = Math.min(thresholdedValueCount, goertzelValues.length);
+
+    return thresholdedValueCount;
 
 }

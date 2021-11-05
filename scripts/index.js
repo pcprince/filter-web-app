@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext, applyGoertzelFilter, drawGoertzelPlot */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext, applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -84,6 +84,7 @@ const MAX_ZOOM_Y = 256;
 
 const spectrogramPlaybackCanvas = document.getElementById('spectrogram-playback-canvas'); // Canvas layer where playback progress
 const spectrogramDragCanvas = document.getElementById('spectrogram-drag-canvas'); // Canvas layer where zoom overlay is drawn
+const spectrogramGoertzelCanvas = document.getElementById('spectrogram-goertzel-canvas'); // Canvas layer where Goertzel thresholded periods are drawn
 const spectrogramThresholdCanvas = document.getElementById('spectrogram-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
 const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canvas layer where spectrogram is drawn
 const spectrogramLoadingSVG = document.getElementById('spectrogram-loading-svg');
@@ -107,9 +108,10 @@ const timeAxisHeadingSVG = document.getElementById('time-axis-heading-svg');
 
 // Y axis label canvases
 
-const spectrogramLabelSVG = document.getElementById('spectrogram-label-svg');
 const Y_LABEL_COUNT = 4;
+const spectrogramLabelSVG = document.getElementById('spectrogram-label-svg');
 const waveformLabelSVG = document.getElementById('waveform-label-svg');
+const goertzelLabelSVG = document.getElementById('goertzel-label-svg');
 
 // File variables
 
@@ -183,13 +185,13 @@ const thresholdLabel = document.getElementById('threshold-label');
 
 // Amplitude threshold elements
 
-const amplitudethresholdMaxLabel = document.getElementById('amplitude-threshold-max-label');
-const amplitudethresholdMinLabel = document.getElementById('amplitude-threshold-min-label');
+const amplitudeThresholdMaxLabel = document.getElementById('amplitude-threshold-max-label');
+const amplitudeThresholdMinLabel = document.getElementById('amplitude-threshold-min-label');
 
-const amplitudethresholdSliderHolder = document.getElementById('amplitude-threshold-slider-holder');
+const amplitudeThresholdSliderHolder = document.getElementById('amplitude-threshold-slider-holder');
 const amplitudeThresholdSlider = new Slider('#amplitude-threshold-slider', {});
-const amplitudethresholdDurationTable = document.getElementById('amplitude-threshold-duration-table');
-const amplitudethresholdRadioButtons = document.getElementsByName('amplitude-threshold-duration-radio');
+const amplitudeThresholdDurationTable = document.getElementById('amplitude-threshold-duration-table');
+const amplitudeThresholdRadioButtons = document.getElementsByName('amplitude-threshold-duration-radio');
 
 const amplitudeThresholdScaleSelect = document.getElementById('amplitude-threshold-scale-select');
 
@@ -203,15 +205,37 @@ const MINIMUM_TRIGGER_DURATIONS = [0, 1, 2, 5, 10, 15, 30, 60];
 
 // Amplitude threshold scale enums
 
-let amplitudethresholdScaleIndex = 0;
+let amplitudeThresholdScaleIndex = 0;
 const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 0;
 const AMPLITUDE_THRESHOLD_SCALE_16BIT = 1;
 const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 2;
 
+// Goertzel filter UI
+
+const GOERTZEL_FILTER_WINDOW_LENGTHS = [16, 32, 64, 128, 256, 512, 1024];
+
+const goertzelFilterSlider = new Slider('#goertzel-filter-slider', {});
+const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
+const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
+const goertzelFilterSliderHolder = document.getElementById('goertzel-filter-slider-holder');
+const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
+const goertzelFilterWindowRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
+const goertzelThresholdSliderHolder = document.getElementById('goertzel-threshold-slider-holder');
+const goertzelThresholdSlider = new Slider('#goertzel-threshold-slider', {});
+const goertzelThresholdMaxLabel = document.getElementById('goertzel-threshold-max-label');
+const goertzelThresholdMinLabel = document.getElementById('goertzel-threshold-min-label');
+const goertzelDurationTable = document.getElementById('goertzel-duration-table');
+const goertzelDurationRadioButtons = document.getElementsByName('goertzel-duration-radio');
+
+// Array of Goertzel responses
+
+let goertzelValues;
+
 // Boolean array equal length to sample count. Is sample over threshold
 
 let samplesAboveThreshold;
-let thresholdedSampleCount = 0;
+let samplesAboveGoertzelThreshold;
+let thresholdedValueCount = 0;
 
 // Panel which states how much size reduction the amplitude threshold settings chosen will do
 
@@ -265,27 +289,6 @@ let animationTimer;
 
 let skippingXCoords = [];
 
-// Goertzel filter UI
-
-const GOERTZEL_FILTER_WINDOW_LENGTHS = [16, 32, 64, 128, 256, 512, 1024];
-
-const goertzelFilterSlider = new Slider('#goertzel-filter-slider', {});
-const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
-const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
-const goertzelFilterSliderHolder = document.getElementById('goertzel-filter-slider-holder');
-const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
-const goertzelFilterWindowRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
-const goertzelThresholdSliderHolder = document.getElementById('goertzel-threshold-slider-holder');
-const goertzelThresholdSlider = new Slider('#goertzel-threshold-slider', {});
-const goertzelThresholdMaxLabel = document.getElementById('goertzel-threshold-max-label');
-const goertzelThresholdMinLabel = document.getElementById('goertzel-threshold-min-label');
-const goertzelDurationTable = document.getElementById('goertzel-duration-table');
-const goertzelDurationRadioButtons = document.getElementsByName('goertzel-duration-radio');
-
-// Array of Goertzel responses
-
-let goertzelValues;
-
 /**
  * Get index of radio button selected from a collection of radio buttons
  * @param {string} radioName Name assigned to the group of radio buttons
@@ -328,16 +331,6 @@ function setBandPass (lowerSliderValue, higherSliderValue) {
     higherSliderValue = (higherSliderValue === -1) ? bandPassFilterSlider.getAttribute('max') : higherSliderValue;
 
     bandPassFilterSlider.setValue([lowerSliderValue, higherSliderValue]);
-
-}
-
-/**
- * Set the Goertzel filter to given value
- * @param {number} value New Goertzel filter value
- */
-function setGoertzelFilter (value) {
-
-    goertzelFilterSlider.setValue(value);
 
 }
 
@@ -393,7 +386,7 @@ function sampleRateChange (resetValues) {
         setLowPassSliderValue(roundToSliderStep(newLowPassFreq, filterSliderStep));
         setHighPassSliderValue(roundToSliderStep(newHighPassFreq, filterSliderStep));
 
-        setGoertzelFilter(0);
+        goertzelFilterSlider.setValue(maxFreq / 2);
 
     }
 
@@ -644,7 +637,7 @@ function updateThresholdLabel () {
 
         thresholdLabel.textContent = 'Amplitude threshold of ';
 
-        switch (amplitudethresholdScaleIndex) {
+        switch (amplitudeThresholdScaleIndex) {
 
         case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
@@ -694,21 +687,21 @@ function updateAmplitudethresholdScale () {
 
     updateThresholdLabel();
 
-    switch (amplitudethresholdScaleIndex) {
+    switch (amplitudeThresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
-        amplitudethresholdMinLabel.innerHTML = '0.001%';
-        amplitudethresholdMaxLabel.innerHTML = '100%';
+        amplitudeThresholdMinLabel.innerHTML = '0.001%';
+        amplitudeThresholdMaxLabel.innerHTML = '100%';
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_16BIT:
-        amplitudethresholdMinLabel.innerHTML = '0';
-        amplitudethresholdMaxLabel.innerHTML = '32768';
+        amplitudeThresholdMinLabel.innerHTML = '0';
+        amplitudeThresholdMaxLabel.innerHTML = '32768';
         break;
 
     case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
-        amplitudethresholdMinLabel.innerHTML = '-100 dB';
-        amplitudethresholdMaxLabel.innerHTML = '0 dB';
+        amplitudeThresholdMinLabel.innerHTML = '-100 dB';
+        amplitudeThresholdMaxLabel.innerHTML = '0 dB';
         break;
 
     }
@@ -767,6 +760,7 @@ function updateThresholdTypeUI () {
         amplitudeThresholdHolder.style.display = 'none';
         goertzelFilterThresholdHolder.style.display = 'none';
         goertzelCanvasHolder.style.display = 'none';
+        spectrogramGoertzelCanvas.style.display = 'none';
 
         break;
 
@@ -775,6 +769,7 @@ function updateThresholdTypeUI () {
         amplitudeThresholdHolder.style.display = '';
         goertzelFilterThresholdHolder.style.display = 'none';
         goertzelCanvasHolder.style.display = 'none';
+        spectrogramGoertzelCanvas.style.display = 'none';
 
         break;
 
@@ -783,6 +778,7 @@ function updateThresholdTypeUI () {
         amplitudeThresholdHolder.style.display = 'none';
         goertzelFilterThresholdHolder.style.display = '';
         goertzelCanvasHolder.style.display = '';
+        spectrogramGoertzelCanvas.style.display = '';
 
         break;
 
@@ -801,15 +797,15 @@ function updateThresholdUI () {
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && sampleCount !== 0 && !drawing && !playing) {
 
-        enableSlider(amplitudeThresholdSlider, amplitudethresholdSliderHolder);
-        amplitudethresholdMaxLabel.style.color = '';
-        amplitudethresholdMinLabel.style.color = '';
+        enableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+        amplitudeThresholdMaxLabel.style.color = '';
+        amplitudeThresholdMinLabel.style.color = '';
 
-        amplitudethresholdDurationTable.style.color = '';
+        amplitudeThresholdDurationTable.style.color = '';
 
-        for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
+        for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
 
-            amplitudethresholdRadioButtons[i].disabled = false;
+            amplitudeThresholdRadioButtons[i].disabled = false;
 
         }
 
@@ -843,9 +839,9 @@ function updateThresholdUI () {
 
         // Disable amplitude trheshold UI
 
-        disableSlider(amplitudeThresholdSlider, amplitudethresholdSliderHolder);
-        amplitudethresholdMaxLabel.style.color = '#D3D3D3';
-        amplitudethresholdMinLabel.style.color = '#D3D3D3';
+        disableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+        amplitudeThresholdMaxLabel.style.color = '#D3D3D3';
+        amplitudeThresholdMinLabel.style.color = '#D3D3D3';
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
@@ -856,11 +852,11 @@ function updateThresholdUI () {
 
         // }
 
-        amplitudethresholdDurationTable.style.color = '#D3D3D3';
+        amplitudeThresholdDurationTable.style.color = '#D3D3D3';
 
-        for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
+        for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
 
-            amplitudethresholdRadioButtons[i].disabled = true;
+            amplitudeThresholdRadioButtons[i].disabled = true;
 
         }
 
@@ -1263,7 +1259,7 @@ function drawAxisLabels () {
     const a16bitValues = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
     const rawSliderValues = [1.0, 0.75, 0.5, 0.25, 0.0, 0.25, 0.5, 0.75, 1.0];
 
-    switch (amplitudethresholdScaleIndex) {
+    switch (amplitudeThresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
@@ -1338,6 +1334,48 @@ function drawAxisLabels () {
         markerY = (markerY === canvasH) ? markerY - 1 : markerY;
 
         addSVGLine(waveformLabelSVG, wavMarkerX, markerY, waveformLabelSVG.width.baseVal.value, markerY);
+
+    }
+
+    // Draw y axis labels for goertzel plot
+
+    clearSVG(goertzelLabelSVG);
+
+    const goertzelPercentageValues = [100, 87.5, 75, 62.5, 50, 37.5, 25, 12.5, 0];
+
+    const goertzelLabelTexts = ['', '', '', '', '', '', '', '', ''];
+
+    for (let i = 0; i < goertzelLabelTexts.length; i++) {
+
+        goertzelLabelTexts[i] = goertzelPercentageValues[i].toFixed(1) + '%';
+
+    }
+
+    const goertzelCanvasH = goertzelLabelSVG.height.baseVal.value;
+
+    const yGoertzelIncrement = goertzelCanvasH / (goertzelLabelTexts.length - 1);
+
+    const goertzelLabelX = goertzelLabelSVG.width.baseVal.value - 7;
+    const goertzelMarkerX = goertzelLabelSVG.width.baseVal.value - yMarkerLength;
+
+    // Draw middle labels and markers
+
+    for (let i = 0; i < goertzelLabelTexts.length; i++) {
+
+        let markerY = Math.round(i * yGoertzelIncrement);
+        let labelY = markerY;
+
+        labelY = (labelY === 0) ? labelY + 5 : labelY;
+        labelY = (labelY === goertzelCanvasH) ? labelY - 5 : labelY;
+
+        addSVGText(goertzelLabelSVG, goertzelLabelTexts[i], goertzelLabelX, labelY, 'end');
+
+        // Nudge markers slightly onto canvas so they're not cut off
+
+        markerY = (markerY === 0) ? markerY + 1 : markerY;
+        markerY = (markerY === goertzelCanvasH) ? markerY - 1 : markerY;
+
+        addSVGLine(goertzelLabelSVG, goertzelMarkerX, markerY, goertzelLabelSVG.width.baseVal.value, markerY);
 
     }
 
@@ -1475,7 +1513,7 @@ function drawAmplitudeThresholdLines () {
 
     resetCanvas(waveformThresholdLineCanvas);
 
-    thresholdCtx.strokeStyle = '#A3A3A3';
+    thresholdCtx.strokeStyle = 'black';
     thresholdCtx.lineWidth = 1;
 
     const amplitudeThreshold = getAmplitudeThreshold();
@@ -1495,7 +1533,7 @@ function drawAmplitudeThresholdLines () {
 
 }
 
-function drawGoertzelThresholdLines () {
+function drawGoertzelThresholdLine () {
 
     const thresholdCtx = goertzelThresholdCanvas.getContext('2d');
     const w = goertzelThresholdCanvas.width;
@@ -1503,8 +1541,7 @@ function drawGoertzelThresholdLines () {
 
     resetCanvas(goertzelThresholdCanvas);
 
-    thresholdCtx.strokeStyle = '#A3A3A3';
-    thresholdCtx.lineWidth = 1;
+    thresholdCtx.strokeStyle = 'black';
 
     const frequencyThreshold = getGoertzelThreshold();
 
@@ -1513,6 +1550,52 @@ function drawGoertzelThresholdLines () {
     thresholdCtx.moveTo(0, thresholdY);
     thresholdCtx.lineTo(w, thresholdY);
     thresholdCtx.stroke();
+
+}
+
+function drawGoertzelFilter () {
+
+    const filterCtx = spectrogramGoertzelCanvas.getContext('2d');
+    const w = spectrogramGoertzelCanvas.width;
+    const h = spectrogramGoertzelCanvas.height;
+
+    resetCanvas(spectrogramGoertzelCanvas);
+
+    filterCtx.lineWidth = 1;
+    filterCtx.strokeStyle = 'black';
+
+    const nyquist = sampleRate / 2.0;
+
+    const freq = goertzelFilterSlider.getValue();
+    const freqY = h - (h * freq / nyquist);
+
+    const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
+    const bandwidth = 4.0 * sampleRate / windowLength;
+    const bandwidthY = (h * bandwidth / nyquist) / 2;
+
+    // Draw central frequency
+
+    filterCtx.moveTo(0, freqY);
+    filterCtx.lineTo(w, freqY);
+    filterCtx.stroke();
+
+    // Draw lines at edge of bandwidth
+
+    filterCtx.moveTo(0, freqY - bandwidthY);
+    filterCtx.lineTo(w, freqY - bandwidthY);
+    filterCtx.stroke();
+
+    filterCtx.moveTo(0, freqY + bandwidthY);
+    filterCtx.lineTo(w, freqY + bandwidthY);
+    filterCtx.stroke();
+
+    // Grey out areas outside the thresholded frequency
+
+    filterCtx.globalAlpha = 0.25;
+    filterCtx.fillStyle = 'red';
+
+    filterCtx.fillRect(0, 0, w, freqY - bandwidthY);
+    filterCtx.fillRect(0, freqY + bandwidthY, w, h - (freqY + bandwidthY));
 
 }
 
@@ -1591,6 +1674,99 @@ function drawThresholdedPeriods () {
 
         waveformCtx.fillRect(startPixels, 0, lengthPixels, waveformH);
         spectrogramCtx.fillRect(startPixels, 0, lengthPixels, spectrogramH);
+
+    }
+
+}
+
+/**
+ * Draw Goertzel threshold periods to the overlay layer
+ */
+function drawGoertzelThresholdedPeriods () {
+
+    const waveformCtx = waveformThresholdCanvas.getContext('2d');
+    const waveformW = waveformThresholdCanvas.width;
+    const waveformH = waveformThresholdCanvas.height;
+
+    waveformCtx.clearRect(0, 0, waveformW, waveformH);
+
+    const spectrogramCtx = spectrogramThresholdCanvas.getContext('2d');
+    const spectrogramW = spectrogramThresholdCanvas.width;
+    const spectrogramH = spectrogramThresholdCanvas.height;
+
+    spectrogramCtx.clearRect(0, 0, spectrogramW, spectrogramH);
+
+    const goertzelCtx = goertzelThresholdCanvas.getContext('2d');
+    const goertzelW = goertzelThresholdCanvas.width;
+    const goertzelH = goertzelThresholdCanvas.height;
+
+    goertzelCtx.clearRect(0, 0, goertzelW, goertzelH);
+
+    // Reset scaling from zoom
+
+    waveformCtx.resetTransform();
+
+    waveformCtx.fillStyle = 'white';
+    waveformCtx.globalAlpha = 0.75;
+
+    spectrogramCtx.resetTransform();
+
+    spectrogramCtx.fillStyle = 'white';
+    spectrogramCtx.globalAlpha = 0.85;
+
+    goertzelCtx.resetTransform();
+
+    goertzelCtx.fillStyle = 'white';
+    goertzelCtx.globalAlpha = 0.75;
+
+    let drawingPeriod = false;
+    let startPixels;
+
+    const start = Math.floor(offset / GOERTZEL_THRESHOLD_BUFFER_LENGTH);
+    const end = Math.floor((offset + displayLength - 1) / GOERTZEL_THRESHOLD_BUFFER_LENGTH);
+
+    for (let i = start; i <= end; i++) {
+
+        const sampleIndex = i * GOERTZEL_THRESHOLD_BUFFER_LENGTH;
+
+        if (!samplesAboveGoertzelThreshold[i]) {
+
+            if (!drawingPeriod) {
+
+                drawingPeriod = true;
+                startPixels = samplesToPixels(sampleIndex - offset);
+
+            }
+
+        } else {
+
+            if (drawingPeriod) {
+
+                drawingPeriod = false;
+
+                const endPixels = samplesToPixels(sampleIndex - offset);
+                const lengthPixels = endPixels - startPixels;
+
+                waveformCtx.fillRect(startPixels, 0, lengthPixels, waveformH);
+                spectrogramCtx.fillRect(startPixels, 0, lengthPixels, spectrogramH);
+                goertzelCtx.fillRect(startPixels, 0, lengthPixels, goertzelH);
+
+            }
+
+        }
+
+    }
+
+    // If a period is cut off by the end of the displayed area
+
+    if (drawingPeriod) {
+
+        const endPixels = samplesToPixels(offset + displayLength);
+        const lengthPixels = endPixels - startPixels;
+
+        waveformCtx.fillRect(startPixels, 0, lengthPixels, waveformH);
+        spectrogramCtx.fillRect(startPixels, 0, lengthPixels, spectrogramH);
+        goertzelCtx.fillRect(startPixels, 0, lengthPixels, goertzelH);
 
     }
 
@@ -1705,9 +1881,9 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
 
             drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, () => {
 
-                // TODO: Implement thresholded periods
-                // drawThresholdedPeriods();
-                drawGoertzelThresholdLines();
+                drawGoertzelThresholdedPeriods();
+                drawGoertzelFilter();
+                drawGoertzelThresholdLine();
                 reenableUI();
 
             });
@@ -2147,21 +2323,37 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
         console.log('Threshold:', threshold);
         console.log('Minimum trigger duration: %i (%i samples)', minimumTriggerDurationSecs, minimumTriggerDurationSamples);
 
-        thresholdedSampleCount = applyAmplitudeThreshold(renderSamples, threshold, minimumTriggerDurationSamples, samplesAboveThreshold);
+        thresholdedValueCount = applyAmplitudeThreshold(renderSamples, threshold, minimumTriggerDurationSamples, samplesAboveThreshold);
 
     }
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
 
+        const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('goertzel-duration-radio')];
+        const minimumTriggerDurationSamples = minimumTriggerDurationSecs * getSampleRate();
+
         const freq = goertzelFilterSlider.getValue();
 
         const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
+        // Create array which will contain all the Goertzel values
+
         goertzelValues = new Array(Math.floor(sampleCount / windowLength));
+
+        // Apply filter to samples
 
         applyGoertzelFilter(renderSamples, sampleRate, freq, windowLength, goertzelValues);
 
-        // console.log(goertzelValues);
+        // Divide slider value by maximum possible Goertzel response
+
+        const threshold = getGoertzelThreshold() / 32768.0;
+
+        // Create boolean array which states whether or not each block is above the threshold
+        // This has to be created here rather than when the file is loaded because windowLength can be changed
+
+        samplesAboveGoertzelThreshold = new Array(samplesAboveThreshold.length);
+
+        thresholdedValueCount = applyGoertzelThreshold(goertzelValues, threshold, windowLength, minimumTriggerDurationSamples, samplesAboveGoertzelThreshold);
 
     }
 
@@ -2375,7 +2567,7 @@ function updateFileSizePanel () {
 
     if (thresholdTypeIndex !== THRESHOLD_TYPE_NONE) {
 
-        const thresholdedSeconds = thresholdedSampleCount / getSampleRate();
+        const thresholdedSeconds = thresholdedValueCount / getSampleRate();
 
         const thresholdedFileSize = getSampleRate() * 2 * (totalSeconds - thresholdedSeconds);
 
@@ -2535,7 +2727,7 @@ async function loadFile (exampleFilePath, exampleName) {
             const currentGoertzelFilterValue = goertzelFilterSlider.getValue();
 
             const newGoertzelFilterValue = currentGoertzelFilterValue > maxFreq ? maxFreq : currentGoertzelFilterValue;
-            setGoertzelFilter(newGoertzelFilterValue);
+            goertzelFilterSlider.setValue(newGoertzelFilterValue);
 
             updateThresholdUI();
 
@@ -2952,7 +3144,7 @@ for (let i = 0; i < filterRadioButtons.length; i++) {
 
 amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
-    amplitudethresholdScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
+    amplitudeThresholdScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
 
     updateAmplitudethresholdScale();
 
@@ -2966,10 +3158,14 @@ amplitudeThresholdSlider.on('change', updateThresholdLabel);
 goertzelFilterSlider.on('change', updateThresholdLabel);
 goertzelThresholdSlider.on('change', updateThresholdLabel);
 
+// Add listener which updates the position of the Goertzel filter line on the spectrogram plot
+
+goertzelFilterSlider.on('change', drawGoertzelFilter);
+
 // Add listener which updates the position of the lines on the waveform/frequency plot as the threshold sliders moves
 
 amplitudeThresholdSlider.on('change', drawAmplitudeThresholdLines);
-goertzelThresholdSlider.on('change', drawGoertzelThresholdLines);
+goertzelThresholdSlider.on('change', drawGoertzelThresholdLine);
 
 /**
  * Run updatePlots function without refreshing the colour map, recalculating the spectrogram frames
@@ -3066,9 +3262,9 @@ function handleAmplitudeThresholdChange () {
 
 amplitudeThresholdSlider.on('slideStop', handleAmplitudeThresholdChange);
 
-for (let i = 0; i < amplitudethresholdRadioButtons.length; i++) {
+for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
 
-    amplitudethresholdRadioButtons[i].addEventListener('change', handleAmplitudeThresholdChange);
+    amplitudeThresholdRadioButtons[i].addEventListener('change', handleAmplitudeThresholdChange);
 
 }
 
@@ -3102,9 +3298,15 @@ function reset () {
     if (sampleCount !== 0 && !drawing && !playing) {
 
         filterRadioButtons[1].checked = true;
-        amplitudethresholdRadioButtons[0].checked = true;
+        amplitudeThresholdRadioButtons[0].checked = true;
 
         amplitudeThresholdSlider.setValue(0);
+
+        goertzelThresholdSlider.setValue(0);
+
+        goertzelFilterWindowRadioButtons[0].checked = true;
+        goertzelDurationRadioButtons[0].checked = true;
+
         sampleRateChange(true);
 
         previousSelectionType = 1;
@@ -3197,7 +3399,7 @@ function exportConfig () {
 
     let amplitudeThreshold = 0;
 
-    switch (amplitudethresholdScaleIndex) {
+    switch (amplitudeThresholdScaleIndex) {
 
     case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
 
@@ -3228,7 +3430,7 @@ function exportConfig () {
         amplitudeThresholdingEnabled: thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE,
         amplitudeThreshold: amplitudeThreshold,
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
-        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudethresholdScaleIndex]
+        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdScaleIndex]
     };
 
     const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
@@ -3690,3 +3892,6 @@ if (!isChrome) {
 // This should only be true when developing
 // loadExampleFiles(true);
 loadExampleFiles();
+
+// TODO: Rename Goertzel to frequency
+// TODO: Add option to hide threshold overlays

@@ -130,6 +130,7 @@
                             <svg class="label-canvas" id="spectrogram-label-svg" width="45" height="257" style="padding: 0%;"></svg>
                             <canvas class="plot-canvas" id="spectrogram-canvas" width="748" height="255" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="spectrogram-threshold-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="spectrogram-goertzel-canvas" width="748" height="255" style="border: #cdcdcd thin solid; display: none;"></canvas>
                             <canvas class="plot-canvas" id="spectrogram-playback-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
                             <svg class="plot-canvas" id="spectrogram-loading-svg" width="750" height="257"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
@@ -375,7 +376,7 @@
                                         <div class="col-12">
                                             <div style="margin-left: 5px; margin-right: 4px">
                                                 <table class="table" style="margin-bottom: 4px;" id="goertzel-filter-window-table">
-                                                    <tr class="settings-text" style="font-size: 12px;" title="Minimum trigger length.">
+                                                    <tr class="settings-text" style="font-size: 12px;" title="Window length of the Goertzel filter.">
                                                         <td align="center" style="padding: 0px; padding-left: 0px;"></td>
                                                         <td align="center" style="padding: 0px; padding-left: 0px; width: 50px;"></td>
                                                         <td align="center" style="padding: 0px; padding-left: 0px;" name="goertzel-filter-window-radio-label">16</td>
@@ -421,7 +422,7 @@
                                         <div class="col-2" style="text-align: left; padding-right: 0px;">
                                             <span class="settings-text" id="goertzel-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                         </div>
-                                        <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
+                                        <div id="goertzel-filter-slider-holder" class="col-8 config-slider" title="The central frequency of the Goertzel filter." style="padding-left: 0px; padding-right: 0px;">
                                             <input id="goertzel-filter-slider" data-slider-id="goertzel-filter-slider" type="text" class="span2" value="" data-slider-min="0" data-slider-max="24000" data-slider-step="100" data-slider-value="0" data-slider-selection="before" style="width: 370px;">
                                         </div>
                                         <div class="col-2" style="text-align: right;">
