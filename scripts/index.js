@@ -3893,5 +3893,4 @@ if (!isChrome) {
 // loadExampleFiles(true);
 loadExampleFiles();
 
-// TODO: Rename Goertzel to frequency
 // TODO: Add option to hide threshold overlays
