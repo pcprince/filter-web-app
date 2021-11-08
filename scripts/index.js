@@ -3763,6 +3763,8 @@ playButton.addEventListener('click', () => {
 
         let playbackBufferLength = displayLength;
 
+        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
         // If playback mode is to skip thresholded periods, build an array of X axis locations which map to playback progress
 
         if (playbackMode === PLAYBACK_MODE_SKIP) {
@@ -3786,7 +3788,9 @@ playButton.addEventListener('click', () => {
 
                 const sampleIndex = i * AMPLITUDE_THRESHOLD_BUFFER_LENGTH;
 
-                if (samplesAboveThreshold[i]) {
+                const sampleAboveThreshold = (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold[i] : samplesAboveThreshold[i];
+
+                if (sampleAboveThreshold) {
 
                     // Add an x coordinate for each sample within the period above the threshold
 
@@ -3821,7 +3825,15 @@ playButton.addEventListener('click', () => {
 
         if (playbackBufferLength > 0) {
 
-            playAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, stopEvent);
+            if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+
+                playAudio(samples, samplesAboveGoertzelThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, stopEvent);
+
+            } else {
+
+                playAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, stopEvent);
+
+            }
 
             // Start animation loop
 
@@ -3890,7 +3902,7 @@ if (!isChrome) {
 }
 
 // This should only be true when developing
-// loadExampleFiles(true);
-loadExampleFiles();
+loadExampleFiles(true);
+// loadExampleFiles();
 
 // TODO: Add option to hide threshold overlays
