@@ -348,6 +348,7 @@ function roundToSliderStep (value, step) {
 
 /**
  * Handle a change in the sample rate from loading a new file
+ * @param {boolean} resetValues Whether or not to reset the configuration to default
  */
 function sampleRateChange (resetValues) {
 
@@ -394,6 +395,8 @@ function sampleRateChange (resetValues) {
 
 /**
  * Disable playback slider and change CSS to display disabled cursor on hover
+ * @param {Object} slider Slider to be disabled
+ * @param {Element} div Div element which contains it
  */
 function disableSlider (slider, div) {
 
@@ -415,6 +418,8 @@ function disableSlider (slider, div) {
 
 /**
  * Enable playback slider and reset CSS cursor
+ * @param {Object} slider Slider to be enabled
+ * @param {Element} div Div element which contains it
  */
 function enableSlider (slider, div) {
 
@@ -708,6 +713,9 @@ function updateAmplitudethresholdScale () {
 
 }
 
+/**
+ * Update UI based on which threshold type is selected
+ */
 function updateThresholdTypeUI () {
 
     const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
@@ -843,15 +851,6 @@ function updateThresholdUI () {
         amplitudeThresholdMaxLabel.style.color = '#D3D3D3';
         amplitudeThresholdMinLabel.style.color = '#D3D3D3';
 
-        // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
-
-        // FIXME: Work out how this applies to new setup
-        // if (!amplitudeThresholdCheckbox.disabled) {
-
-        //     amplitudethresholdLabel.textContent = 'All audio will be written to a WAV file.';
-
-        // }
-
         amplitudeThresholdDurationTable.style.color = '#D3D3D3';
 
         for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
@@ -888,12 +887,11 @@ function updateThresholdUI () {
 
         // If the UI is disabled because app is drawing, rather than manually disabled, don't rewrite the label
 
-        // FIXME: Incorporate this into the filter label
-        // if (!goertzelFilterCheckbox.disabled) {
+        if (!drawing && !playing) {
 
-        //     goertzelFilterLabel.textContent = 'Recordings will not be filtered.';
+            thresholdLabel.textContent = 'All audio will be written to a WAV file.';
 
-        // }
+        }
 
     }
 
@@ -1533,6 +1531,9 @@ function drawAmplitudeThresholdLines () {
 
 }
 
+/**
+ * Draw Goertzel threshold value to its overlay layer
+ */
 function drawGoertzelThresholdLine () {
 
     const thresholdCtx = goertzelThresholdCanvas.getContext('2d');
@@ -1799,6 +1800,9 @@ function drawLoadingImages () {
 
 }
 
+/**
+ * Re-enable UI at the end of the drawing process
+ */
 function reenableUI () {
 
     fileButton.disabled = false;
@@ -3206,6 +3210,10 @@ bandPassFilterSlider.on('slideStop', handleFilterChange);
 lowPassFilterSlider.on('slideStop', handleFilterChange);
 highPassFilterSlider.on('slideStop', handleFilterChange);
 
+/**
+ * Handle event when a different threshold type is selected
+ * @param {event} e Threshold type change event
+ */
 function handleThresholdTypeChange (e) {
 
     if (sampleCount === 0 || drawing || playing) {
@@ -3268,7 +3276,20 @@ for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
 
 }
 
-function handleGoertzelFilterChange () {
+/**
+ * Handle event when the Goertzel filter slider is dragged
+ * @param {event} e Value change event
+ */
+function handleGoertzelFilterChange (e) {
+
+    if (sampleCount === 0 || drawing || playing) {
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        return;
+
+    }
 
     updateThresholdUI();
     updatePlots(false, false, true, false);
@@ -3291,8 +3312,9 @@ for (let i = 0; i < goertzelDurationRadioButtons.length; i++) {
 
 goertzelThresholdSlider.on('slideStop', handleGoertzelFilterChange);
 
-// Add reset button listener, removing filter and amplitude threshold, setting zoom to x1.0 and offset to 0
-
+/**
+ * Reset button event
+ */
 function reset () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
@@ -3361,8 +3383,9 @@ waveformHomeButton.addEventListener('click', resetWaveformZoom);
 waveformZoomInButton.addEventListener('click', zoomInWaveformY);
 waveformZoomOutButton.addEventListener('click', zoomOutWaveformY);
 
-// Add export functionality
-
+/**
+ * Export configuration to file which can be read by the AudioMoth Configuration App
+ */
 function exportConfig () {
 
     if (sampleCount === 0 || drawing || playing) {
@@ -3902,7 +3925,7 @@ if (!isChrome) {
 }
 
 // This should only be true when developing
-loadExampleFiles(true);
-// loadExampleFiles();
+// loadExampleFiles(true);
+loadExampleFiles();
 
 // TODO: Add option to hide threshold overlays

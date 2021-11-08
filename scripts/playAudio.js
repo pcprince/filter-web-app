@@ -35,6 +35,9 @@ function scaleValue (x, max, min) {
 
 }
 
+/**
+ * Create the AudioContext object required for playback
+ */
 function createAudioContext () {
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;

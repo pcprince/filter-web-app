@@ -4,6 +4,8 @@
  * October 2021
  *****************************************************************************/
 
+// Number of samples compared to threshold before deciding if buffer is above or below the threshold
+
 const GOERTZEL_THRESHOLD_BUFFER_LENGTH = 16384;
 
 // Drawing canvas
@@ -15,6 +17,14 @@ const GOERTZEL_PIXEL_HEIGHT = goertzelPlotCanvas.height;
 
 const TWO_PI = 2.0 * Math.PI;
 
+/**
+ * Apply a Goertzel filter to a given set of samples
+ * @param {number[]} samples Samples
+ * @param {number} sampleRate Sample rate of the sample set
+ * @param {number} freq Central frequency
+ * @param {number} N Filter length
+ * @param {number[]} output Goertzel responses
+ */
 function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
     console.log('Applying Goertzel filter at ' + freq + '.');
@@ -74,7 +84,17 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
 }
 
+/**
+ * Draw plot of the Goertzel response
+ * @param {number[]} goertzelValues Response values produced by applyGoertzelFilter()
+ * @param {number[]} windowLength Window length of filter
+ * @param {number} offset Offset through the samples being drawn
+ * @param {number} length Number of samples being drawn
+ * @param {function} callback Completion function
+ */
 function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callback) {
+
+    // Convert offset and length of drawing location from samples to Goertzel responses
 
     const windowedLength = Math.floor(length / windowLength);
     const windowedOffset = Math.floor(offset / windowLength);
@@ -133,6 +153,15 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callbac
 
 }
 
+/**
+ * Apply threshold to a set of Goertzel values
+ * @param {number[]} goertzelValues Response values produced by applyGoertzelFilter()
+ * @param {number} threshold Threshold values should be compared to
+ * @param {number} windowLength Window length of filter
+ * @param {number} minTriggerDurationSamples Minimum length of a triggered period in samples
+ * @param {boolean[]} output Whether or not each sample is above thye threshold
+ * @returns The number of values above the threshold
+ */
 function applyGoertzelThreshold (goertzelValues, threshold, windowLength, minTriggerDurationSamples, output) {
 
     // Convert minimum trigger duration buffers
