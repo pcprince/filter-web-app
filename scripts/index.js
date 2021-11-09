@@ -640,7 +640,7 @@ function updateThresholdLabel () {
 
         const amplitudeThreshold = convertThreshold(amplitudeThresholdSlider.getValue());
 
-        thresholdLabel.textContent = 'Amplitude threshold of ';
+        thresholdLabel.textContent = 'Threshold of ';
 
         switch (amplitudeThresholdScaleIndex) {
 
@@ -670,7 +670,7 @@ function updateThresholdLabel () {
 
         thresholdLabel.style.color = '';
 
-        thresholdLabel.textContent = 'Frequency threshold of ';
+        thresholdLabel.textContent = 'Threshold of ';
         thresholdLabel.textContent += goertzelThresholdPercentage + '%';
         thresholdLabel.textContent += ' at ' + goertzelFrequency.toFixed(1) + ' kHz';
         thresholdLabel.textContent += ' will be used when generating T.WAV files.';
