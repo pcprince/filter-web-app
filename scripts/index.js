@@ -3927,5 +3927,3 @@ if (!isChrome) {
 // This should only be true when developing
 // loadExampleFiles(true);
 loadExampleFiles();
-
-// TODO: Add option to hide threshold overlays
