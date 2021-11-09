@@ -1339,9 +1339,9 @@ function drawAxisLabels () {
 
     clearSVG(goertzelLabelSVG);
 
-    const goertzelPercentageValues = [100, 87.5, 75, 62.5, 50, 37.5, 25, 12.5, 0];
+    const goertzelPercentageValues = [100, 75, 50, 25, 0];
 
-    const goertzelLabelTexts = ['', '', '', '', '', '', '', '', ''];
+    const goertzelLabelTexts = ['', '', '', '', ''];
 
     for (let i = 0; i < goertzelLabelTexts.length; i++) {
 
