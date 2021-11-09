@@ -92,7 +92,7 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
  * @param {number} length Number of samples being drawn
  * @param {function} callback Completion function
  */
-function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callback) {
+function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, callback) {
 
     // Convert offset and length of drawing location from samples to Goertzel responses
 
@@ -113,7 +113,7 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callbac
 
         // Get the sample
 
-        const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[windowedOffset + i] * GOERTZEL_PIXEL_HEIGHT);
+        const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[windowedOffset + i] * GOERTZEL_PIXEL_HEIGHT * yZoom);
 
         // Add to data for rendering
 

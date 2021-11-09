@@ -7,9 +7,7 @@
 // Drawing canvas
 
 const wavCanvas = document.getElementById('waveform-canvas');
-
-const WAV_PIXEL_WIDTH = wavCanvas.width;
-const WAV_PIXEL_HEIGHT = wavCanvas.height;
+const wavCanvasSmall = document.getElementById('waveform-canvas-small');
 
 /**
  * Draw the waveform plot
@@ -17,14 +15,16 @@ const WAV_PIXEL_HEIGHT = wavCanvas.height;
  * @param {number} startTime Time when render started
  * @param {function} callback Function called on completion
  */
-function renderRawWaveform (pointData, startTime, callback) {
+function renderRawWaveform (pointData, startTime, smallPlot, callback) {
 
-    const ctx = wavCanvas.getContext('2d');
+    const ctx = smallPlot ? wavCanvasSmall.getContext('2d') : wavCanvas.getContext('2d');
 
     ctx.strokeStyle = '#004d99';
     ctx.lineWidth = 1;
 
     ctx.beginPath();
+
+    const WAV_PIXEL_HEIGHT = smallPlot ? wavCanvasSmall.height : wavCanvas.height;
 
     ctx.moveTo(0, WAV_PIXEL_HEIGHT / 2);
 
@@ -59,9 +59,12 @@ function renderRawWaveform (pointData, startTime, callback) {
  * @param {number} startTime Time when render started
  * @param {function} callback Function called on completion
  */
-function renderWaveform (data, startTime, callback) {
+function renderWaveform (data, startTime, smallPlot, callback) {
 
-    const ctx = wavCanvas.getContext('2d');
+    const ctx = smallPlot ? wavCanvasSmall.getContext('2d') : wavCanvas.getContext('2d');
+
+    const WAV_PIXEL_WIDTH = smallPlot ? wavCanvasSmall.width : wavCanvas.width;
+    const WAV_PIXEL_HEIGHT = smallPlot ? wavCanvasSmall.height : wavCanvas.height;
 
     const id = ctx.getImageData(0, 0, WAV_PIXEL_WIDTH, WAV_PIXEL_HEIGHT);
 
@@ -105,7 +108,10 @@ function renderWaveform (data, startTime, callback) {
  * @param {number} yZoom Amount to zoom in plot on y axis
  * @param {function} callback Function called on completion
  */
-function drawWaveform (samples, offset, length, yZoom, callback) {
+function drawWaveform (samples, offset, length, yZoom, smallPlot, callback) {
+
+    const WAV_PIXEL_WIDTH = smallPlot ? wavCanvasSmall.width : wavCanvas.width;
+    const WAV_PIXEL_HEIGHT = smallPlot ? wavCanvasSmall.height : wavCanvas.height;
 
     const halfHeight = WAV_PIXEL_HEIGHT / 2;
 
@@ -164,7 +170,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         }
 
-        renderRawWaveform(pointData, startTime, callback);
+        renderRawWaveform(pointData, startTime, smallPlot, callback);
 
     } else {
 
@@ -204,7 +210,7 @@ function drawWaveform (samples, offset, length, yZoom, callback) {
 
         }
 
-        renderWaveform(pointData, startTime, callback);
+        renderWaveform(pointData, startTime, smallPlot, callback);
 
     }
 
