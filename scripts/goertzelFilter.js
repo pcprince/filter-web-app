@@ -69,10 +69,10 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
             const goertzelValue = Math.sqrt((d1 * d1) + (d2 * d2) - c * d1 * d2);
 
+            output[index] = Math.min(goertzelValue * scaler, 1.0);
+
             d1 = 0.0;
             d2 = 0.0;
-
-            output[index] = goertzelValue * scaler;
 
             index++;
 
