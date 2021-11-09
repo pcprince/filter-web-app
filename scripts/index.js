@@ -1593,7 +1593,7 @@ function drawGoertzelFilter () {
     // Grey out areas outside the thresholded frequency
 
     filterCtx.globalAlpha = 0.25;
-    filterCtx.fillStyle = 'red';
+    filterCtx.fillStyle = 'white';
 
     filterCtx.fillRect(0, 0, w, freqY - bandwidthY);
     filterCtx.fillRect(0, freqY + bandwidthY, w, h - (freqY + bandwidthY));
