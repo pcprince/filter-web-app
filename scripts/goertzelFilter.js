@@ -131,13 +131,14 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, callbac
 
     ctx.moveTo(0, GOERTZEL_PIXEL_HEIGHT);
 
-    let prevX = -1;
-    let prevY = -1;
+    let prevX = 0;
+    let prevY = GOERTZEL_PIXEL_HEIGHT;
 
     for (let i = 0; i < pointData.length; i += 2) {
 
         if (!(prevX === pointData[i] && prevY === pointData[i + 1])) {
 
+            ctx.lineTo(pointData[i], prevY);
             ctx.lineTo(pointData[i], pointData[i + 1]);
 
         }
