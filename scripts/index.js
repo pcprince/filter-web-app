@@ -3578,6 +3578,8 @@ function exportConfig () {
 
     }
 
+    const frequencyThreshold = convertThreshold(goertzelThresholdSlider.getValue());
+
     const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
 
     const settings = {
@@ -3590,7 +3592,11 @@ function exportConfig () {
         amplitudeThresholdingEnabled: thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE,
         amplitudeThreshold: amplitudeThreshold,
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
-        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdScaleIndex]
+        amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdScaleIndex],
+        frequencyThresholdEnabled: thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL,
+        frequencyThresholdFilterFreq: goertzelFilterSlider.getValue(),
+        frequencyThresholdExponent: frequencyThreshold.percentageExponent,
+        frequencyThresholdMantissa: frequencyThreshold.percentageMantissa
     };
 
     const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
