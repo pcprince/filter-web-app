@@ -615,7 +615,11 @@ function getAmplitudeThreshold () {
  */
 function getGoertzelThreshold () {
 
-    return convertThreshold(goertzelThresholdSlider.getValue()).amplitude;
+    let threshold = parseFloat(convertThreshold(goertzelThresholdSlider.getValue()).percentage);
+
+    threshold /= 100.0;
+
+    return threshold;
 
 }
 
@@ -1638,7 +1642,7 @@ function drawGoertzelThresholdLine () {
 
     const frequencyThreshold = getGoertzelThreshold();
 
-    const thresholdY = h - (h * frequencyThreshold / 32768.0);
+    const thresholdY = h - (h * frequencyThreshold);
 
     thresholdCtx.moveTo(0, thresholdY);
     thresholdCtx.lineTo(w, thresholdY);
@@ -2452,7 +2456,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
 
         // Divide slider value by maximum possible Goertzel response
 
-        const threshold = getGoertzelThreshold() / 32768.0;
+        const threshold = getGoertzelThreshold();
 
         // Create boolean array which states whether or not each block is above the threshold
         // This has to be created here rather than when the file is loaded because windowLength can be changed
