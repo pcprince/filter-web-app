@@ -193,6 +193,8 @@ const THRESHOLD_TYPE_NONE = 0;
 const THRESHOLD_TYPE_AMPLITUDE = 1;
 const THRESHOLD_TYPE_GOERTZEL = 2;
 
+let prevThresholdTypeIndex = 0;
+
 const amplitudeThresholdHolder = document.getElementById('amplitude-threshold-holder');
 const goertzelFilterThresholdHolder = document.getElementById('goertzel-filter-threshold-holder');
 const thresholdLabel = document.getElementById('threshold-label');
@@ -3336,6 +3338,28 @@ function handleThresholdTypeChange (e) {
     updateThresholdTypeUI();
     updateThresholdUI();
 
+    const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+
+    // If zoom functionality changes, reset zoom level
+
+    if (thresholdTypeIndex === THRESHOLD_TYPE_NONE || thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
+
+        if (prevThresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+
+            waveformZoomY = 1.0;
+
+        }
+
+    } else {
+
+        if (prevThresholdTypeIndex === THRESHOLD_TYPE_NONE || prevThresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
+
+            waveformZoomY = 1.0;
+
+        }
+
+    }
+
     // Wait for UI to update to display new elements
 
     setTimeout(() => {
@@ -3344,7 +3368,7 @@ function handleThresholdTypeChange (e) {
 
         // Draw or clear the amplitude threshold lines
 
-        const thresholdTypeIndex = getSelectedRadioValue('threshold-type-radio');
+        prevThresholdTypeIndex = thresholdTypeIndex;
 
         if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
