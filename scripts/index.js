@@ -195,6 +195,7 @@ const THRESHOLD_TYPE_GOERTZEL = 2;
 
 let prevThresholdTypeIndex = 0;
 
+const thresholdHolder = document.getElementById('threshold-holder');
 const amplitudeThresholdHolder = document.getElementById('amplitude-threshold-holder');
 const goertzelFilterThresholdHolder = document.getElementById('goertzel-filter-threshold-holder');
 const thresholdLabel = document.getElementById('threshold-label');
@@ -790,6 +791,8 @@ function updateThresholdTypeUI () {
         goertzelCanvasHolder.style.display = 'none';
         spectrogramGoertzelCanvas.style.display = 'none';
 
+        thresholdHolder.style.display = 'none';
+
         waveformHolder.style.display = '';
         waveformHolderSmall.style.display = 'none';
 
@@ -804,6 +807,8 @@ function updateThresholdTypeUI () {
         goertzelCanvasHolder.style.display = 'none';
         spectrogramGoertzelCanvas.style.display = 'none';
 
+        thresholdHolder.style.display = '';
+
         waveformHolder.style.display = '';
         waveformHolderSmall.style.display = 'none';
 
@@ -817,6 +822,8 @@ function updateThresholdTypeUI () {
         goertzelFilterThresholdHolder.style.display = '';
         goertzelCanvasHolder.style.display = '';
         spectrogramGoertzelCanvas.style.display = '';
+
+        thresholdHolder.style.display = '';
 
         waveformHolder.style.display = 'none';
         waveformHolderSmall.style.display = '';
