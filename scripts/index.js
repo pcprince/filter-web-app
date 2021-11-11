@@ -1448,7 +1448,7 @@ function drawAxisLabels () {
 
     for (let i = 0; i < goertzelLabelTexts.length; i++) {
 
-        goertzelLabelTexts[i] = goertzelPercentageValues[i].toFixed(1) + '%';
+        goertzelLabelTexts[i] = (goertzelPercentageValues[i] / waveformZoomY).toFixed(1) + '%';
 
     }
 
@@ -1649,7 +1649,7 @@ function drawGoertzelThresholdLine () {
 
     const frequencyThreshold = getGoertzelThreshold();
 
-    const thresholdY = h - (h * frequencyThreshold);
+    const thresholdY = h - (h * frequencyThreshold * waveformZoomY);
 
     thresholdCtx.moveTo(0, thresholdY);
     thresholdCtx.lineTo(w, thresholdY);
