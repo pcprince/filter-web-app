@@ -114,7 +114,7 @@
                     <!-- Plots -->
 
                     <!-- Waveform plot -->
-                    <div id="waveform-holder" class="row" style="margin-top: 10px; height: 200px; text-align: center;">
+                    <div id="waveform-holder" class="row" style="margin-top: 0px; height: 200px; text-align: center;">
                         <span style="text-align: center; width: 748px; margin-left: 45px;">Waveform</span>
                         <div class="wrapper" style="width: 793px; height: 198px;">
                             <svg class="label-canvas" id="waveform-label-svg" width="45" height="200" style="padding: 0%;"></svg>
@@ -128,23 +128,23 @@
                         </div>
                     </div>
 
-                    <!-- Small waveform plot -->
-                    <div id="waveform-holder-small" class="row" style="margin-top: 10px; height: 130px; text-align: center; display: none;">
-                        <span style="text-align: center; width: 748px; margin-left: 45px;">Waveform</span>
-                        <div class="wrapper" style="width: 793px; height: 128px;">
-                            <svg class="label-canvas" id="waveform-label-svg-small" width="45" height="130" style="padding: 0%;"></svg>
-                            <canvas class="plot-canvas" id="waveform-canvas-small" width="748" height="128" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-threshold-canvas-small" width="748" height="128" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-threshold-line-canvas-small" width="748" height="128" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-playback-canvas-small" width="748" height="128" style="border: #cdcdcd thin solid;"></canvas>
-                            <svg class="plot-canvas" id="waveform-loading-svg-small" width="750" height="130"></svg>
+                    <!-- Goertzel response plot -->
+                    <div id="goertzel-canvas-holder" class="row" style="margin-top: 0px; height: 200px; text-align: center; display: none;">
+                        <span style="text-align: center; width: 748px; margin-left: 45px; height: 20px;">Frequency Response</span>
+                        <div class="wrapper" style="width: 793px; height: 198px;">
+                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="200" style="padding: 0%;"></svg>
+                            <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="198" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-threshold-line-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-playback-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="goertzel-loading-svg" width="750" height="200"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
-                            <canvas class="plot-canvas" id="waveform-drag-canvas-small" width="748" height="128" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-drag-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
 
                     <!-- Spectrogram plot -->
-                    <div class="row" style="margin-top: 25px; height: 278px; text-align: center;">
+                    <div class="row" style="margin-top: 20px; height: 278px; text-align: center;">
                         <span style="text-align: center; width: 748px; margin-left: 45px; height: 20px;">Spectrogram</span>
                         <div class="wrapper" style="width: 793px; height: 256px;">
                             <svg class="label-canvas" id="spectrogram-label-svg" width="45" height="257" style="padding: 0%;"></svg>
@@ -155,20 +155,6 @@
                             <svg class="plot-canvas" id="spectrogram-loading-svg" width="750" height="257"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
                             <canvas class="plot-canvas" id="spectrogram-drag-canvas" width="748" height="255" style="border: #cdcdcd thin solid;"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Goertzel response plot -->
-                    <div id="goertzel-canvas-holder" class="row" style="margin-top: 10px; height: 150px; text-align: center; display: none;">
-                        <span style="text-align: center; width: 748px; margin-left: 45px; height: 20px;">Frequency Response</span>
-                        <div class="wrapper" style="width: 793px; height: 130px;">
-                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="129" style="padding: 0%;"></svg>
-                            <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="127" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                            <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="127" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="goertzel-playback-canvas" width="748" height="127" style="border: #cdcdcd thin solid;"></canvas>
-                            <svg class="plot-canvas" id="goertzel-loading-svg" width="750" height="129"></svg>
-                            <!-- Drag canvas must be on top or it's not draggable -->
-                            <canvas class="plot-canvas" id="goertzel-drag-canvas" width="748" height="127" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
 
@@ -188,9 +174,9 @@
 
                     <!-- Thresholding -->
 
-                    <div class="row" style="margin-top: 5px;">
+                    <div class="row" style="margin-top: 19px;">
                         <div class="col-12">
-                            <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
+                            <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 0px;">
 
                                 <!-- Threshold selection -->
                             
