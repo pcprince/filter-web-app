@@ -54,7 +54,7 @@ function renderRawWaveform (pointData, startTime, callback) {
 
 /**
  * Draw the waveform plot
- * @param {number[]} data Absolute values of samples to be plotted. Either raw data or grouped into columns.
+ * @param {number[]} data Absolute values of samples to be plotted
  * @param {number} startTime Time when render started
  * @param {function} callback Function called on completion
  */
