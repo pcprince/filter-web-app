@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext, applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, Slider, readWav, applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, LOW_PASS_FILTER, BAND_PASS_FILTER, HIGH_PASS_FILTER, applyAmplitudeThreshold, playAudio, stopAudio, getTimestamp, XMLHttpRequest, readWavContents, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext, applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -240,7 +240,7 @@ const goertzelDurationRadioButtons = document.getElementsByName('goertzel-durati
 
 // Array of Goertzel responses
 
-let goertzelValues;
+let goertzelValues = [];
 
 // Boolean array equal length to sample count. Is sample over threshold
 
@@ -2070,7 +2070,7 @@ function panRight () {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 0);
 
@@ -2095,7 +2095,7 @@ function panLeft () {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 0);
 
@@ -2128,7 +2128,7 @@ function zoomIn () {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 10);
 
@@ -2173,7 +2173,7 @@ function zoomOut () {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 10);
 
@@ -2329,10 +2329,16 @@ function zoomInGoertzelY () {
 
             // Redraw just the goertzel plot
 
+            resetCanvas(goertzelCanvas);
+            resetCanvas(goertzelThresholdCanvas);
+            resetCanvas(goertzelThresholdLineCanvas);
+            clearSVG(goertzelLoadingSVG);
+
             const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
             drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
 
+                drawAxisLabels();
                 drawGoertzelThresholdedPeriods();
                 drawGoertzelFilter();
                 drawGoertzelThresholdLine();
@@ -2365,10 +2371,16 @@ function zoomOutGoertzelY () {
 
             // Redraw just the goertzel plot
 
+            resetCanvas(goertzelCanvas);
+            resetCanvas(goertzelThresholdCanvas);
+            resetCanvas(goertzelThresholdLineCanvas);
+            clearSVG(goertzelLoadingSVG);
+
             const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
             drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
 
+                drawAxisLabels();
                 drawGoertzelThresholdedPeriods();
                 drawGoertzelFilter();
                 drawGoertzelThresholdLine();
@@ -2397,10 +2409,16 @@ function resetGoertzelZoom () {
 
         // Redraw just the goertzel plot
 
+        resetCanvas(goertzelCanvas);
+        resetCanvas(goertzelThresholdCanvas);
+        resetCanvas(goertzelThresholdLineCanvas);
+        clearSVG(goertzelLoadingSVG);
+
         const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
         drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
 
+            drawAxisLabels();
             drawGoertzelThresholdedPeriods();
             drawGoertzelFilter();
             drawGoertzelThresholdLine();
@@ -2475,9 +2493,10 @@ function resetZoomY () {
  * Apply filter and/or amplitude threshold if enabled
  * @param {boolean} reapplyFilter Whether or not to reappply a frequency filter
  * @param {boolean} updateThresholdedSampleArray Whether or not to recalculate the boolean array of thresholded samples
+ * @param {boolean} recalculateGoertzelValues Whether or not the Goertzel filter used for frequency thresholding needs to be recalculated
  * @returns Samples to be rendered
  */
-function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
+function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalculateGoertzelValues) {
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
@@ -2528,31 +2547,30 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
 
     }
 
-    if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+    if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL && updateThresholdedSampleArray) {
 
         const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('goertzel-duration-radio')];
         const minimumTriggerDurationSamples = minimumTriggerDurationSecs * getSampleRate();
 
-        const freq = goertzelFilterSlider.getValue();
-
         const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
-        // Create array which will contain all the Goertzel values
+        if (recalculateGoertzelValues || goertzelValues.length === 0) {
 
-        goertzelValues = new Array(Math.floor(sampleCount / windowLength));
+            const freq = goertzelFilterSlider.getValue();
 
-        // Apply filter to samples
+            // Create array which will contain all the Goertzel values
 
-        applyGoertzelFilter(renderSamples, sampleRate, freq, windowLength, goertzelValues);
+            goertzelValues = new Array(Math.floor(sampleCount / windowLength));
+
+            // Apply filter to samples
+
+            applyGoertzelFilter(renderSamples, sampleRate, freq, windowLength, goertzelValues);
+
+        }
 
         // Divide slider value by maximum possible Goertzel response
 
         const threshold = getGoertzelThreshold();
-
-        // Create boolean array which states whether or not each block is above the threshold
-        // This has to be created here rather than when the file is loaded because windowLength can be changed
-
-        samplesAboveGoertzelThreshold = new Array(samplesAboveThreshold.length);
 
         thresholdedValueCount = applyGoertzelThreshold(goertzelValues, threshold, windowLength, minimumTriggerDurationSamples, samplesAboveGoertzelThreshold);
 
@@ -2568,8 +2586,9 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray) {
  * @param {boolean} updateSpectrogram Whether or not to recalculate the spectrogram frames. Needs to be done when the contents of the samples or navigation changes
  * @param {boolean} updateThresholdedSampleArray Whether or not to recalculate the boolean array of thresholded samples.
  * @param {boolean} reapplyFilter Whether or not to reappply a frequency filter
+ * @param {boolean} recalculateGoertzelValues Whether or not the Goertzel filter used for frequency thresholding needs to be recalculated
  */
-async function updatePlots (resetColourMap, updateSpectrogram, updateThresholdedSampleArray, reapplyFilter) {
+async function updatePlots (resetColourMap, updateSpectrogram, updateThresholdedSampleArray, reapplyFilter, recalculateGoertzelValues) {
 
     if (drawing || sampleCount === 0) {
 
@@ -2617,7 +2636,7 @@ async function updatePlots (resetColourMap, updateSpectrogram, updateThresholded
 
     }
 
-    const renderSamples = getRenderSamples(reapplyFilter, updateThresholdedSampleArray);
+    const renderSamples = getRenderSamples(reapplyFilter, updateThresholdedSampleArray, recalculateGoertzelValues);
 
     if (updateSpectrogram) {
 
@@ -2868,9 +2887,14 @@ async function loadFile (exampleFilePath, exampleName) {
 
         trimmedSpan.style.display = result.trimmed ? '' : 'none';
 
-        // Reset UI
+        // Reset threshold arrays
 
         samplesAboveThreshold = new Array(Math.ceil(samples.length / AMPLITUDE_THRESHOLD_BUFFER_LENGTH));
+        samplesAboveGoertzelThreshold = new Array(samplesAboveThreshold.length);
+
+        goertzelValues = [];
+
+        // Reset UI
 
         resetTransformations();
 
@@ -3200,7 +3224,7 @@ function dragZoom (dragEndX) {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 10);
 
@@ -3313,7 +3337,7 @@ function handleDoubleClick (e) {
 
         setTimeout(() => {
 
-            updatePlots(false, true, false, false);
+            updatePlots(false, true, false, false, false);
 
         }, 10);
 
@@ -3373,7 +3397,7 @@ goertzelThresholdSlider.on('change', drawGoertzelThresholdLine);
  */
 function handleFilterChange () {
 
-    updatePlots(false, true, true, true);
+    updatePlots(false, true, true, true, false);
 
 }
 
@@ -3439,13 +3463,11 @@ function handleThresholdTypeChange (e) {
 
     }
 
-    console.log(amplitudeThresholdScaleSelect.value);
-
     // Wait for UI to update to display new elements
 
     setTimeout(() => {
 
-        updatePlots(false, false, true, false);
+        updatePlots(false, false, true, false, false);
 
         if (thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
@@ -3468,7 +3490,7 @@ for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
  */
 function handleAmplitudeThresholdChange () {
 
-    updatePlots(false, false, true, false);
+    updatePlots(false, false, true, false, false);
 
 }
 
@@ -3481,7 +3503,7 @@ for (let i = 0; i < amplitudeThresholdRadioButtons.length; i++) {
 }
 
 /**
- * Handle event when the Goertzel filter slider is dragged
+ * Handle event when the Goertzel filter changes
  * @param {event} e Value change event
  */
 function handleGoertzelFilterChange (e) {
@@ -3496,7 +3518,7 @@ function handleGoertzelFilterChange (e) {
     }
 
     updateThresholdUI();
-    updatePlots(false, false, true, false);
+    updatePlots(false, false, true, false, false);
 
 }
 
@@ -3504,17 +3526,44 @@ goertzelFilterSlider.on('slideStop', handleGoertzelFilterChange);
 
 for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
 
-    goertzelFilterWindowRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
+    goertzelFilterWindowRadioButtons[i].addEventListener('change', (e) => {
+
+        const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
+        generateHammingValues(windowLength);
+
+        handleGoertzelFilterChange(e);
+
+    });
+
+}
+
+/**
+ * Handle event when the Goertzel filter threshold changes without the filter itself changing
+ * @param {event} e Value change event
+ */
+function handleGoertzelThresholdChange (e) {
+
+    if (sampleCount === 0 || drawing || playing) {
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        return;
+
+    }
+
+    updateThresholdUI();
+    updatePlots(false, false, true, false, true);
 
 }
 
 for (let i = 0; i < goertzelDurationRadioButtons.length; i++) {
 
-    goertzelDurationRadioButtons[i].addEventListener('change', handleGoertzelFilterChange);
+    goertzelDurationRadioButtons[i].addEventListener('change', handleGoertzelThresholdChange);
 
 }
 
-goertzelThresholdSlider.on('slideStop', handleGoertzelFilterChange);
+goertzelThresholdSlider.on('slideStop', handleGoertzelThresholdChange);
 
 /**
  * Reset button event
@@ -3545,7 +3594,7 @@ function reset () {
 
         playbackModeSelect.value = 0;
 
-        updatePlots(false, true, true, false);
+        updatePlots(false, true, true, false, false);
 
     }
 
@@ -3566,7 +3615,7 @@ function resetNavigation () {
     if (sampleCount !== 0 && !drawing && !playing) {
 
         resetXTransformations();
-        updatePlots(false, true, false, false);
+        updatePlots(false, true, false, false, false);
 
     }
 

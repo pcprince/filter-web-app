@@ -17,6 +17,32 @@ const GOERTZEL_PIXEL_HEIGHT = goertzelPlotCanvas.height;
 
 const TWO_PI = 2.0 * Math.PI;
 
+let hammingValues;
+let hammingMean;
+
+/**
+ * Generate values to be used for Hamming filter
+ * @param {number} N Filter length
+ */
+function generateHammingValues (N) {
+
+    console.log('Generating Hamming filter values');
+
+    hammingValues = new Array(N);
+
+    let hammingTotal = 0;
+
+    for (let i = 0; i < N; i++) {
+
+        hammingValues[i] = 0.54 - 0.46 * Math.cos(TWO_PI * i / (N - 1));
+        hammingTotal += hammingValues[i];
+
+    }
+
+    hammingMean = hammingTotal / N;
+
+}
+
 /**
  * Apply a Goertzel filter to a given set of samples
  * @param {number[]} samples Samples
@@ -29,20 +55,13 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
     console.log('Applying Goertzel filter at ' + freq + '.');
 
-    // Generate Hamming filter
+    // Generate Hamming filter if first load
 
-    const hammingValues = new Array(N);
+    if (!hammingValues) {
 
-    let hammingTotal = 0;
-
-    for (let i = 0; i < N; i++) {
-
-        hammingValues[i] = 0.54 - 0.46 * Math.cos(TWO_PI * i / (N - 1));
-        hammingTotal += hammingValues[i];
+        generateHammingValues(N);
 
     }
-
-    const hammingMean = hammingTotal / N;
 
     // Apply filter
 
@@ -67,7 +86,8 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 
         if (i % N === N - 1) {
 
-            const goertzelValue = Math.sqrt((d1 * d1) + (d2 * d2) - c * d1 * d2);
+            const magnitude = (d1 * d1) + (d2 * d2) - c * d1 * d2;
+            const goertzelValue = magnitude < 0 ? 0 : Math.sqrt(magnitude);
 
             output[index] = Math.min(goertzelValue * scaler, 1.0);
 
@@ -85,42 +105,11 @@ function applyGoertzelFilter (samples, sampleRate, freq, N, output) {
 }
 
 /**
- * Draw plot of the Goertzel response
- * @param {number[]} goertzelValues Response values produced by applyGoertzelFilter()
- * @param {number[]} windowLength Window length of filter
- * @param {number} offset Offset through the samples being drawn
- * @param {number} length Number of samples being drawn
- * @param {function} callback Completion function
+ * Draw Goertzel plot
+ * @param {number[]} pointData Raw Goertzel values as pixel heights
+ * @param {function} callback Function to be called on completion
  */
-function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, callback) {
-
-    // Convert offset and length of drawing location from samples to Goertzel responses
-
-    const windowedLength = Math.floor(length / windowLength);
-    const windowedOffset = Math.floor(offset / windowLength);
-
-    const pointData = new Array((windowedLength * 2) + 2).fill(0);
-
-    const width = GOERTZEL_PIXEL_WIDTH / windowedLength;
-
-    // Just draw lines between points
-
-    for (let i = 0; i < windowedLength + 1; i++) {
-
-        // Evenly distribute points along canvas
-
-        const x = width * i;
-
-        // Get the sample
-
-        const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[windowedOffset + i] * GOERTZEL_PIXEL_HEIGHT * yZoom);
-
-        // Add to data for rendering
-
-        pointData[2 * i] = x;
-        pointData[(2 * i) + 1] = y;
-
-    }
+function renderRawGoertzelPlot (pointData, callback) {
 
     const ctx = goertzelPlotCanvas.getContext('2d');
 
@@ -151,6 +140,134 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, 
     ctx.stroke();
 
     callback();
+
+}
+
+/**
+ * Draw Goertzel plot using the maximum and minimmum value of each x co-ordinate on the plot
+ * @param {number[]} pointData Goertzel values as pixel heights grouped into columns
+ * @param {function} callback Function to be called on completion
+ */
+function renderGoertzelPlot (pointData, callback) {
+
+    const ctx = goertzelPlotCanvas.getContext('2d');
+
+    const id = ctx.getImageData(0, 0, GOERTZEL_PIXEL_WIDTH, GOERTZEL_PIXEL_HEIGHT);
+
+    const pixels = id.data;
+
+    for (let i = 0; i < GOERTZEL_PIXEL_WIDTH; i++) {
+
+        const y0 = pointData[2 * i];
+        const y1 = pointData[(2 * i) + 1];
+
+        const max = (y0 > y1) ? y0 : y1;
+        const min = (y0 > y1) ? y1 : y0;
+
+        for (let j = min; j <= max; j++) {
+
+            const index = j * (GOERTZEL_PIXEL_WIDTH * 4) + i * 4;
+
+            pixels[index] = 0;
+            pixels[index + 1] = 77;
+            pixels[index + 2] = 153;
+            pixels[index + 3] = 255;
+
+        }
+
+    }
+
+    ctx.putImageData(id, 0, 0);
+
+    callback();
+
+}
+
+/**
+ * Draw plot of the Goertzel response
+ * @param {number[]} goertzelValues Response values produced by applyGoertzelFilter()
+ * @param {number[]} windowLength Window length of filter
+ * @param {number} offset Offset through the samples being drawn
+ * @param {number} length Number of samples being drawn
+ * @param {function} callback Completion function
+ */
+function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, callback) {
+
+    // Convert offset and length of drawing location from samples to Goertzel responses
+
+    const windowedLength = Math.floor(length / windowLength);
+    const windowedOffset = Math.floor(offset / windowLength);
+
+    const valuesPerPixel = windowedLength / GOERTZEL_PIXEL_WIDTH;
+
+    if (valuesPerPixel <= 1) {
+
+        console.log('Plotting raw Goertzel data on plot');
+
+        const pointData = new Array((windowedLength * 2) + 2).fill(0);
+
+        const width = GOERTZEL_PIXEL_WIDTH / windowedLength;
+
+        // Just draw lines between points
+
+        for (let i = 0; i < windowedLength + 1; i++) {
+
+            // Evenly distribute points along canvas
+
+            const x = width * i;
+
+            // Get the sample
+
+            const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[windowedOffset + i] * GOERTZEL_PIXEL_HEIGHT * yZoom);
+
+            // Add to data for rendering
+
+            pointData[2 * i] = x;
+            pointData[(2 * i) + 1] = y;
+
+        }
+
+        renderRawGoertzelPlot(pointData, callback);
+
+    } else {
+
+        console.log('Plotting max and min sample per pixel column on Goertzel plot');
+
+        const pointData = new Array(2 * GOERTZEL_PIXEL_WIDTH).fill(0);
+
+        for (let i = 0; i < GOERTZEL_PIXEL_WIDTH; i++) {
+
+            let max = 99999;
+            let min = 99999;
+
+            // Take the max and min of the Goertzel values within a pixel column, plus 1 value either side
+
+            for (let j = -1; j < valuesPerPixel + 1; j++) {
+
+                let index = Math.round(windowedOffset + (i * valuesPerPixel) + j);
+
+                // Handle start and end
+
+                index = (index < 0) ? 0 : index;
+                index = (index >= goertzelValues.length) ? goertzelValues.length - 1 : index;
+
+                const y = GOERTZEL_PIXEL_HEIGHT - (goertzelValues[index] * GOERTZEL_PIXEL_HEIGHT * yZoom);
+
+                max = (y > max || max === 99999) ? y : max;
+                min = (y < min || min === 99999) ? y : min;
+
+            }
+
+            // Scale the heights between the top and bottom of the canvas
+
+            pointData[2 * i] = Math.round(max);
+            pointData[(2 * i) + 1] = Math.round(min);
+
+        }
+
+        renderGoertzelPlot(pointData, callback);
+
+    }
 
 }
 
@@ -187,7 +304,7 @@ function applyGoertzelThreshold (goertzelValues, threshold, windowLength, minTri
 
         while (index < limit) {
 
-            if (Math.abs(goertzelValues[index]) > threshold) {
+            if (goertzelValues[index] > threshold) {
 
                 aboveThreshold = true;
 
