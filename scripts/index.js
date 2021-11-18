@@ -3579,7 +3579,7 @@ function reset () {
 
         goertzelThresholdSlider.setValue(0);
 
-        goertzelFilterWindowRadioButtons[0].checked = true;
+        goertzelFilterWindowRadioButtons[2].checked = true;
         goertzelDurationRadioButtons[0].checked = true;
 
         sampleRateChange(true);
