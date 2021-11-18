@@ -3518,7 +3518,7 @@ function handleGoertzelFilterChange (e) {
     }
 
     updateThresholdUI();
-    updatePlots(false, false, true, false, false);
+    updatePlots(false, false, true, false, true);
 
 }
 
@@ -3553,7 +3553,7 @@ function handleGoertzelThresholdChange (e) {
     }
 
     updateThresholdUI();
-    updatePlots(false, false, true, false, true);
+    updatePlots(false, false, true, false, false);
 
 }
 
