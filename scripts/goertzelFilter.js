@@ -340,9 +340,9 @@ function applyGoertzelThreshold (goertzelValues, threshold, windowLength, minTri
 
     }
 
-    thresholdedValueCount *= goertzelBufferLength;
+    thresholdedValueCount *= GOERTZEL_THRESHOLD_BUFFER_LENGTH;
 
-    thresholdedValueCount = Math.min(thresholdedValueCount, goertzelValues.length);
+    thresholdedValueCount = Math.min(thresholdedValueCount, goertzelValues.length * windowLength);
 
     return thresholdedValueCount;
 
