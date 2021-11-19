@@ -3699,7 +3699,7 @@ function exportConfig () {
     const thresholdTypeIndex = getThresholdTypeIndex();
 
     const settings = {
-        webApp: true,
+        version: 'playground',
         sampleRate: getSampleRate(),
         passFiltersEnabled: filterCheckbox.checked,
         filterType: filterTypes[filterIndex],
