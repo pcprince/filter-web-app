@@ -114,32 +114,32 @@
                     <!-- Plots -->
 
                     <!-- Waveform plot -->
-                    <div id="waveform-holder" class="row" style="margin-top: 0px; height: 200px; text-align: center;">
+                    <div id="waveform-holder" class="row" style="margin-top: 0px; height: 240px; text-align: center;">
                         <span style="text-align: center; width: 748px; margin-left: 45px;">Waveform</span>
-                        <div class="wrapper" style="width: 793px; height: 198px;">
-                            <svg class="label-canvas" id="waveform-label-svg" width="45" height="200" style="padding: 0%;"></svg>
-                            <canvas class="plot-canvas" id="waveform-canvas" width="748" height="198" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-threshold-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-threshold-line-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="waveform-playback-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <svg class="plot-canvas" id="waveform-loading-svg" width="750" height="200"></svg>
+                        <div class="wrapper" style="width: 793px; height: 238px;">
+                            <svg class="label-canvas" id="waveform-label-svg" width="45" height="240" style="padding: 0%;"></svg>
+                            <canvas class="plot-canvas" id="waveform-canvas" width="748" height="238" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                            <canvas class="plot-canvas" id="waveform-threshold-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="waveform-threshold-line-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="waveform-playback-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="waveform-loading-svg" width="750" height="240"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
-                            <canvas class="plot-canvas" id="waveform-drag-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="waveform-drag-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
 
                     <!-- Goertzel response plot -->
-                    <div id="goertzel-canvas-holder" class="row" style="margin-top: 0px; height: 200px; text-align: center; display: none;">
+                    <div id="goertzel-canvas-holder" class="row" style="margin-top: 0px; height: 240px; text-align: center; display: none;">
                         <span style="text-align: center; width: 748px; margin-left: 45px; height: 20px;">Frequency Response</span>
-                        <div class="wrapper" style="width: 793px; height: 198px;">
-                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="200" style="padding: 0%;"></svg>
-                            <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="198" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
-                            <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="goertzel-threshold-line-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <canvas class="plot-canvas" id="goertzel-playback-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
-                            <svg class="plot-canvas" id="goertzel-loading-svg" width="750" height="200"></svg>
+                        <div class="wrapper" style="width: 793px; height: 238px;">
+                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="240" style="padding: 0%;"></svg>
+                            <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="238" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-threshold-line-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-playback-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
+                            <svg class="plot-canvas" id="goertzel-loading-svg" width="750" height="240"></svg>
                             <!-- Drag canvas must be on top or it's not draggable -->
-                            <canvas class="plot-canvas" id="goertzel-drag-canvas" width="748" height="198" style="border: #cdcdcd thin solid;"></canvas>
+                            <canvas class="plot-canvas" id="goertzel-drag-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
                         </div>
                     </div>
 
@@ -322,9 +322,9 @@
                         </div>
                     </div>
 
-                    <div id="threshold-holder" class="row" style="margin-top: 5px;">
+                    <div id="threshold-holder" class="row" style="margin-top: 10px;">
                         <div class="col-12">
-                            <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 8px;">
+                            <div style="border: #cdcdcd thin solid; width: 100%;">
 
                                 <!-- Amplitude threshold -->
 
@@ -526,7 +526,7 @@
                         </div>
                     </div>
 
-                    <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 15px;">
+                    <div style="border: #cdcdcd thin solid; margin-top: 10px;">
                         <div class="row" style="margin-top: 5px; margin-bottom: 5px;">
                             <div class="col-12">
                                 <div style="display: table-cell; vertical-align: middle; width: 543px; height: 58px; text-align: center;">
@@ -536,15 +536,20 @@
                         </div>
                     </div>
 
-                    <div class="row" style="margin-top: 15px;">
-                        <!-- <div class="col-6"> -->
-                        <div class="col-12">
-                            <button class="btn btn-primary" id="reset-button" style="width: 100%;" disabled>Reset</button>
+                    <div style="position: absolute; bottom: 40px;">
+    
+                        <div class="row control-width" style="margin-top: 15px;">
+                            <!-- <div class="col-6"> -->
+                            <div class="col-12">
+                                <button class="btn btn-primary control-width" id="reset-button" style="width: 100%;" disabled>Reset</button>
+                            </div>
+                            <div class="col-6" style="display: none;">
+                                <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export Configuration</button>
+                            </div>
                         </div>
-                        <div class="col-6" style="display: none;">
-                            <button class="btn btn-success" id="export-button" style="width: 100%;" disabled>Export Configuration</button>
-                        </div>
+                    
                     </div>
+
 
 
                 </div>
