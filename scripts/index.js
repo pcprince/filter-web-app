@@ -1192,15 +1192,15 @@ function drawAxisLabels () {
         }
     ];
 
-    let labelIncrementSecs = displayedTimeAmounts[0].labelIncrement;
-    let decimalPlaces = displayedTimeAmounts[0].decimalPlaces;
+    let xLabelIncrementSecs = displayedTimeAmounts[0].labelIncrement;
+    let xLabelDecimalPlaces = displayedTimeAmounts[0].decimalPlaces;
 
     for (let i = 0; i < displayedTimeAmounts.length; i++) {
 
         const displayedTimeSamples = displayedTimeAmounts[i].amount * currentSampleRate;
 
-        labelIncrementSecs = displayedTimeAmounts[i].labelIncrement;
-        decimalPlaces = displayedTimeAmounts[i].decimalPlaces;
+        xLabelIncrementSecs = displayedTimeAmounts[i].labelIncrement;
+        xLabelDecimalPlaces = displayedTimeAmounts[i].decimalPlaces;
 
         if (displayLength > displayedTimeSamples) {
 
@@ -1210,36 +1210,36 @@ function drawAxisLabels () {
 
     }
 
-    const labelIncrementSamples = labelIncrementSecs * currentSampleRate;
+    const xLabelIncrementSamples = xLabelIncrementSecs * currentSampleRate;
 
     // So the centre of the text can be the label location, there's a small amount of padding around the label canvas
-    const padding = (timeLabelSVG.width.baseVal.value - waveformCanvas.width) / 2;
+    const xLabelPadding = (timeLabelSVG.width.baseVal.value - waveformCanvas.width) / 2;
 
     while (label <= currentSampleCount) {
 
         // Convert the time to a pixel value, then take into account the label width and the padding to position correctly
 
-        const x = samplesToPixels(label) + padding - samplesToPixels(offset);
+        const x = samplesToPixels(label) + xLabelPadding - samplesToPixels(offset);
 
-        if (x - padding < 0) {
+        if (x - xLabelPadding < 0) {
 
-            label += labelIncrementSamples;
+            label += xLabelIncrementSamples;
             continue;
 
         }
 
-        if (x - padding > waveformCanvas.width) {
+        if (x - xLabelPadding > waveformCanvas.width) {
 
             break;
 
         }
 
-        const labelText = (label / currentSampleRate).toFixed(decimalPlaces);
+        const labelText = (label / currentSampleRate).toFixed(xLabelDecimalPlaces);
 
         addSVGText(timeLabelSVG, labelText, x, 10, 'middle');
         addSVGLine(timeLabelSVG, x, 0, x, xMarkerLength);
 
-        label += labelIncrementSamples;
+        label += xLabelIncrementSamples;
 
     }
 
@@ -1293,79 +1293,207 @@ function drawAxisLabels () {
 
     clearSVG(waveformLabelSVG);
 
-    const waveformLabelTexts = ['', '', '', '', '', '', '', '', ''];
+    const displayedWaveformAmounts = [
+        {
+            // 100%
+            amount: 32768,
+            labelIncrement16Bit: 8192,
+            labelIncrementPercentage: 25,
+            percentageDecimalPlaces: 1
+        },
+        {
+            // 50%
+            amount: 16384,
+            labelIncrement16Bit: 4096,
+            labelIncrementPercentage: 12.5,
+            percentageDecimalPlaces: 1
+        },
+        {
+            // 25%
+            amount: 8192,
+            labelIncrement16Bit: 2048,
+            labelIncrementPercentage: 6,
+            percentageDecimalPlaces: 1
+        },
+        {
+            // 12.5%
+            amount: 4096,
+            labelIncrement16Bit: 1024,
+            labelIncrementPercentage: 3,
+            percentageDecimalPlaces: 1
+        },
+        {
+            // 6.25%
+            amount: 2048,
+            labelIncrement16Bit: 512,
+            labelIncrementPercentage: 1.5,
+            percentageDecimalPlaces: 1
+        },
+        {
+            // 3.125%
+            amount: 1024,
+            labelIncrement16Bit: 256,
+            labelIncrementPercentage: 0.75,
+            percentageDecimalPlaces: 2
+        },
+        {
+            // 1.5625%
+            amount: 512,
+            labelIncrement16Bit: 128,
+            labelIncrementPercentage: 0.35,
+            percentageDecimalPlaces: 2
+        },
+        {
+            // 0.78125%
+            amount: 256,
+            labelIncrement16Bit: 64,
+            labelIncrementPercentage: 0.25,
+            percentageDecimalPlaces: 2
+        },
+        {
+            // 0.390625%
+            amount: 128,
+            labelIncrement16Bit: 32,
+            labelIncrementPercentage: 0.075,
+            percentageDecimalPlaces: 3
+        }
+    ];
 
-    const percentageValues = [100, 75, 50, 25, 0, 25, 50, 75, 100];
-    const a16bitValues = [32768, 24576, 16384, 8192, 0, 8192, 16384, 24576, 32768];
-    const rawSliderValues = [1.0, 0.75, 0.5, 0.25, 0.0, 0.25, 0.5, 0.75, 1.0];
+    let yLabelIncrementWaveform16Bit = displayedWaveformAmounts[0].labelIncrement16Bit;
+    let yLabelIncrementWaveformPercentage = displayedWaveformAmounts[0].labelIncrementPercentage;
+    let yLabelDecimalPlacesWaveform = displayedWaveformAmounts[0].percentageDecimalPlaces;
 
-    switch (amplitudeThresholdScaleIndex) {
+    const waveformCanvasH = waveformLabelSVG.height.baseVal.value;
+    const waveformCanvasHCentre = waveformCanvasH / 2.0;
 
-    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+    // 16 bit and decibel values will always divide the plot by a power of 2. Percentage may vary to keep the labels from being silly decimal places
 
-        for (let i = 0; i < waveformLabelTexts.length; i++) {
+    let yLabelPositionIncrementWaveform = 0;
+    let yLabelPositionIncrementWaveformPercentage = 0.0;
 
-            waveformLabelTexts[i] = (percentageValues[i] / waveformZoomY).toFixed(1) + '%';
+    const waveformMax = 32768 / waveformZoomY;
+    const waveformMaxPercentage = 100.0 / waveformZoomY;
+
+    for (let i = 0; i < displayedWaveformAmounts.length; i++) {
+
+        yLabelIncrementWaveform16Bit = displayedWaveformAmounts[i].labelIncrement16Bit;
+        yLabelIncrementWaveformPercentage = displayedWaveformAmounts[i].labelIncrementPercentage;
+        yLabelDecimalPlacesWaveform = displayedWaveformAmounts[i].percentageDecimalPlaces;
+
+        if (waveformMax >= displayedWaveformAmounts[i].amount) {
+
+            yLabelPositionIncrementWaveform = (yLabelIncrementWaveform16Bit / waveformMax) * waveformCanvasH;
+            yLabelPositionIncrementWaveformPercentage = (yLabelIncrementWaveformPercentage / waveformMaxPercentage) * waveformCanvasH;
+
+            break;
 
         }
-
-        break;
-
-    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
-
-        for (let i = 0; i < waveformLabelTexts.length; i++) {
-
-            waveformLabelTexts[i] = Math.round(a16bitValues[i] / waveformZoomY);
-
-        }
-
-        break;
-
-    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
-
-        for (let i = 0; i < waveformLabelTexts.length; i++) {
-
-            if (rawSliderValues[i] === 0.0) {
-
-                continue;
-
-            }
-
-            const rawLog = 20 * Math.log10(rawSliderValues[i] / waveformZoomY);
-
-            const decibelValue = 2 * Math.round(rawLog / 2);
-
-            waveformLabelTexts[i] = decibelValue + 'dB';
-
-        }
-
-        break;
 
     }
 
-    const canvasH = waveformLabelSVG.height.baseVal.value;
+    // Divide by 2 as waveform is split in 2 and mirrored. This value is the offset from the centre
 
-    const yWaveformIncrement = canvasH / (waveformLabelTexts.length - 1);
+    yLabelPositionIncrementWaveform /= 2;
+    yLabelPositionIncrementWaveformPercentage /= 2;
+
+    const waveformLabelTexts = [];
+    const waveformLabelYPositions = [];
+
+    if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE) {
+
+        let waveformLabelYOffsetPercentage = 0.0;
+        let waveformLabelValuePercentage = 0.0;
+
+        while (waveformLabelValuePercentage <= waveformMaxPercentage) {
+
+            waveformLabelTexts.push(waveformLabelValuePercentage.toFixed(yLabelDecimalPlacesWaveform) + '%');
+            waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffsetPercentage);
+
+            // Add mirrored label
+
+            if (waveformLabelValuePercentage > 0.0) {
+
+                waveformLabelTexts.unshift(waveformLabelValuePercentage.toFixed(yLabelDecimalPlacesWaveform) + '%');
+                waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffsetPercentage);
+
+            }
+
+            waveformLabelValuePercentage += yLabelIncrementWaveformPercentage;
+            waveformLabelYOffsetPercentage += yLabelPositionIncrementWaveformPercentage;
+
+        }
+
+    } else {
+
+        let waveformLabelYOffset = 0;
+        let waveformLabelValue16Bit = 0;
+
+        // Variables for calculating decibels which can't be defined inside the switch statement
+
+        let waveformLabelValueDecibel, rawLog, decibelValue;
+
+        while (waveformLabelValue16Bit <= waveformMax) {
+
+            if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
+
+                waveformLabelTexts.push(waveformLabelValue16Bit);
+                waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffset);
+
+                // Add mirrored label
+
+                if (waveformLabelValue16Bit > 0) {
+
+                    waveformLabelTexts.unshift(waveformLabelValue16Bit);
+                    waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffset);
+
+                }
+
+            } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
+
+                if (waveformLabelValue16Bit > 0) {
+
+                    waveformLabelValueDecibel = waveformLabelValue16Bit / 32768;
+
+                    rawLog = 20 * Math.log10(waveformLabelValueDecibel);
+
+                    decibelValue = 2 * Math.round(rawLog / 2);
+
+                    waveformLabelTexts.push(decibelValue + 'dB');
+                    waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffset);
+
+                    // No label is drawn for 0, so no need to check that here
+
+                    waveformLabelTexts.unshift(decibelValue + 'dB');
+                    waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffset);
+
+                }
+
+            }
+
+            waveformLabelValue16Bit += yLabelIncrementWaveform16Bit;
+            waveformLabelYOffset += yLabelPositionIncrementWaveform;
+
+        }
+
+    }
 
     const wavLabelX = waveformLabelSVG.width.baseVal.value - 7;
     const wavMarkerX = waveformLabelSVG.width.baseVal.value - yMarkerLength;
 
-    // Draw middle labels and markers
-
     for (let i = 0; i < waveformLabelTexts.length; i++) {
 
-        let markerY = Math.round(i * yWaveformIncrement);
+        let markerY = waveformLabelYPositions[i];
         let labelY = markerY;
 
         labelY = (labelY === 0) ? labelY + 5 : labelY;
-        labelY = (labelY === canvasH) ? labelY - 5 : labelY;
+        labelY = (labelY === waveformCanvasH) ? labelY - 5 : labelY;
 
         addSVGText(waveformLabelSVG, waveformLabelTexts[i], wavLabelX, labelY, 'end');
 
         // Nudge markers slightly onto canvas so they're not cut off
 
         markerY = (markerY === 0) ? markerY + 1 : markerY;
-        markerY = (markerY === canvasH) ? markerY - 1 : markerY;
+        markerY = (markerY === waveformCanvasH) ? markerY - 1 : markerY;
 
         addSVGLine(waveformLabelSVG, wavMarkerX, markerY, waveformLabelSVG.width.baseVal.value, markerY);
 
@@ -1375,29 +1503,102 @@ function drawAxisLabels () {
 
     clearSVG(goertzelLabelSVG);
 
-    const goertzelPercentageValues = [100, 87.5, 75, 62.5, 50, 37.5, 25, 12.5, 0];
+    const displayedGoertzelAmounts = [
+        {
+            amount: 100,
+            labelIncrement: 12.5,
+            decimalPlaces: 1
+        },
+        {
+            amount: 50,
+            labelIncrement: 10.0,
+            decimalPlaces: 1
+        },
+        {
+            amount: 25,
+            labelIncrement: 5,
+            decimalPlaces: 1
+        },
+        {
+            amount: 12.5,
+            labelIncrement: 2.5,
+            decimalPlaces: 1
+        },
+        {
+            amount: 6.25,
+            labelIncrement: 1.0,
+            decimalPlaces: 1
+        },
+        {
+            amount: 3.125,
+            labelIncrement: 0.5,
+            decimalPlaces: 1
+        },
+        {
+            amount: 1.5625,
+            labelIncrement: 0.25,
+            decimalPlaces: 1
+        },
+        {
+            amount: 0.78125,
+            labelIncrement: 0.1,
+            decimalPlaces: 1
+        },
+        {
+            amount: 0.390625,
+            labelIncrement: 0.05,
+            decimalPlaces: 2
+        }
+    ];
 
-    const goertzelLabelTexts = ['', '', '', '', '', '', '', '', ''];
+    let yLabelIncrementGoertzel = displayedGoertzelAmounts[0].labelIncrement;
+    let yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[0].decimalPlaces;
 
-    for (let i = 0; i < goertzelLabelTexts.length; i++) {
+    const goertzelCanvasH = goertzelLabelSVG.height.baseVal.value;
+    let yLabelPositionIncrementGoertzel = 0;
 
-        goertzelLabelTexts[i] = (goertzelPercentageValues[i] / goertzelZoomY).toFixed(1) + '%';
+    const goertzelMax = 100.0 / goertzelZoomY;
+
+    for (let i = 0; i < displayedGoertzelAmounts.length; i++) {
+
+        yLabelIncrementGoertzel = displayedGoertzelAmounts[i].labelIncrement;
+        yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[i].decimalPlaces;
+
+        if (goertzelMax >= displayedGoertzelAmounts[i].amount) {
+
+            yLabelPositionIncrementGoertzel = (yLabelIncrementGoertzel / goertzelMax) * goertzelCanvasH;
+
+            break;
+
+        }
 
     }
 
-    const goertzelCanvasH = goertzelLabelSVG.height.baseVal.value;
+    let goertzelLabelValue = 0.0;
+    let goertzelLabelYPosition = goertzelCanvasH;
 
-    const yGoertzelIncrement = goertzelCanvasH / (goertzelLabelTexts.length - 1);
+    const goertzelLabelTexts = [];
+    const goertzelLabelYPositions = [];
+
+    while (goertzelLabelValue <= goertzelMax) {
+
+        goertzelLabelTexts.push(goertzelLabelValue.toFixed(yLabelDecimalPlacesGoertzel) + '%');
+        goertzelLabelYPositions.push(goertzelLabelYPosition);
+
+        goertzelLabelValue += yLabelIncrementGoertzel;
+        goertzelLabelYPosition -= yLabelPositionIncrementGoertzel;
+
+    }
 
     const goertzelLabelX = goertzelLabelSVG.width.baseVal.value - 7;
     const goertzelMarkerX = goertzelLabelSVG.width.baseVal.value - yMarkerLength;
 
-    // Draw middle labels and markers
-
     for (let i = 0; i < goertzelLabelTexts.length; i++) {
 
-        let markerY = Math.round(i * yGoertzelIncrement);
+        let markerY = goertzelLabelYPositions[i];
         let labelY = markerY;
+
+        // Nudge labels slightly onto canvas so they're not cut off
 
         labelY = (labelY === 0) ? labelY + 5 : labelY;
         labelY = (labelY === goertzelCanvasH) ? labelY - 5 : labelY;
