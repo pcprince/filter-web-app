@@ -3022,12 +3022,12 @@ function updateFileSizePanel () {
 
         sizeInformationPanel.innerHTML = 'Original WAV file size: ' + formatFileSize(totalFileSize) + '. Resulting T.WAV file size: ' + formatFileSize(thresholdedFileSize) + '.<br>';
 
-        sizeInformationPanel.innerHTML += 'Current amplitude threshold settings give a file compression ratio of ' + compressionRatio.toFixed(1) + '.';
+        sizeInformationPanel.innerHTML += 'Current threshold settings give a file compression ratio of ' + compressionRatio.toFixed(1) + '.';
 
     } else {
 
         sizeInformationPanel.innerHTML = 'File size: ' + formatFileSize(totalFileSize) + '.<br>';
-        sizeInformationPanel.innerHTML += 'Enable amplitude thresholding to estimate file size reduction.';
+        sizeInformationPanel.innerHTML += 'Enable thresholding to estimate file size reduction.';
 
     }
 
