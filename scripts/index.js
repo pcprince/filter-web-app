@@ -79,6 +79,10 @@ const waveformZoomOutButton = document.getElementById('waveform-zoom-out-button'
 let waveformZoomY = 1.0;
 const waveformZoomYIncrement = 2.0;
 
+// Halving vertical view just cuts off the mid point label, so reduce zoom slightly if in decibel mode
+
+const decibelZoomYScale = 0.97;
+
 // Waveform vertical navigation variables
 
 let goertzelZoomY = 1.0;
@@ -220,6 +224,7 @@ let amplitudeThresholdScaleIndex = 0;
 const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 0;
 const AMPLITUDE_THRESHOLD_SCALE_16BIT = 1;
 const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 2;
+let prevAmplitudeThresholdScaleIndex = 0;
 
 // Goertzel filter UI
 
@@ -600,7 +605,7 @@ function convertThreshold (rawSlider) {
  */
 function getAmplitudeThreshold () {
 
-    return convertThreshold(amplitudeThresholdSlider.getValue()).amplitude;
+    return convertThreshold(amplitudeThresholdSlider.getValue());
 
 }
 
@@ -1299,69 +1304,79 @@ function drawAxisLabels () {
             amount: 32768,
             labelIncrement16Bit: 8192,
             labelIncrementPercentage: 25,
-            percentageDecimalPlaces: 1
+            percentageDecimalPlaces: 1,
+            decibelLabels: [0, -2, -6, -12]
         },
         {
             // 50%
             amount: 16384,
             labelIncrement16Bit: 4096,
             labelIncrementPercentage: 12.5,
-            percentageDecimalPlaces: 1
+            percentageDecimalPlaces: 1,
+            decibelLabels: [-6, -8, -12, -18]
         },
         {
             // 25%
             amount: 8192,
             labelIncrement16Bit: 2048,
             labelIncrementPercentage: 6,
-            percentageDecimalPlaces: 1
+            percentageDecimalPlaces: 1,
+            decibelLabels: [-12, -14, -18, -24]
         },
         {
             // 12.5%
             amount: 4096,
             labelIncrement16Bit: 1024,
             labelIncrementPercentage: 3,
-            percentageDecimalPlaces: 1
+            percentageDecimalPlaces: 1,
+            decibelLabels: [-18, -20, -24, -30]
         },
         {
             // 6.25%
             amount: 2048,
             labelIncrement16Bit: 512,
             labelIncrementPercentage: 1.5,
-            percentageDecimalPlaces: 1
+            percentageDecimalPlaces: 1,
+            decibelLabels: [-24, -26, -30, -36]
         },
         {
             // 3.125%
             amount: 1024,
             labelIncrement16Bit: 256,
             labelIncrementPercentage: 0.75,
-            percentageDecimalPlaces: 2
+            percentageDecimalPlaces: 2,
+            decibelLabels: [-30, -32, -36, -42]
         },
         {
             // 1.5625%
             amount: 512,
             labelIncrement16Bit: 128,
             labelIncrementPercentage: 0.35,
-            percentageDecimalPlaces: 2
+            percentageDecimalPlaces: 2,
+            decibelLabels: [-36, -38, -42, -48]
         },
         {
             // 0.78125%
             amount: 256,
             labelIncrement16Bit: 64,
             labelIncrementPercentage: 0.25,
-            percentageDecimalPlaces: 2
+            percentageDecimalPlaces: 2,
+            decibelLabels: [-42, -44, -48, -54]
         },
         {
             // 0.390625%
             amount: 128,
             labelIncrement16Bit: 32,
             labelIncrementPercentage: 0.075,
-            percentageDecimalPlaces: 3
+            percentageDecimalPlaces: 3,
+            decibelLabels: [-48, -50, -54, -60]
         }
     ];
 
     let yLabelIncrementWaveform16Bit = displayedWaveformAmounts[0].labelIncrement16Bit;
     let yLabelIncrementWaveformPercentage = displayedWaveformAmounts[0].labelIncrementPercentage;
     let yLabelDecimalPlacesWaveform = displayedWaveformAmounts[0].percentageDecimalPlaces;
+    let yLabelDecibelLabels = displayedWaveformAmounts[0].decibelLabels;
 
     const waveformCanvasH = waveformLabelSVG.height.baseVal.value;
     const waveformCanvasHCentre = waveformCanvasH / 2.0;
@@ -1379,6 +1394,7 @@ function drawAxisLabels () {
         yLabelIncrementWaveform16Bit = displayedWaveformAmounts[i].labelIncrement16Bit;
         yLabelIncrementWaveformPercentage = displayedWaveformAmounts[i].labelIncrementPercentage;
         yLabelDecimalPlacesWaveform = displayedWaveformAmounts[i].percentageDecimalPlaces;
+        yLabelDecibelLabels = displayedWaveformAmounts[i].decibelLabels;
 
         if (waveformMax >= displayedWaveformAmounts[i].amount) {
 
@@ -1423,55 +1439,45 @@ function drawAxisLabels () {
 
         }
 
-    } else {
+    } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
 
         let waveformLabelYOffset = 0;
         let waveformLabelValue16Bit = 0;
 
-        // Variables for calculating decibels which can't be defined inside the switch statement
-
-        let waveformLabelValueDecibel, rawLog, decibelValue;
-
         while (waveformLabelValue16Bit <= waveformMax) {
 
-            if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
+            waveformLabelTexts.push(waveformLabelValue16Bit);
+            waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffset);
 
-                waveformLabelTexts.push(waveformLabelValue16Bit);
-                waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffset);
+            // Add mirrored label
 
-                // Add mirrored label
+            if (waveformLabelValue16Bit > 0) {
 
-                if (waveformLabelValue16Bit > 0) {
-
-                    waveformLabelTexts.unshift(waveformLabelValue16Bit);
-                    waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffset);
-
-                }
-
-            } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
-
-                if (waveformLabelValue16Bit > 0) {
-
-                    waveformLabelValueDecibel = waveformLabelValue16Bit / 32768;
-
-                    rawLog = 20 * Math.log10(waveformLabelValueDecibel);
-
-                    decibelValue = 2 * Math.round(rawLog / 2);
-
-                    waveformLabelTexts.push(decibelValue + 'dB');
-                    waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffset);
-
-                    // No label is drawn for 0, so no need to check that here
-
-                    waveformLabelTexts.unshift(decibelValue + 'dB');
-                    waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffset);
-
-                }
+                waveformLabelTexts.unshift(waveformLabelValue16Bit);
+                waveformLabelYPositions.unshift(waveformCanvasHCentre + waveformLabelYOffset);
 
             }
 
             waveformLabelValue16Bit += yLabelIncrementWaveform16Bit;
             waveformLabelYOffset += yLabelPositionIncrementWaveform;
+
+        }
+
+    } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
+
+        for (let i = 0; i < yLabelDecibelLabels.length; i++) {
+
+            const decibelValue = yLabelDecibelLabels[i];
+
+            const labelPosition = Math.pow(10, decibelValue / 20);
+
+            waveformLabelTexts.push(yLabelDecibelLabels[i] + 'dB');
+            waveformLabelYPositions.push(waveformCanvasHCentre - (waveformZoomY * decibelZoomYScale * labelPosition * waveformCanvasHCentre));
+
+            // No label is drawn for 0, so no need to check that here
+
+            waveformLabelTexts.push(yLabelDecibelLabels[i] + 'dB');
+            waveformLabelYPositions.push(waveformCanvasHCentre + (waveformZoomY * decibelZoomYScale * labelPosition * waveformCanvasHCentre));
 
         }
 
@@ -1485,8 +1491,8 @@ function drawAxisLabels () {
         let markerY = waveformLabelYPositions[i];
         let labelY = markerY;
 
-        labelY = (labelY === 0) ? labelY + 5 : labelY;
-        labelY = (labelY === waveformCanvasH) ? labelY - 5 : labelY;
+        labelY = (markerY - 5 <= 0) ? 5 : labelY;
+        labelY = (markerY + 5 >= waveformCanvasH) ? waveformCanvasH - 5 : labelY;
 
         addSVGText(waveformLabelSVG, waveformLabelTexts[i], wavLabelX, labelY, 'end');
 
@@ -1751,10 +1757,26 @@ function drawAmplitudeThresholdLines () {
     thresholdCtx.strokeStyle = 'black';
     thresholdCtx.lineWidth = 1;
 
-    const amplitudeThreshold = getAmplitudeThreshold();
+    const amplitudeThresholdValues = getAmplitudeThreshold();
+
+    let amplitudeThresholdRatio;
+
+    if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE) {
+
+        amplitudeThresholdRatio = parseFloat(amplitudeThresholdValues.percentage) / 100.0;
+
+    } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
+
+        amplitudeThresholdRatio = amplitudeThresholdValues.amplitude / 32768.0;
+
+    } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
+
+        amplitudeThresholdRatio = Math.pow(10, amplitudeThresholdValues.decibels / 20) * decibelZoomYScale;
+
+    }
 
     const centre = h / 2;
-    const offsetFromCentre = (amplitudeThreshold / 32768.0) * centre * waveformZoomY;
+    const offsetFromCentre = amplitudeThresholdRatio * centre * waveformZoomY;
     const positiveY = centre - offsetFromCentre;
     const negativeY = centre + offsetFromCentre;
 
@@ -2075,7 +2097,11 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
-    drawWaveform(samples, offset, displayLength, waveformZoomY, (waveformCompletionTime) => {
+    // Halving vertical view just cuts off the mid point label, so reduce zoom slightly if in decibel mode
+
+    const zoomLevel = (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) ? waveformZoomY * decibelZoomYScale : waveformZoomY;
+
+    drawWaveform(samples, offset, displayLength, zoomLevel, (waveformCompletionTime) => {
 
         if (isInitialRender) {
 
@@ -2736,7 +2762,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && updateThresholdedSampleArray) {
 
-        const threshold = getAmplitudeThreshold();
+        const threshold = getAmplitudeThreshold().amplitude;
         const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('amplitude-threshold-duration-radio')];
         const minimumTriggerDurationSamples = minimumTriggerDurationSecs * getSampleRate();
 
@@ -3570,11 +3596,37 @@ for (let i = 0; i < filterRadioButtons.length; i++) {
 
 amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
+    prevAmplitudeThresholdScaleIndex = amplitudeThresholdScaleIndex;
+
     amplitudeThresholdScaleIndex = parseInt(amplitudeThresholdScaleSelect.value);
+
+    // If mode is changed to or from decibel, the scale of the waveform plot has changed slightly, so redraw
+
+    if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL || prevAmplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
+
+        if (!filterCheckbox.checked) {
+
+            drawWaveformPlot(unfilteredSamples, false);
+
+        } else {
+
+            drawWaveformPlot(filteredSamples, false);
+
+        }
+
+    }
 
     updateAmplitudethresholdScale();
 
     drawAxisLabels();
+
+    const thresholdTypeIndex = getThresholdTypeIndex();
+
+    if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
+
+        drawAmplitudeThresholdLines();
+
+    }
 
 });
 
