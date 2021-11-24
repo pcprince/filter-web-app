@@ -3680,9 +3680,6 @@ function handleThresholdTypeChange (e) {
 
     }
 
-    updateThresholdTypeUI();
-    updateThresholdUI();
-
     const thresholdTypeIndex = getThresholdTypeIndex();
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
@@ -3697,19 +3694,16 @@ function handleThresholdTypeChange (e) {
 
     }
 
-    // Wait for UI to update to display new elements
+    updatePlots(false, false, true, false, false);
 
-    setTimeout(() => {
+    if (thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
-        updatePlots(false, false, true, false, false);
+        playbackModeSelect.value = 0;
 
-        if (thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
+    }
 
-            playbackModeSelect.value = 0;
-
-        }
-
-    }, 10);
+    updateThresholdTypeUI();
+    updateThresholdUI();
 
 }
 
