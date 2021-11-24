@@ -74,21 +74,12 @@ const waveformHomeButton = document.getElementById('waveform-home-button');
 const waveformZoomInButton = document.getElementById('waveform-zoom-in-button');
 const waveformZoomOutButton = document.getElementById('waveform-zoom-out-button');
 
-// Waveform vertical navigation variables
+// Vertical navigation variable
 
-let waveformZoomY = 1.0;
-const waveformZoomYIncrement = 2.0;
+let waveformZoomYIndex = 0;
+let goertzelZoomYIndex = 0;
 
-// Halving vertical view just cuts off the mid point label, so reduce zoom slightly if in decibel mode
-
-const decibelZoomYScale = 0.97;
-
-// Waveform vertical navigation variables
-
-let goertzelZoomY = 1.0;
-const goertzelZoomYIncrement = 2.0;
-
-const MAX_ZOOM_Y = 256;
+const MAX_ZOOM_Y_INDEX = 8;
 
 // Spectrogram canvases
 
@@ -1114,6 +1105,36 @@ function getSampleRate () {
 }
 
 /**
+ * Convert zoom index to zoom level
+ * @returns Zoom level
+ */
+function getZoomY () {
+
+    return Math.pow(2, waveformZoomYIndex);
+
+}
+
+/**
+ * Convert zoom index to zoom level for decibel plot
+ * @returns Zoom level for decibel plot
+ */
+function getDecibelZoomY () {
+
+    return 1.0 / Math.pow(10, (-6 * waveformZoomYIndex / 20));
+
+}
+
+/**
+ * Convert zoom index to zoom level for Goertzel plot
+ * @returns Zoom level for decibel plot
+ */
+ function getGoertzelZoomY () {
+
+    return Math.pow(2, goertzelZoomYIndex);
+
+}
+
+/**
  * Fill in the y axis labels for the two plots and their shared x axis labels
  */
 function drawAxisLabels () {
@@ -1301,116 +1322,83 @@ function drawAxisLabels () {
     const displayedWaveformAmounts = [
         {
             // 100%
-            amount: 32768,
-            labelIncrement16Bit: 8192,
-            labelIncrementPercentage: 25,
-            percentageDecimalPlaces: 1,
-            decibelLabels: [0, -2, -6, -12]
+            step16Bit: 8192,
+            stepPercentage: 20,
+            precisionPercentage: 0,
+            labelsDecibel: [0, -2, -6, -12]
         },
         {
             // 50%
-            amount: 16384,
-            labelIncrement16Bit: 4096,
-            labelIncrementPercentage: 12.5,
-            percentageDecimalPlaces: 1,
-            decibelLabels: [-6, -8, -12, -18]
+            step16Bit: 4096,
+            stepPercentage: 10,
+            precisionPercentage: 0,
+            labelsDecibel: [-6, -8, -12, -18]
         },
         {
             // 25%
-            amount: 8192,
-            labelIncrement16Bit: 2048,
-            labelIncrementPercentage: 6,
-            percentageDecimalPlaces: 1,
-            decibelLabels: [-12, -14, -18, -24]
+            step16Bit: 2048,
+            stepPercentage: 10,
+            precisionPercentage: 0,
+            labelsDecibel: [-12, -14, -18, -24]
         },
         {
             // 12.5%
-            amount: 4096,
-            labelIncrement16Bit: 1024,
-            labelIncrementPercentage: 3,
-            percentageDecimalPlaces: 1,
-            decibelLabels: [-18, -20, -24, -30]
+            step16Bit: 1024,
+            stepPercentage: 5,
+            precisionPercentage: 0,
+            labelsDecibel: [-18, -20, -24, -30]
         },
         {
             // 6.25%
-            amount: 2048,
-            labelIncrement16Bit: 512,
-            labelIncrementPercentage: 1.5,
-            percentageDecimalPlaces: 1,
-            decibelLabels: [-24, -26, -30, -36]
+            step16Bit: 512,
+            stepPercentage: 1,
+            precisionPercentage: 0,
+            labelsDecibel: [-24, -26, -30, -36]
         },
         {
             // 3.125%
-            amount: 1024,
-            labelIncrement16Bit: 256,
-            labelIncrementPercentage: 0.75,
-            percentageDecimalPlaces: 2,
-            decibelLabels: [-30, -32, -36, -42]
+            step16Bit: 256,
+            stepPercentage: 1,
+            precisionPercentage: 0,
+            labelsDecibel: [-30, -32, -36, -42]
         },
         {
             // 1.5625%
-            amount: 512,
-            labelIncrement16Bit: 128,
-            labelIncrementPercentage: 0.35,
-            percentageDecimalPlaces: 2,
-            decibelLabels: [-36, -38, -42, -48]
+            step16Bit: 128,
+            stepPercentage: 0.5,
+            precisionPercentage: 1,
+            labelsDecibel: [-36, -38, -42, -48]
         },
         {
             // 0.78125%
-            amount: 256,
-            labelIncrement16Bit: 64,
-            labelIncrementPercentage: 0.25,
-            percentageDecimalPlaces: 2,
-            decibelLabels: [-42, -44, -48, -54]
+            step16Bit: 64,
+            stepPercentage: 0.2,
+            precisionPercentage: 1,
+            labelsDecibel: [-42, -44, -48, -54]
         },
         {
             // 0.390625%
-            amount: 128,
-            labelIncrement16Bit: 32,
-            labelIncrementPercentage: 0.075,
-            percentageDecimalPlaces: 3,
-            decibelLabels: [-48, -50, -54, -60]
+            step16Bit: 32,
+            stepPercentage: 0.1,
+            precisionPercentage: 1,
+            labelsDecibel: [-48, -50, -54, -60]
         }
     ];
 
-    let yLabelIncrementWaveform16Bit = displayedWaveformAmounts[0].labelIncrement16Bit;
-    let yLabelIncrementWaveformPercentage = displayedWaveformAmounts[0].labelIncrementPercentage;
-    let yLabelDecimalPlacesWaveform = displayedWaveformAmounts[0].percentageDecimalPlaces;
-    let yLabelDecibelLabels = displayedWaveformAmounts[0].decibelLabels;
+    const z = getZoomY();
+    const waveformMax = 32768 / z;
+    const waveformMaxPercentage = 100.0 / z;
 
     const waveformCanvasH = waveformLabelSVG.height.baseVal.value;
     const waveformCanvasHCentre = waveformCanvasH / 2.0;
 
-    // 16 bit and decibel values will always divide the plot by a power of 2. Percentage may vary to keep the labels from being silly decimal places
+    const yLabelIncrementWaveform16Bit = displayedWaveformAmounts[waveformZoomYIndex].step16Bit;
+    const yLabelIncrementWaveformPercentage = displayedWaveformAmounts[waveformZoomYIndex].stepPercentage;
+    const yLabelDecimalPlacesWaveform = displayedWaveformAmounts[waveformZoomYIndex].precisionPercentage;
+    const yLabelDecibelLabels = displayedWaveformAmounts[waveformZoomYIndex].labelsDecibel;
 
-    let yLabelPositionIncrementWaveform = 0;
-    let yLabelPositionIncrementWaveformPercentage = 0.0;
-
-    const waveformMax = 32768 / waveformZoomY;
-    const waveformMaxPercentage = 100.0 / waveformZoomY;
-
-    for (let i = 0; i < displayedWaveformAmounts.length; i++) {
-
-        yLabelIncrementWaveform16Bit = displayedWaveformAmounts[i].labelIncrement16Bit;
-        yLabelIncrementWaveformPercentage = displayedWaveformAmounts[i].labelIncrementPercentage;
-        yLabelDecimalPlacesWaveform = displayedWaveformAmounts[i].percentageDecimalPlaces;
-        yLabelDecibelLabels = displayedWaveformAmounts[i].decibelLabels;
-
-        if (waveformMax >= displayedWaveformAmounts[i].amount) {
-
-            yLabelPositionIncrementWaveform = (yLabelIncrementWaveform16Bit / waveformMax) * waveformCanvasH;
-            yLabelPositionIncrementWaveformPercentage = (yLabelIncrementWaveformPercentage / waveformMaxPercentage) * waveformCanvasH;
-
-            break;
-
-        }
-
-    }
-
-    // Divide by 2 as waveform is split in 2 and mirrored. This value is the offset from the centre
-
-    yLabelPositionIncrementWaveform /= 2;
-    yLabelPositionIncrementWaveformPercentage /= 2;
+    const yLabelPositionIncrementWaveform = (yLabelIncrementWaveform16Bit / waveformMax) * waveformCanvasH / 2;
+    const yLabelPositionIncrementWaveformPercentage = (yLabelIncrementWaveformPercentage / waveformMaxPercentage) * waveformCanvasH / 2;
 
     const waveformLabelTexts = [];
     const waveformLabelYPositions = [];
@@ -1472,12 +1460,12 @@ function drawAxisLabels () {
             const labelPosition = Math.pow(10, decibelValue / 20);
 
             waveformLabelTexts.push(yLabelDecibelLabels[i] + 'dB');
-            waveformLabelYPositions.push(waveformCanvasHCentre - (waveformZoomY * decibelZoomYScale * labelPosition * waveformCanvasHCentre));
+            waveformLabelYPositions.push(waveformCanvasHCentre - (getDecibelZoomY() * labelPosition * waveformCanvasHCentre));
 
             // No label is drawn for 0, so no need to check that here
 
             waveformLabelTexts.push(yLabelDecibelLabels[i] + 'dB');
-            waveformLabelYPositions.push(waveformCanvasHCentre + (waveformZoomY * decibelZoomYScale * labelPosition * waveformCanvasHCentre));
+            waveformLabelYPositions.push(waveformCanvasHCentre + (getDecibelZoomY() * labelPosition * waveformCanvasHCentre));
 
         }
 
@@ -1491,8 +1479,8 @@ function drawAxisLabels () {
         let markerY = waveformLabelYPositions[i];
         let labelY = markerY;
 
-        labelY = (markerY - 5 <= 0) ? 5 : labelY;
-        labelY = (markerY + 5 >= waveformCanvasH) ? waveformCanvasH - 5 : labelY;
+        labelY = (labelY - 5 <= 0) ? 5 : labelY;
+        labelY = (labelY + 5 >= waveformCanvasH) ? waveformCanvasH - 5 : labelY;
 
         addSVGText(waveformLabelSVG, waveformLabelTexts[i], wavLabelX, labelY, 'end');
 
@@ -1511,49 +1499,49 @@ function drawAxisLabels () {
 
     const displayedGoertzelAmounts = [
         {
-            amount: 100,
-            labelIncrement: 12.5,
-            decimalPlaces: 1
+            // 100%
+            labelIncrement: 10,
+            decimalPlaces: 0
         },
         {
-            amount: 50,
-            labelIncrement: 10.0,
-            decimalPlaces: 1
+            // 50%
+            labelIncrement: 10,
+            decimalPlaces: 0
         },
         {
-            amount: 25,
+            // 25%
+            labelIncrement: 10,
+            decimalPlaces: 0
+        },
+        {
+            // 12.5%
             labelIncrement: 5,
+            decimalPlaces: 0
+        },
+        {
+            // 6.25%
+            labelIncrement: 1,
+            decimalPlaces: 0
+        },
+        {
+            // 3.125%
+            labelIncrement: 1,
+            decimalPlaces: 0
+        },
+        {
+            // 1.5625% !
+            labelIncrement: 1,
+            decimalPlaces: 0
+        },
+        {
+            // 0.78125%
+            labelIncrement: 0.2,
             decimalPlaces: 1
         },
         {
-            amount: 12.5,
-            labelIncrement: 2.5,
-            decimalPlaces: 1
-        },
-        {
-            amount: 6.25,
-            labelIncrement: 1.0,
-            decimalPlaces: 1
-        },
-        {
-            amount: 3.125,
-            labelIncrement: 0.5,
-            decimalPlaces: 1
-        },
-        {
-            amount: 1.5625,
-            labelIncrement: 0.25,
-            decimalPlaces: 1
-        },
-        {
-            amount: 0.78125,
+            // 0.390625%
             labelIncrement: 0.1,
             decimalPlaces: 1
-        },
-        {
-            amount: 0.390625,
-            labelIncrement: 0.05,
-            decimalPlaces: 2
         }
     ];
 
@@ -1563,22 +1551,12 @@ function drawAxisLabels () {
     const goertzelCanvasH = goertzelLabelSVG.height.baseVal.value;
     let yLabelPositionIncrementGoertzel = 0;
 
-    const goertzelMax = 100.0 / goertzelZoomY;
+    const goertzelMax = 100.0 / getGoertzelZoomY();
 
-    for (let i = 0; i < displayedGoertzelAmounts.length; i++) {
+    yLabelIncrementGoertzel = displayedGoertzelAmounts[goertzelZoomYIndex].labelIncrement;
+    yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[goertzelZoomYIndex].decimalPlaces;
 
-        yLabelIncrementGoertzel = displayedGoertzelAmounts[i].labelIncrement;
-        yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[i].decimalPlaces;
-
-        if (goertzelMax >= displayedGoertzelAmounts[i].amount) {
-
-            yLabelPositionIncrementGoertzel = (yLabelIncrementGoertzel / goertzelMax) * goertzelCanvasH;
-
-            break;
-
-        }
-
-    }
+    yLabelPositionIncrementGoertzel = (yLabelIncrementGoertzel / goertzelMax) * goertzelCanvasH;
 
     let goertzelLabelValue = 0.0;
     let goertzelLabelYPosition = goertzelCanvasH;
@@ -1606,8 +1584,8 @@ function drawAxisLabels () {
 
         // Nudge labels slightly onto canvas so they're not cut off
 
-        labelY = (labelY === 0) ? labelY + 5 : labelY;
-        labelY = (labelY === goertzelCanvasH) ? labelY - 5 : labelY;
+        labelY = (labelY - 5 <= 0) ? 5 : labelY;
+        labelY = (labelY + 5 >= goertzelCanvasH) ? goertzelCanvasH - 5 : labelY;
 
         addSVGText(goertzelLabelSVG, goertzelLabelTexts[i], goertzelLabelX, labelY, 'end');
 
@@ -1759,24 +1737,27 @@ function drawAmplitudeThresholdLines () {
 
     const amplitudeThresholdValues = getAmplitudeThreshold();
 
-    let amplitudeThresholdRatio;
+    const centre = h / 2;
+    let offsetFromCentre = 0;
 
     if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE) {
 
-        amplitudeThresholdRatio = parseFloat(amplitudeThresholdValues.percentage) / 100.0;
+        const amplitudeThresholdRatio = parseFloat(amplitudeThresholdValues.percentage) / 100.0;
+        offsetFromCentre = Math.round(amplitudeThresholdRatio * centre * getZoomY());
 
     } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
 
-        amplitudeThresholdRatio = amplitudeThresholdValues.amplitude / 32768.0;
+        const amplitudeThresholdRatio = amplitudeThresholdValues.amplitude / 32768.0;
+        offsetFromCentre = Math.round(amplitudeThresholdRatio * centre * getZoomY());
 
     } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
 
-        amplitudeThresholdRatio = Math.pow(10, amplitudeThresholdValues.decibels / 20) * decibelZoomYScale;
+        const amplitudeThresholdRatio = Math.pow(10, amplitudeThresholdValues.decibels / 20);
+        offsetFromCentre = Math.round(amplitudeThresholdRatio * centre * getDecibelZoomY());
+        console.log(offsetFromCentre);
 
     }
 
-    const centre = h / 2;
-    const offsetFromCentre = amplitudeThresholdRatio * centre * waveformZoomY;
     const positiveY = centre - offsetFromCentre;
     const negativeY = centre + offsetFromCentre;
 
@@ -1805,7 +1786,7 @@ function drawGoertzelThresholdLine () {
 
     const frequencyThreshold = getGoertzelThreshold();
 
-    const thresholdY = h - (h * frequencyThreshold * goertzelZoomY);
+    const thresholdY = h - (h * frequencyThreshold * getGoertzelZoomY());
 
     thresholdCtx.moveTo(0, thresholdY);
     thresholdCtx.lineTo(w, thresholdY);
@@ -2099,7 +2080,7 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
 
     // Halving vertical view just cuts off the mid point label, so reduce zoom slightly if in decibel mode
 
-    const zoomLevel = (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) ? waveformZoomY * decibelZoomYScale : waveformZoomY;
+    const zoomLevel = (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) ? getDecibelZoomY() : getZoomY();
 
     drawWaveform(samples, offset, displayLength, zoomLevel, (waveformCompletionTime) => {
 
@@ -2135,7 +2116,7 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
 
             const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
-            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
+            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
                 drawGoertzelThresholdedPeriods();
                 drawGoertzelFilter();
@@ -2260,8 +2241,8 @@ function resetXTransformations () {
 function resetTransformations () {
 
     resetXTransformations();
-    waveformZoomY = 1.0;
-    goertzelZoomY = 1.0;
+    waveformZoomYIndex = 0;
+    goertzelZoomYIndex = 0;
 
 }
 
@@ -2426,15 +2407,15 @@ function updateYZoomUI () {
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_NONE || thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
-        waveformHomeButton.disabled = (waveformZoomY / waveformZoomYIncrement < 1.0);
-        waveformZoomInButton.disabled = (waveformZoomY * waveformZoomYIncrement > MAX_ZOOM_Y);
-        waveformZoomOutButton.disabled = (waveformZoomY / waveformZoomYIncrement < 1.0);
+        waveformHomeButton.disabled = (waveformZoomYIndex === 0);
+        waveformZoomInButton.disabled = (waveformZoomYIndex >= MAX_ZOOM_Y_INDEX);
+        waveformZoomOutButton.disabled = (waveformZoomYIndex === 0);
 
     } else {
 
-        waveformHomeButton.disabled = (goertzelZoomY / goertzelZoomYIncrement < 1.0);
-        waveformZoomInButton.disabled = (goertzelZoomY * goertzelZoomYIncrement > MAX_ZOOM_Y);
-        waveformZoomOutButton.disabled = (goertzelZoomY / goertzelZoomYIncrement < 1.0);
+        waveformHomeButton.disabled = (goertzelZoomYIndex === 0);
+        waveformZoomInButton.disabled = (goertzelZoomYIndex >= MAX_ZOOM_Y_INDEX);
+        waveformZoomOutButton.disabled = (goertzelZoomYIndex === 0);
 
     }
 
@@ -2447,11 +2428,11 @@ function zoomInWaveformY () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        const newZoom = waveformZoomY * waveformZoomYIncrement;
+        const newZoom = waveformZoomYIndex + 1;
 
-        if (newZoom <= MAX_ZOOM_Y) {
+        if (newZoom <= MAX_ZOOM_Y_INDEX) {
 
-            waveformZoomY = newZoom;
+            waveformZoomYIndex = newZoom;
 
             disableUI();
 
@@ -2482,11 +2463,11 @@ function zoomOutWaveformY () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        const newZoom = waveformZoomY / waveformZoomYIncrement;
+        const newZoom = waveformZoomYIndex - 1;
 
-        if (newZoom >= 1.0) {
+        if (newZoom >= 0) {
 
-            waveformZoomY = newZoom;
+            waveformZoomYIndex = newZoom;
 
             disableUI();
 
@@ -2517,7 +2498,7 @@ function resetWaveformZoom () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        waveformZoomY = 1.0;
+        waveformZoomYIndex = 0;
 
         disableUI();
 
@@ -2546,11 +2527,11 @@ function zoomInGoertzelY () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        const newZoom = goertzelZoomY * goertzelZoomYIncrement;
+        const newZoom = goertzelZoomYIndex + 1;
 
-        if (newZoom <= MAX_ZOOM_Y) {
+        if (newZoom <= MAX_ZOOM_Y_INDEX) {
 
-            goertzelZoomY = newZoom;
+            goertzelZoomYIndex = newZoom;
 
             disableUI();
 
@@ -2563,7 +2544,7 @@ function zoomInGoertzelY () {
 
             const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
-            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
+            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
                 drawAxisLabels();
                 drawGoertzelThresholdedPeriods();
@@ -2588,11 +2569,11 @@ function zoomOutGoertzelY () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        const newZoom = goertzelZoomY / goertzelZoomYIncrement;
+        const newZoom = goertzelZoomYIndex - 1;
 
-        if (newZoom >= 1.0) {
+        if (newZoom >= 0) {
 
-            goertzelZoomY = newZoom;
+            goertzelZoomYIndex = newZoom;
 
             disableUI();
 
@@ -2605,7 +2586,7 @@ function zoomOutGoertzelY () {
 
             const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
-            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
+            drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
                 drawAxisLabels();
                 drawGoertzelThresholdedPeriods();
@@ -2630,7 +2611,7 @@ function resetGoertzelZoom () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
 
-        goertzelZoomY = 1.0;
+        goertzelZoomYIndex = 0;
 
         disableUI();
 
@@ -2643,7 +2624,7 @@ function resetGoertzelZoom () {
 
         const windowLength = GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
-        drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, goertzelZoomY, () => {
+        drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
             drawAxisLabels();
             drawGoertzelThresholdedPeriods();
