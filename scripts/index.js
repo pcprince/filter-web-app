@@ -2747,7 +2747,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     }
 
-    const renderSamples = (filterCheckbox.checked) ? filteredSamples : unfilteredSamples;
+    const renderSamples = (filterCheckbox.checked && thresholdTypeIndex !== THRESHOLD_TYPE_GOERTZEL) ? filteredSamples : unfilteredSamples;
 
     // Apply amplitude threshold
 
@@ -3615,6 +3615,8 @@ amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
 
+        handleAmplitudeThresholdChange();
+
         drawAmplitudeThresholdLines();
 
     }
@@ -3704,7 +3706,7 @@ function handleThresholdTypeChange (e) {
 
     }
 
-    updatePlots(false, false, true, false, false);
+    updatePlots(false, true, true, false, false);
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
@@ -3712,8 +3714,12 @@ function handleThresholdTypeChange (e) {
 
     }
 
-    updateThresholdTypeUI();
-    updateThresholdUI();
+    setTimeout(() => {
+
+        updateThresholdTypeUI();
+        updateThresholdUI();
+
+    }, 10);
 
 }
 
