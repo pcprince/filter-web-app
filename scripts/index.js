@@ -1410,6 +1410,17 @@ function drawAxisLabels () {
 
         while (waveformLabelValuePercentage <= waveformMaxPercentage) {
 
+            // 1.5% can't be selected but 0.5 is a chosen step, so skip that label
+
+            if (yLabelIncrementWaveformPercentage === 0.5 && waveformLabelValuePercentage === 1.5) {
+
+                waveformLabelValuePercentage += yLabelIncrementWaveformPercentage;
+                waveformLabelYOffsetPercentage += yLabelPositionIncrementWaveformPercentage;
+
+                continue;
+
+            }
+
             waveformLabelTexts.push(waveformLabelValuePercentage.toFixed(yLabelDecimalPlacesWaveform) + '%');
             waveformLabelYPositions.push(waveformCanvasHCentre - waveformLabelYOffsetPercentage);
 
