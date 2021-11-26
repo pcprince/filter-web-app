@@ -1765,7 +1765,6 @@ function drawAmplitudeThresholdLines () {
 
         const amplitudeThresholdRatio = Math.pow(10, amplitudeThresholdValues.decibels / 20);
         offsetFromCentre = Math.round(amplitudeThresholdRatio * centre * getDecibelZoomY());
-        console.log(offsetFromCentre);
 
     }
 
