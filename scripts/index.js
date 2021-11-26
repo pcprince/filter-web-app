@@ -1325,63 +1325,63 @@ function drawAxisLabels () {
             step16Bit: 8192,
             stepPercentage: 20,
             precisionPercentage: 0,
-            labelsDecibel: [0, -2, -6, -12]
+            labelsDecibel: [0, -2, -4, -6, -12]
         },
         {
             // 50%
             step16Bit: 4096,
             stepPercentage: 10,
             precisionPercentage: 0,
-            labelsDecibel: [-6, -8, -12, -18]
+            labelsDecibel: [-6, -8, -10, -12, -18]
         },
         {
             // 25%
             step16Bit: 2048,
             stepPercentage: 10,
             precisionPercentage: 0,
-            labelsDecibel: [-12, -14, -18, -24]
+            labelsDecibel: [-12, -14, -16, -18, -24]
         },
         {
             // 12.5%
             step16Bit: 1024,
             stepPercentage: 5,
             precisionPercentage: 0,
-            labelsDecibel: [-18, -20, -24, -30]
+            labelsDecibel: [-18, -20, -22, -24, -30]
         },
         {
             // 6.25%
             step16Bit: 512,
             stepPercentage: 1,
             precisionPercentage: 0,
-            labelsDecibel: [-24, -26, -30, -36]
+            labelsDecibel: [-24, -26, -28, -30, -36]
         },
         {
             // 3.125%
             step16Bit: 256,
             stepPercentage: 1,
             precisionPercentage: 0,
-            labelsDecibel: [-30, -32, -36, -42]
+            labelsDecibel: [-30, -32, -34, -36, -42]
         },
         {
             // 1.5625%
             step16Bit: 128,
             stepPercentage: 0.5,
             precisionPercentage: 1,
-            labelsDecibel: [-36, -38, -42, -48]
+            labelsDecibel: [-36, -38, -40, -42, -48]
         },
         {
             // 0.78125%
             step16Bit: 64,
             stepPercentage: 0.2,
             precisionPercentage: 1,
-            labelsDecibel: [-42, -44, -48, -54]
+            labelsDecibel: [-42, -44, -46, -48, -54]
         },
         {
             // 0.390625%
             step16Bit: 32,
             stepPercentage: 0.1,
             precisionPercentage: 1,
-            labelsDecibel: [-48, -50, -54, -60]
+            labelsDecibel: [-48, -50, -52, -54, -60]
         }
     ];
 
