@@ -1159,74 +1159,74 @@ function drawAxisLabels () {
         {
             amount: 30,
             labelIncrement: 5,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             amount: 10,
             labelIncrement: 2,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             amount: 5,
             labelIncrement: 1,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             amount: 2,
             labelIncrement: 0.5,
-            decimalPlaces: 1
+            precision: 1
         },
         {
             amount: 1,
             labelIncrement: 0.2,
-            decimalPlaces: 1
+            precision: 1
         },
         {
             amount: 0.5,
             labelIncrement: 0.1,
-            decimalPlaces: 1
+            precision: 1
         },
         {
             amount: 0.2,
             labelIncrement: 0.05,
-            decimalPlaces: 2
+            precision: 2
         },
         {
             amount: 0.1,
             labelIncrement: 0.02,
-            decimalPlaces: 2
+            precision: 2
         },
         {
             amount: 0.05,
             labelIncrement: 0.01,
-            decimalPlaces: 2
+            precision: 2
         },
         {
             amount: 0.02,
             labelIncrement: 0.005,
-            decimalPlaces: 3
+            precision: 3
         },
         {
             amount: 0.01,
             labelIncrement: 0.002,
-            decimalPlaces: 3
+            precision: 3
         },
         {
             amount: 0.005,
             labelIncrement: 0.001,
-            decimalPlaces: 3
+            precision: 3
         }
     ];
 
     let xLabelIncrementSecs = displayedTimeAmounts[0].labelIncrement;
-    let xLabelDecimalPlaces = displayedTimeAmounts[0].decimalPlaces;
+    let xLabelDecimalPlaces = displayedTimeAmounts[0].precision;
 
     for (let i = 0; i < displayedTimeAmounts.length; i++) {
 
         const displayedTimeSamples = displayedTimeAmounts[i].amount * currentSampleRate;
 
         xLabelIncrementSecs = displayedTimeAmounts[i].labelIncrement;
-        xLabelDecimalPlaces = displayedTimeAmounts[i].decimalPlaces;
+        xLabelDecimalPlaces = displayedTimeAmounts[i].precision;
 
         if (displayLength > displayedTimeSamples) {
 
@@ -1500,53 +1500,53 @@ function drawAxisLabels () {
     const displayedGoertzelAmounts = [
         {
             // 100%
-            labelIncrement: 10,
-            decimalPlaces: 0
+            labelIncrement: 20,
+            precision: 0
         },
         {
             // 50%
             labelIncrement: 10,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             // 25%
             labelIncrement: 10,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             // 12.5%
             labelIncrement: 5,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             // 6.25%
             labelIncrement: 1,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             // 3.125%
             labelIncrement: 1,
-            decimalPlaces: 0
+            precision: 0
         },
         {
             // 1.5625% !
-            labelIncrement: 1,
-            decimalPlaces: 0
+            labelIncrement: 0.5,
+            precision: 1
         },
         {
             // 0.78125%
             labelIncrement: 0.2,
-            decimalPlaces: 1
+            precision: 1
         },
         {
             // 0.390625%
             labelIncrement: 0.1,
-            decimalPlaces: 1
+            precision: 1
         }
     ];
 
     let yLabelIncrementGoertzel = displayedGoertzelAmounts[0].labelIncrement;
-    let yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[0].decimalPlaces;
+    let yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[0].precision;
 
     const goertzelCanvasH = goertzelLabelSVG.height.baseVal.value;
     let yLabelPositionIncrementGoertzel = 0;
@@ -1554,7 +1554,7 @@ function drawAxisLabels () {
     const goertzelMax = 100.0 / getGoertzelZoomY();
 
     yLabelIncrementGoertzel = displayedGoertzelAmounts[goertzelZoomYIndex].labelIncrement;
-    yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[goertzelZoomYIndex].decimalPlaces;
+    yLabelDecimalPlacesGoertzel = displayedGoertzelAmounts[goertzelZoomYIndex].precision;
 
     yLabelPositionIncrementGoertzel = (yLabelIncrementGoertzel / goertzelMax) * goertzelCanvasH;
 
