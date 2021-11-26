@@ -589,13 +589,15 @@
             </div>
             <div class="row justify-content-md-center" style="margin-top: 15px;">
                 <div class="col total-width">
-                    <p>The AudioMoth Filter Playground allows you to explore filter and amplitude threshold settings on existing AudioMoth WAV files before applying them in the files.</p>
+                    <p>The AudioMoth Filter Playground allows you to explore filtering and thresholding on existing AudioMoth WAV files before applying them in the files.</p>
                     
                     <p>Select a file recorded on an AudioMoth which is up to 60 seconds in length. Longer files, up to 43.9 MB, will still load but will be truncated. Once the file has loaded, you can navigate through your recording using the buttons above the plot, or by clicking and dragging to select the area you wish to see in detail. You can also double click on either plot to zoom in and centre on specific features of interest.</p>
                     
-                    <p>Add a low, high, or band pass filter using the controls on the right; ticking the checkbox to enable the filter and then dragging the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
+                    <p>Apply an amplitude or frequency threshold by clicking the corresponding radio button on the right and then dragging the slider to set the threshold. The threshold will be drawn onto the waveform plot to show you which parts of the signal will trigger. You can change the units used to display this threshold using the drop-down menu at the top left of the plots. Once a threshold has been set, the plot will automatically grey out parts of the recording which fall below the threshold.</p>
                     
-                    <p>Apply an amplitude threshold in the same way; ticking the checkbox and then dragging the slider to set the threshold. The threshold will be drawn onto the waveform plot to show you which parts of the signal will trigger. You can change the units used to display this threshold using the drop-down menu at the top left of the plots. Once a threshold has been set, the plot will automatically grey out parts of the recording which fall below the threshold.</p>
+                    <p>Selecting the frequency threshold will change the waveform to a frequency response plot. Use the radio buttons and slider to set the frequency band shown on this plot. Once you've chosen a band, drag the lower slider to set the frequency response threshold.</p>
+
+                    <p>Selecting either the amplitude threshold or no threshold will allow you to add a low, high, or band pass filter; tick the checkbox to enable the filter and then drag the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
                     
                     <!-- <p>Once you are happy with the filter and amplitude threshold settings, click <b>Export Configuration</b> to download a .config which can be loaded in the AudioMoth Configuration App (version 1.6.0 onwards).</p> -->
                 </div>
@@ -653,6 +655,28 @@
             <div class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
                     Amplitude threshold recording is a recording mode where an AudioMoth will only collect samples when their amplitude exceeds a certain value. Once a threshold has been selected, these samples are saved to SD card, as well as the lengths of the gaps between each acoustic event.
+                </div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 15px;">
+                <div class="col total-width">
+                    <h5>What is "frequency threshold" recording?</h5>
+                </div>
+            </div>
+            <div class="row justify-content-md-center" style="margin-top: 5px;">
+                <div class="col total-width">
+                    Frequency threshold recording is a recording where an AudioMoth will only collect samples when the response of a chosen frequency band exceeds a certain value. Once a threshold has been selected, these samples are saved to SD card, as well as the lengths of the gaps between each acoustic event.
+                </div>
+            </div>
+
+            <div class="row justify-content-md-center" style="margin-top: 15px;">
+                <div class="col total-width">
+                    <h5>What does "window length" change when configuring a frequency threshold?</h5>
+                </div>
+            </div>
+            <div class="row justify-content-md-center" style="margin-top: 5px;">
+                <div class="col total-width">
+                    The window length controls the width of the frequency band which the threshold is applied to. The lower the window length, the wider the band. The size and position of the band is displayed on the spectrogram plot when the frequency threshold is selected.
                 </div>
             </div>
 
