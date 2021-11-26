@@ -2753,7 +2753,25 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && updateThresholdedSampleArray) {
 
-        const threshold = getAmplitudeThreshold().amplitude;
+        const amplitudeThresholdValues = getAmplitudeThreshold();
+
+        let threshold = 0;
+
+        if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE) {
+
+            threshold = 32768.0 * parseFloat(amplitudeThresholdValues.percentage) / 100.0;
+
+        } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_16BIT) {
+
+            threshold = amplitudeThresholdValues.amplitude;
+
+        } else if (amplitudeThresholdScaleIndex === AMPLITUDE_THRESHOLD_SCALE_DECIBEL) {
+
+            threshold = 32768.0 * Math.pow(10, amplitudeThresholdValues.decibels / 20);
+
+        }
+
+        // const threshold = getAmplitudeThreshold().amplitude;
         const minimumTriggerDurationSecs = MINIMUM_TRIGGER_DURATIONS[getSelectedRadioValue('amplitude-threshold-duration-radio')];
         const minimumTriggerDurationSamples = minimumTriggerDurationSecs * getSampleRate();
 
