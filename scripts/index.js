@@ -1577,8 +1577,14 @@ function drawAxisLabels () {
 
     while (goertzelLabelValue <= goertzelMax) {
 
-        goertzelLabelTexts.push(goertzelLabelValue.toFixed(yLabelDecimalPlacesGoertzel) + '%');
-        goertzelLabelYPositions.push(goertzelLabelYPosition);
+        // 1.5% can't be selected but 0.5 is a chosen step, so skip that label
+
+        if (!(yLabelIncrementGoertzel === 0.5 && goertzelLabelValue === 1.5)) {
+
+            goertzelLabelTexts.push(goertzelLabelValue.toFixed(yLabelDecimalPlacesGoertzel) + '%');
+            goertzelLabelYPositions.push(goertzelLabelYPosition);
+
+        }
 
         goertzelLabelValue += yLabelIncrementGoertzel;
         goertzelLabelYPosition -= yLabelPositionIncrementGoertzel;
