@@ -22,6 +22,7 @@ const thresholdLabel = document.getElementById('threshold-label');
 const filterHolder = document.getElementById('filter-holder');
 
 const filterTypeLabel = document.getElementById('filter-type-label');
+const thresholdTypeLabel = document.getElementById('threshold-type-label');
 
 const FILTER_SLIDER_STEPS = {8000: 100, 16000: 100, 32000: 100, 48000: 100, 96000: 200, 192000: 500, 250000: 500, 384000: 1000};
 
