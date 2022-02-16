@@ -785,9 +785,6 @@ function roundToSliderStep (value, step) {
 
 function sampleRateChange (resetValues, sampleRate) {
 
-    const sampleRateIndex = getSelectedRadioValue('sample-rate-radio');
-
-    // const sampleRate = constants.configurations[sampleRateIndex].trueSampleRate * 1000;
     const maxFreq = sampleRate / 2;
 
     const labelText = (maxFreq / 1000) + 'kHz';
