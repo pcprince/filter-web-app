@@ -23,7 +23,7 @@ const filterHolder = document.getElementById('filter-holder');
 
 const filterTypeLabel = document.getElementById('filter-type-label');
 
-const FILTER_SLIDER_STEPS = [100, 100, 100, 100, 200, 500, 500, 1000];
+const FILTER_SLIDER_STEPS = {8000: 100, 16000: 100, 32000: 100, 48000: 100, 96000: 200, 192000: 500, 250000: 500, 384000: 1000};
 
 const filterRadioLabels = document.getElementsByName('filter-radio-label');
 const filterRadioButtons = document.getElementsByName('filter-radio');
@@ -800,7 +800,7 @@ function sampleRateChange (resetValues, sampleRate) {
     bandPassFilterSlider.setAttribute('max', maxFreq);
     goertzelFilterSlider.setAttribute('max', maxFreq);
 
-    const filterSliderStep = FILTER_SLIDER_STEPS[sampleRateIndex];
+    const filterSliderStep = FILTER_SLIDER_STEPS[sampleRate];
 
     highPassFilterSlider.setAttribute('step', filterSliderStep);
     lowPassFilterSlider.setAttribute('step', filterSliderStep);
@@ -821,17 +821,17 @@ function sampleRateChange (resetValues, sampleRate) {
 
         const newBandPassLower = currentBandPassLower > maxFreq ? 0 : currentBandPassLower;
         const newBandPassHigher = currentBandPassHigher > maxFreq ? maxFreq : currentBandPassHigher;
-        setBandPass(roundToSliderStep(Math.max(newBandPassHigher, newBandPassLower), FILTER_SLIDER_STEPS[sampleRateIndex]), roundToSliderStep(Math.min(newBandPassHigher, newBandPassLower), FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setBandPass(roundToSliderStep(Math.max(newBandPassHigher, newBandPassLower), FILTER_SLIDER_STEPS[sampleRate]), roundToSliderStep(Math.min(newBandPassHigher, newBandPassLower), FILTER_SLIDER_STEPS[sampleRate]));
 
         /* Validate current low-pass filter value */
 
         const newLowPass = currentLowPass > maxFreq ? maxFreq : currentLowPass;
-        setLowPassSliderValue(roundToSliderStep(newLowPass, FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setLowPassSliderValue(roundToSliderStep(newLowPass, FILTER_SLIDER_STEPS[sampleRate]));
 
         /* Validate current high-pass filter value */
 
         const newHighPass = currentHighPass > maxFreq ? maxFreq : currentHighPass;
-        setHighPassSliderValue(roundToSliderStep(newHighPass, FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setHighPassSliderValue(roundToSliderStep(newHighPass, FILTER_SLIDER_STEPS[sampleRate]));
 
     } else {
 
@@ -842,15 +842,15 @@ function sampleRateChange (resetValues, sampleRate) {
 
         /* Set band-pass filter values */
 
-        setBandPass(roundToSliderStep(newHighPassFreq, FILTER_SLIDER_STEPS[sampleRateIndex]), roundToSliderStep(newLowPassFreq, FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setBandPass(roundToSliderStep(newHighPassFreq, FILTER_SLIDER_STEPS[sampleRate]), roundToSliderStep(newLowPassFreq, FILTER_SLIDER_STEPS[sampleRate]));
 
         /* Set low-pass filter value */
 
-        setLowPassSliderValue(roundToSliderStep(newHighPassFreq, FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setLowPassSliderValue(roundToSliderStep(newHighPassFreq, FILTER_SLIDER_STEPS[sampleRate]));
 
         /* Set high-pass filter value */
 
-        setHighPassSliderValue(roundToSliderStep(newLowPassFreq, FILTER_SLIDER_STEPS[sampleRateIndex]));
+        setHighPassSliderValue(roundToSliderStep(newLowPassFreq, FILTER_SLIDER_STEPS[sampleRate]));
 
     }
 
@@ -858,7 +858,7 @@ function sampleRateChange (resetValues, sampleRate) {
 
     const newGoertzel = currentGoertzel > maxFreq ? maxFreq : currentGoertzel;
 
-    setFrequencyThresholdFilterFreq(roundToSliderStep(newGoertzel, FILTER_SLIDER_STEPS[sampleRateIndex]));
+    setFrequencyThresholdFilterFreq(roundToSliderStep(newGoertzel, FILTER_SLIDER_STEPS[sampleRate]));
 
     /* Update labels */
 
