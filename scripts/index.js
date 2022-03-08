@@ -12,12 +12,12 @@
 /* global applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
 
 /* global prepareUI, sampleRateChange */
-/* global getFilterRadioValue, updateThresholdTypeUI, updateThresholdUI, updateFilterLabel */
-/* global getThresholdTypeIndex, THRESHOLD_TYPE_NONE, THRESHOLD_TYPE_AMPLITUDE, THRESHOLD_TYPE_GOERTZEL, getGoertzelThreshold, getFrequencyThresholdFilterFreq, getFrequencyThresholdWindowLength, updateFilterUI */
-/* global amplitudeThresholdScaleIndex, AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE, AMPLITUDE_THRESHOLD_SCALE_16BIT, AMPLITUDE_THRESHOLD_SCALE_DECIBEL, getAmplitudeThreshold */
-/* global thresholdTypeLabel, thresholdTypeRadioButtons, lowPassFilterSlider, highPassFilterSlider, bandPassFilterSlider, amplitudeThresholdSlider, amplitudeThresholdDurationRadioButtons, goertzelFilterSlider, goertzelFilterWindowRadioButtons, goertzelDurationRadioButtons, goertzelThresholdSlider */
+/* global getFilterRadioValue, updateThresholdTypeUI, updateThresholdUI, updateFilterLabel, getFilterType */
+/* global getThresholdTypeIndex, THRESHOLD_TYPE_NONE, THRESHOLD_TYPE_AMPLITUDE, THRESHOLD_TYPE_GOERTZEL, getFrequencyThresholdFilterFreq, getFrequencyThresholdWindowLength, updateFilterUI, getFrequencyThreshold */
+/* global amplitudeThresholdScaleIndex, AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE, AMPLITUDE_THRESHOLD_SCALE_16BIT, AMPLITUDE_THRESHOLD_SCALE_DECIBEL */
+/* global thresholdTypeLabel, thresholdTypeRadioButtons, lowPassFilterSlider, highPassFilterSlider, bandPassFilterSlider, amplitudeThresholdSlider, amplitudeThresholdDurationRadioButtons, goertzelFilterCentreSlider, goertzelFilterWindowRadioButtons, goertzelDurationRadioButtons, goertzelThresholdSlider, filterRadioButtons */
 /* global getMinimumTriggerDurationAmp, getMinimumTriggerDurationGoertzel, getFilterSliderStep, setBandPass, setLowPassSliderValue, setHighPassSliderValue, roundToSliderStep, setFrequencyThresholdFilterFreq, getMinimumAmplitudeThresholdDuration, getAmplitudeThresholdValues, getFrequencyThresholdValues, setAmplitudeThresholdScaleIndex */
-/* global prevAmplitudeThresholdScaleIndex, resetElements */
+/* global prevAmplitudeThresholdScaleIndex, resetElements, disableFilterUI, enableFilterUI */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -577,7 +577,7 @@ function drawAxisLabels () {
     // Draw top and bottom label markers
 
     addSVGLine(spectrogramLabelSVG, specMarkerX, 1, spectrogramLabelSVG.width.baseVal.value, 1);
-    const endLabelY = spectrogramLabelSVG.height.baseVal.value - 2;
+    const endLabelY = spectrogramLabelSVG.height.baseVal.value - 1;
     addSVGLine(spectrogramLabelSVG, specMarkerX, endLabelY, spectrogramLabelSVG.width.baseVal.value, endLabelY);
 
     // Draw middle labels and markers
@@ -1047,7 +1047,7 @@ function drawAmplitudeThresholdLines () {
     thresholdCtx.strokeStyle = 'black';
     thresholdCtx.lineWidth = 1;
 
-    const amplitudeThresholdValues = getAmplitudeThreshold();
+    const amplitudeThresholdValues = getAmplitudeThresholdValues();
 
     const centre = h / 2;
     let offsetFromCentre = 0;
@@ -1095,7 +1095,7 @@ function drawGoertzelThresholdLine () {
 
     thresholdCtx.strokeStyle = 'black';
 
-    const frequencyThreshold = getGoertzelThreshold();
+    const frequencyThreshold = getFrequencyThreshold() / 100.0;
 
     const thresholdY = h - (h * frequencyThreshold * getGoertzelZoomY());
 
@@ -1105,6 +1105,9 @@ function drawGoertzelThresholdLine () {
 
 }
 
+/**
+ * Draw Goertzel filter band over spectrogram canvas
+ */
 function drawGoertzelFilter () {
 
     const filterCtx = spectrogramGoertzelCanvas.getContext('2d');
@@ -1131,23 +1134,12 @@ function drawGoertzelFilter () {
     filterCtx.lineTo(w, freqY);
     filterCtx.stroke();
 
-    // Draw lines at edge of bandwidth
-
-    filterCtx.moveTo(0, freqY - bandwidthY);
-    filterCtx.lineTo(w, freqY - bandwidthY);
-    filterCtx.stroke();
-
-    filterCtx.moveTo(0, freqY + bandwidthY);
-    filterCtx.lineTo(w, freqY + bandwidthY);
-    filterCtx.stroke();
-
-    // Grey out areas outside the thresholded frequency
+    // Shade thresholded frequency
 
     filterCtx.globalAlpha = 0.25;
-    filterCtx.fillStyle = 'white';
+    filterCtx.fillStyle = 'red';
 
-    filterCtx.fillRect(0, 0, w, freqY - bandwidthY);
-    filterCtx.fillRect(0, freqY + bandwidthY, w, h - (freqY + bandwidthY));
+    filterCtx.fillRect(0, freqY - bandwidthY, w, bandwidthY * 2);
 
 }
 
@@ -1353,7 +1345,7 @@ function reenableUI () {
 
     updateFilterUI();
 
-    thresholdTypeLabel.style.color = '';
+    thresholdTypeLabel.classList.remove('grey');
     for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
 
         thresholdTypeRadioButtons[i].disabled = false;
@@ -1370,6 +1362,8 @@ function reenableUI () {
     playButton.disabled = false;
     enableSlider(playbackSpeedSlider, playbackSpeedDiv);
     playbackModeSelect.disabled = false;
+
+    enableFilterUI();
 
 }
 
@@ -1489,11 +1483,40 @@ function drawPlots (samples, isInitialRender) {
 /**
  * Turn off all UI elements so settings can't be changed during processing
  */
-function disableUI () {
+function disableUI (startUp) {
 
-    updateFilterUI();
-    updateThresholdTypePlaybackUI();
-    updateThresholdUI();
+    if (!startUp) {
+
+        fileButton.disabled = true;
+
+    }
+
+    resetButton.disabled = true;
+    exportButton.disabled = true;
+
+    zoomInButton.disabled = true;
+    zoomOutButton.disabled = true;
+    homeButton.disabled = true;
+
+    waveformHomeButton.disabled = true;
+    waveformZoomInButton.disabled = true;
+    waveformZoomOutButton.disabled = true;
+
+    thresholdTypeLabel.classList.remove('grey');
+    for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
+
+        thresholdTypeRadioButtons[i].disabled = false;
+
+    }
+
+    playbackModeOptionMute.disabled = true;
+    playbackModeOptionSkip.disabled = true;
+
+    playButton.disabled = true;
+    disableSlider(playbackSpeedSlider, playbackSpeedDiv);
+    playbackModeSelect.disabled = true;
+
+    disableFilterUI();
 
 }
 
@@ -1747,7 +1770,7 @@ function zoomInWaveformY () {
 
             waveformZoomYIndex = newZoom;
 
-            disableUI();
+            disableUI(false);
 
             const filterIndex = getFilterRadioValue();
 
@@ -1784,7 +1807,7 @@ function zoomOutWaveformY () {
 
             waveformZoomYIndex = newZoom;
 
-            disableUI();
+            disableUI(false);
 
             const filterIndex = getFilterRadioValue();
 
@@ -1817,7 +1840,7 @@ function resetWaveformZoom () {
 
         waveformZoomYIndex = 0;
 
-        disableUI();
+        disableUI(false);
 
         const filterIndex = getFilterRadioValue();
 
@@ -1852,7 +1875,7 @@ function zoomInGoertzelY () {
 
             goertzelZoomYIndex = newZoom;
 
-            disableUI();
+            disableUI(false);
 
             // Redraw just the goertzel plot
 
@@ -1894,7 +1917,7 @@ function zoomOutGoertzelY () {
 
             goertzelZoomYIndex = newZoom;
 
-            disableUI();
+            disableUI(false);
 
             // Redraw just the goertzel plot
 
@@ -1932,7 +1955,7 @@ function resetGoertzelZoom () {
 
         goertzelZoomYIndex = 0;
 
-        disableUI();
+        disableUI(false);
 
         // Redraw just the goertzel plot
 
@@ -2063,7 +2086,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE && updateThresholdedSampleArray) {
 
-        const amplitudeThresholdValues = getAmplitudeThreshold();
+        const amplitudeThresholdValues = getAmplitudeThresholdValues();
 
         let threshold = 0;
 
@@ -2081,7 +2104,6 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
         }
 
-        // const threshold = getAmplitudeThreshold().amplitude;
         const minimumTriggerDurationSecs = getMinimumTriggerDurationAmp();
         const minimumTriggerDurationSamples = minimumTriggerDurationSecs * getSampleRate();
 
@@ -2116,7 +2138,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
         // Divide slider value by maximum possible Goertzel response
 
-        const threshold = getGoertzelThreshold();
+        const threshold = getFrequencyThreshold() / 100;
 
         thresholdedValueCount = applyGoertzelThreshold(goertzelValues, threshold, windowLength, minimumTriggerDurationSamples, samplesAboveGoertzelThreshold);
 
@@ -2142,26 +2164,11 @@ async function updatePlots (resetColourMap, updateSpectrogram, updateThresholded
 
     }
 
-    disableUI();
-
     const approximateRenderTime = estimateRenderTime();
 
     if (approximateRenderTime > DISABLE_BUTTON_BUSY_LENGTH) {
 
-        fileButton.disabled = true;
-
-        homeButton.disabled = true;
-        zoomInButton.disabled = true;
-        zoomOutButton.disabled = true;
-        panLeftButton.disabled = true;
-        panRightButton.disabled = true;
-
-        waveformHomeButton.disabled = true;
-        waveformZoomInButton.disabled = true;
-        waveformZoomOutButton.disabled = true;
-
-        resetButton.disabled = true;
-        exportButton.disabled = true;
+        disableUI(false);
 
     }
 
@@ -2354,12 +2361,6 @@ function updateFileSizePanel () {
 
 }
 
-function onSampleRateChange (resetValues) {
-
-    sampleRateChange(resetValues, getSampleRate());
-
-}
-
 /**
  * Load a file either from a user-selected location or a hosted example file
  * @param {string} exampleFilePath Path of an example recording if file isn't chosen by user
@@ -2473,7 +2474,7 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Update filter range
 
-        onSampleRateChange(prevSampleRate === undefined);
+        sampleRateChange(prevSampleRate === undefined, prevSampleRate === undefined, getSampleRate());
 
         if (sampleRate !== prevSampleRate && prevSampleRate !== undefined) {
 
@@ -2509,6 +2510,10 @@ async function loadFile (exampleFilePath, exampleName) {
             setFrequencyThresholdFilterFreq(newGoertzelFilterValue);
 
             updateThresholdUI();
+
+            // Enable UI
+
+            
 
         }
 
@@ -2595,8 +2600,9 @@ async function loadExampleFiles (devMode) {
 
 }
 
-// Handle a new file being selected
-
+/**
+ * Handle a new file being selected
+ */
 fileButton.addEventListener('click', () => {
 
     if (!drawing && !playing) {
@@ -2607,8 +2613,9 @@ fileButton.addEventListener('click', () => {
 
 });
 
-// Handle example files being selected
-
+/**
+ * Handle example files being selected
+ */
 for (let i = 0; i < examplePaths.length; i++) {
 
     exampleLinks[i].addEventListener('click', () => {
@@ -2719,12 +2726,6 @@ function dragZoom (dragEndX) {
 
         isDragging = false;
 
-        if (dragEndX === dragStartX) {
-
-            return;
-
-        }
-
         // Clear zoom overlay canvases
 
         const specCtx = spectrogramDragCanvas.getContext('2d');
@@ -2733,6 +2734,12 @@ function dragZoom (dragEndX) {
         wavCtx.clearRect(0, 0, waveformDragCanvas.width, waveformDragCanvas.height);
         const goertzelCtx = goertzelDragCanvas.getContext('2d');
         goertzelCtx.clearRect(0, 0, goertzelDragCanvas.width, goertzelDragCanvas.height);
+
+        if (dragEndX === dragStartX) {
+
+            return;
+
+        }
 
         // Calculate new zoom value
 
@@ -2958,6 +2965,12 @@ bandPassFilterSlider.on('slideStop', handleFilterChange);
 lowPassFilterSlider.on('slideStop', handleFilterChange);
 highPassFilterSlider.on('slideStop', handleFilterChange);
 
+for (let i = 0; i < filterRadioButtons.length; i++) {
+
+    filterRadioButtons[i].addEventListener('change', handleFilterChange);
+
+}
+
 /**
  * Handle event when a different threshold type is selected
  * @param {event} e Threshold type change event
@@ -3020,6 +3033,7 @@ function handleAmplitudeThresholdChange () {
 }
 
 amplitudeThresholdSlider.on('slideStop', handleAmplitudeThresholdChange);
+amplitudeThresholdSlider.on('change', drawAmplitudeThresholdLines);
 
 for (let i = 0; i < amplitudeThresholdDurationRadioButtons.length; i++) {
 
@@ -3047,7 +3061,8 @@ function handleGoertzelFilterChange (e) {
 
 }
 
-goertzelFilterSlider.on('slideStop', handleGoertzelFilterChange);
+goertzelFilterCentreSlider.on('slideStop', handleGoertzelFilterChange);
+goertzelFilterCentreSlider.on('change', drawGoertzelFilter);
 
 for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
 
@@ -3089,6 +3104,7 @@ for (let i = 0; i < goertzelDurationRadioButtons.length; i++) {
 }
 
 goertzelThresholdSlider.on('slideStop', handleGoertzelThresholdChange);
+goertzelThresholdSlider.on('change', drawGoertzelThresholdLine);
 
 /**
  * Reset button event
@@ -3099,7 +3115,7 @@ function reset () {
 
         resetElements();
 
-        onSampleRateChange(true);
+        sampleRateChange(true, true, getSampleRate());
 
         updateFilterUI();
         updateThresholdTypePlaybackUI();
@@ -3121,8 +3137,9 @@ bandPassFilterSlider.on('change', updateFilterLabel);
 lowPassFilterSlider.on('change', updateFilterLabel);
 highPassFilterSlider.on('change', updateFilterLabel);
 
-// Add home, zoom and pan control to buttons
-
+/**
+ * Add home, zoom and pan control to buttons
+ */
 function resetNavigation () {
 
     if (sampleCount !== 0 && !drawing && !playing) {
@@ -3181,7 +3198,6 @@ function exportConfig () {
 
     const minimumTriggerDuration = getMinimumAmplitudeThresholdDuration();
 
-    const filterTypes = ['none', 'low', 'band', 'high'];
     const amplitudeThresholdScales = ['percentage', '16bit', 'decibel'];
 
     const amplitudeThresholdValues = getAmplitudeThresholdValues();
@@ -3211,11 +3227,14 @@ function exportConfig () {
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
+    const filterType = getFilterType();
+
+    const passFiltersEnabled = thresholdTypeIndex !== THRESHOLD_TYPE_GOERTZEL && filterType !== 'none';
+
     const settings = {
         version: 'playground',
         sampleRate: getSampleRate(),
-        passFiltersEnabled: thresholdTypeIndex !== FILTER_NONE,
-        filterType: filterTypes[filterIndex],
+        passFiltersEnabled: passFiltersEnabled,
         lowerFilter: filterValue0,
         higherFilter: filterValue1,
         amplitudeThresholdingEnabled: thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE,
@@ -3223,10 +3242,16 @@ function exportConfig () {
         minimumAmplitudeThresholdDuration: minimumTriggerDuration,
         amplitudeThresholdingScale: amplitudeThresholdScales[amplitudeThresholdScaleIndex],
         frequencyThresholdEnabled: thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL,
-        frequencyThresholdFilterFreq: goertzelFilterSlider.getValue(),
+        frequencyThresholdFilterFreq: goertzelFilterCentreSlider.getValue(),
         frequencyThresholdExponent: frequencyThreshold.percentageExponent,
         frequencyThresholdMantissa: frequencyThreshold.percentageMantissa
     };
+
+    if (passFiltersEnabled) {
+
+        settings.filterType = filterType;
+
+    }
 
     const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
 
@@ -3386,7 +3411,7 @@ function stopEvent () {
 
     updateFilterUI();
 
-    thresholdTypeLabel.style.color = '';
+    thresholdTypeLabel.classList.remove('grey');
     for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
 
         thresholdTypeRadioButtons[i].disabled = false;
@@ -3475,8 +3500,9 @@ function stopEvent () {
 
 }
 
-// Play audio button
-
+/**
+ * Play audio button
+ */
 playButton.addEventListener('click', () => {
 
     if (sampleCount === 0 || drawing) {
@@ -3533,7 +3559,7 @@ playButton.addEventListener('click', () => {
 
         // Otherwise, disable UI then play
 
-        disableUI();
+        disableUI(false);
         playButton.disabled = false;
 
         // Switch from play icon to stop icon
@@ -3674,15 +3700,18 @@ updateThresholdUI();
 
 // Prepare filter UI
 
-prepareUI(null, null, onSampleRateChange); // First 2 arguments only used in Config app
+prepareUI(null, null, () => {
+
+    sampleRateChange(true, true, getSampleRate());
+
+}); // First 2 arguments only used in Config app
 
 updateFilterUI();
 updateFilterLabel();
 
-// Disable playback controls until file is loaded
+// Disable controls until file is loaded
 
-disableSlider(playbackSpeedSlider, playbackSpeedDiv);
-playbackModeSelect.disabled = true;
+disableUI(true);
 
 // Display error if current browser is not Chrome
 
@@ -3690,7 +3719,7 @@ const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigat
 
 if (!isChrome) {
 
-    fileSelectionTitleDiv.style.color = '#D3D3D3';
+    fileSelectionTitleDiv.classList.add('grey');
     browserErrorDisplay.style.display = '';
     disabledFileButton.style.display = '';
     fileButton.style.display = 'none';

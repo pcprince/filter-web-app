@@ -117,7 +117,7 @@
                     <div id="waveform-holder" class="row" style="margin-top: 0px; height: 240px; text-align: center;">
                         <span style="text-align: center; width: 748px; margin-left: 45px;">Waveform</span>
                         <div class="wrapper" style="width: 793px; height: 238px;">
-                            <svg class="label-canvas" id="waveform-label-svg" width="45" height="238" style="padding: 0%; margin-top: 1px; margin-bottom: 1px;"></svg>
+                            <svg class="label-canvas" id="waveform-label-svg" width="45" height="240" style="padding: 0%;"></svg>
                             <canvas class="plot-canvas" id="waveform-canvas" width="748" height="238" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="waveform-threshold-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="waveform-threshold-line-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
@@ -132,7 +132,7 @@
                     <div id="goertzel-canvas-holder" class="row" style="margin-top: 0px; height: 240px; text-align: center; display: none;">
                         <span style="text-align: center; width: 748px; margin-left: 45px; height: 20px;">Frequency Response</span>
                         <div class="wrapper" style="width: 793px; height: 238px;">
-                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="238" style="padding: 0%; margin-top: 1px; margin-bottom: 1px;"></svg>
+                            <svg class="label-canvas" id="goertzel-label-svg" width="45" height="240" style="padding: 0%;"></svg>
                             <canvas class="plot-canvas" id="goertzel-canvas" width="748" height="238" style="border: #cdcdcd thin solid; padding: 0%;"></canvas>
                             <canvas class="plot-canvas" id="goertzel-threshold-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
                             <canvas class="plot-canvas" id="goertzel-threshold-line-canvas" width="748" height="238" style="border: #cdcdcd thin solid;"></canvas>
@@ -172,7 +172,7 @@
 
                 <div class="col control-width control-margin" style="padding: 0px;">
 
-                    <div class="row" style="margin-top: 8px;">
+                    <div class="row" style="margin-top: 20px;">
                         <div class="col-12">
                             <div style="border: #cdcdcd thin solid; width: 100%; margin-top: 0px;">
                     
@@ -228,7 +228,7 @@
                                 <div class="row" style="margin-top: 8px;">
                                     <div class="col-12">
                                         <div style="margin-left: 5px; margin-right: 4px">
-                                            <table class="table" style="margin-bottom: 4px;" title="Type of filter.">
+                                            <table class="table" style="margin-bottom: 4px;" title="Type of filter." id="filter-type-table">
                                                 <tr class="settings-text" style="font-size: 12px;">
                                                     <td align="center" style="padding: 0px"></td>
                                                     <td align="center" style="padding: 0px"></td>
@@ -270,7 +270,7 @@
                                         <span class="settings-text" id="disabled-filter-min-label" style="margin-left: 16px; font-weight: bold;">0kHz</span>
                                     </div>
                                     <div id="disabled-filter-slider-holder" class="col-8 config-slider" title="The low and high cut-off frequencies of the disabled filter." style="padding-left: 0px; padding-right: 0px;">
-                                        <input id="disabled-filter-slider" data-slider-id="disabled-filter-slider" type="text" class="span2" data-slider-value="0" style="width: 370px; ">
+                                        <input id="disabled-filter-slider" data-slider-id="disabled-filter-slider" type="text" class="span2" data-slider-value="0" style="width: 370px;">
                                     </div>
                                     <div class="col-2" style="text-align: right;">
                                         <span class="settings-text" id="disabled-filter-max-label" style="font-weight: bold; padding-right: 18px;">24kHz</span>
@@ -736,6 +736,6 @@
     <script src="scripts/amplitudeThreshold.js"></script>
     <script src="scripts/goertzelFilter.js"></script>
     <script src="scripts/playAudio.js"></script>
-    <script src="scripts/filtering.js"></script>
+    <script src="scripts/uiFiltering.js"></script>
     <script src="scripts/index.js"></script>
 </html>
