@@ -93,11 +93,12 @@ let previousSelectionType = 1;
 
 /* 0: 0-100%, 1: 16-Bit, 2: Decibels */
 
-let amplitudeThresholdScaleIndex = 0;
-let prevAmplitudeThresholdScaleIndex = 0;
-const AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE = 0;
-const AMPLITUDE_THRESHOLD_SCALE_16BIT = 1;
-const AMPLITUDE_THRESHOLD_SCALE_DECIBEL = 2;
+const THRESHOLD_SCALE_PERCENTAGE = 0;
+const THRESHOLD_SCALE_16BIT = 1;
+const THRESHOLD_SCALE_DECIBEL = 2;
+
+let thresholdScaleIndex = 0;
+let prevThresholdScaleIndex = 0;
 
 let updateLifeDisplayOnChange;
 
@@ -271,25 +272,25 @@ function updateFilterLabel () {
 /**
  * Work out where on the slider a given amplitude threshold value is
  * @param {int} amplitudeThreshold Chosen threshold
- * @param {int} scaleIndex Index of amplitude trheshold scale type (AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE, AMPLITUDE_THRESHOLD_SCALE_16BIT, AMPLITUDE_THRESHOLD_SCALE_DECIBEL)
+ * @param {int} scaleIndex Index of amplitude trheshold scale type (THRESHOLD_SCALE_PERCENTAGE, THRESHOLD_SCALE_16BIT, THRESHOLD_SCALE_DECIBEL)
  * @returns The corresponding slider value
  */
 
-function lookupAmplitudeThresholdingSliderValue (amplitudeThreshold, scaleIndex) {
+function lookupAmplitudeThresholdSliderValue (amplitudeThreshold, scaleIndex) {
 
     let searchList;
 
     switch (scaleIndex) {
 
-    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+    case THRESHOLD_SCALE_PERCENTAGE:
         searchList = THRESHOLD_PERCENTAGE_SLIDER_VALUES;
         break;
 
-    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+    case THRESHOLD_SCALE_16BIT:
         searchList = THRESHOLD_16BIT_SLIDER_VALUES;
         break;
 
-    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+    case THRESHOLD_SCALE_DECIBEL:
         searchList = THRESHOLD_DECIBEL_SLIDER_VALUES;
         break;
 
@@ -403,19 +404,19 @@ function updateThresholdLabel () {
 
         thresholdLabel.textContent = 'Amplitude threshold of ';
 
-        switch (amplitudeThresholdScaleIndex) {
+        switch (thresholdScaleIndex) {
 
-        case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+        case THRESHOLD_SCALE_PERCENTAGE:
 
             thresholdLabel.textContent += amplitudeThreshold.percentage + '%';
             break;
 
-        case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+        case THRESHOLD_SCALE_16BIT:
 
             thresholdLabel.textContent += amplitudeThreshold.amplitude;
             break;
 
-        case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+        case THRESHOLD_SCALE_DECIBEL:
 
             thresholdLabel.textContent += amplitudeThreshold.decibels + ' dB';
             break;
@@ -529,14 +530,14 @@ function setFilters (enabled, lowerSliderValue, higherSliderValue, filterType) {
 
 /**
  * Change amplitude threshold scale
- * @param {int} scaleIndex New scale index (AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE, AMPLITUDE_THRESHOLD_SCALE_16BIT, AMPLITUDE_THRESHOLD_SCALE_DECIBEL)
+ * @param {int} scaleIndex New scale index (THRESHOLD_SCALE_PERCENTAGE, THRESHOLD_SCALE_16BIT, THRESHOLD_SCALE_DECIBEL)
  */
 function setAmplitudeThresholdScaleIndex (scaleIndex) {
 
-    prevAmplitudeThresholdScaleIndex = amplitudeThresholdScaleIndex;
+    prevThresholdScaleIndex = thresholdScaleIndex;
 
-    amplitudeThresholdScaleIndex = scaleIndex;
-    updateAmplitudeThresholdingScale();
+    thresholdScaleIndex = scaleIndex;
+    updateAmplitudeThresholdScale();
 
 }
 
@@ -546,7 +547,7 @@ function setAmplitudeThresholdScaleIndex (scaleIndex) {
  */
 function setAmplitudeThreshold (amplitudeThreshold) {
 
-    amplitudeThresholdSlider.setValue(lookupAmplitudeThresholdingSliderValue(amplitudeThreshold, amplitudeThresholdScaleIndex));
+    amplitudeThresholdSlider.setValue(lookupAmplitudeThresholdSliderValue(amplitudeThreshold, thresholdScaleIndex));
 
 }
 
@@ -568,16 +569,17 @@ function setThresholdType (type) {
 function setMinimumAmplitudeThresholdDuration (index) {
 
     amplitudeThresholdDurationRadioButtons[index].checked = true;
+    goertzelDurationRadioButtons[index].checked = true;
 
 }
 
 /**
  * Change frequency threshold value
- * @param {int} frequencyThreshold New frequency threshold
+ * @param {int} frequencyTrigger New frequency threshold
  */
-function setFrequencyThreshold (frequencyThreshold) {
+function setFrequencyTrigger (frequencyTrigger) {
 
-    goertzelThresholdSlider.setValue(lookupAmplitudeThresholdingSliderValue(frequencyThreshold, AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE));
+    goertzelThresholdSlider.setValue(lookupAmplitudeThresholdSliderValue(frequencyTrigger, THRESHOLD_SCALE_PERCENTAGE));
 
 }
 
@@ -585,7 +587,7 @@ function setFrequencyThreshold (frequencyThreshold) {
  * Change the central frequency used by the Goertzel filter
  * @param {int} freq New central frequency
  */
-function setFrequencyThresholdFilterFreq (freq) {
+function setFrequencyTriggerFilterFreq (freq) {
 
     centreHasChanged = true;
     goertzelFilterCentreSlider.setValue(freq);
@@ -596,7 +598,7 @@ function setFrequencyThresholdFilterFreq (freq) {
  * Change the window length used by the Goertzel filter
  * @param {int} length New window length
  */
-function setFrequencyThresholdWindowLength (length) {
+function setFrequencyTriggerWindowLength (length) {
 
     const index = GOERTZEL_FILTER_WINDOW_LENGTHS.indexOf(length);
 
@@ -608,9 +610,10 @@ function setFrequencyThresholdWindowLength (length) {
  * Change frequency threshold minimum duration
  * @param {int} index Index of radio button which controls the minimum duration of the frequency threshold
  */
-function setMinimumFrequencyThresholdDuration (index) {
+function setMinimumFrequencyTriggerDuration (index) {
 
     goertzelDurationRadioButtons[index].checked = true;
+    amplitudeThresholdDurationRadioButtons[index].checked = true;
 
 }
 
@@ -744,7 +747,7 @@ function getAmplitudeThresholdValues () {
  * Get all frequency threshold in all possible scales
  * @returns Object containing all frequency threshold conversions
  */
-function getFrequencyThresholdValues () {
+function getFrequencyTriggerValues () {
 
     return convertThreshold(goertzelThresholdSlider.getValue());
 
@@ -756,15 +759,15 @@ function getFrequencyThresholdValues () {
  */
 function getAmplitudeThreshold () {
 
-    switch (amplitudeThresholdScaleIndex) {
+    switch (thresholdScaleIndex) {
 
-    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+    case THRESHOLD_SCALE_PERCENTAGE:
         return getPercentageAmplitudeThreshold();
 
-    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+    case THRESHOLD_SCALE_16BIT:
         return get16BitAmplitudeThreshold();
 
-    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+    case THRESHOLD_SCALE_DECIBEL:
         return getDecibelAmplitudeThreshold();
 
     }
@@ -775,7 +778,7 @@ function getAmplitudeThreshold () {
  * Get whether or not to amplitude threshold
  * @returns Boolean representing whether or not amplitude thresholdins enabled
  */
-function amplitudeThresholdingIsEnabled () {
+function amplitudeThresholdIsEnabled () {
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
@@ -785,11 +788,11 @@ function amplitudeThresholdingIsEnabled () {
 
 /**
  * Get index of amplitude threshold scale
- * @returns Index of amplitude scale (AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE, AMPLITUDE_THRESHOLD_SCALE_16BIT, AMPLITUDE_THRESHOLD_SCALE_DECIBEL)
+ * @returns Index of amplitude scale (THRESHOLD_SCALE_PERCENTAGE, THRESHOLD_SCALE_16BIT, THRESHOLD_SCALE_DECIBEL)
  */
 function getAmplitudeThresholdScaleIndex () {
 
-    return amplitudeThresholdScaleIndex;
+    return thresholdScaleIndex;
 
 }
 
@@ -822,7 +825,7 @@ function getFrequencyFilterThresholdExponentMantissa () {
  * Convert selected frequency threshold from current scale raw slider value to amplitude
  * @returns Frequency threshold value
  */
-function getFrequencyThreshold () {
+function getFrequencyTrigger () {
 
     return parseFloat(convertThreshold(goertzelThresholdSlider.getValue()).percentage);
 
@@ -832,7 +835,7 @@ function getFrequencyThreshold () {
  * Get Goertzel filter frequency for threshold
  * @returns Frequency used by Goertzel filter
  */
-function getFrequencyThresholdFilterFreq () {
+function getFrequencyTriggerFilterFreq () {
 
     return goertzelFilterCentreSlider.getValue();
 
@@ -842,7 +845,7 @@ function getFrequencyThresholdFilterFreq () {
  * Get whether or not to apply frequency filter
  * @returns Boolean representing if frequency filter is enabled
  */
-function frequencyThresholdingIsEnabled () {
+function frequencyTriggerIsEnabled () {
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
@@ -854,13 +857,13 @@ function frequencyThresholdingIsEnabled () {
  * Get Goertzel filter window length for threshold
  * @returns Window length
  */
-function getFrequencyThresholdWindowLength () {
+function getFrequencyTriggerWindowLength () {
 
     return GOERTZEL_FILTER_WINDOW_LENGTHS[getSelectedRadioValue('goertzel-filter-window-radio')];
 
 }
 
-function getMinimumFrequencyThresholdDuration () {
+function getMinimumFrequencyTriggerDuration () {
 
     return getSelectedRadioValue('goertzel-duration-radio');
 
@@ -1051,11 +1054,11 @@ function sampleRateChange (resetPassSliders, resetCentreSlider, sampleRate) {
 
     } else {
 
-        newCentre = currentGoertzel > maxFreq ? maxFreq : currentGoertzel;
+        newCentre = currentGoertzel > maxFreq ? maxFreq / 2 : currentGoertzel;
 
     }
 
-    setFrequencyThresholdFilterFreq(roundToSliderStep(newCentre, FILTER_SLIDER_STEPS[sampleRate]));
+    setFrequencyTriggerFilterFreq(roundToSliderStep(newCentre, FILTER_SLIDER_STEPS[sampleRate]));
 
     /* Update labels */
 
@@ -1067,23 +1070,23 @@ function sampleRateChange (resetPassSliders, resetCentreSlider, sampleRate) {
 /**
  * Update the labels either side of the amplitude threshold scale
  */
-function updateAmplitudeThresholdingScale () {
+function updateAmplitudeThresholdScale () {
 
     updateThresholdLabel();
 
-    switch (amplitudeThresholdScaleIndex) {
+    switch (thresholdScaleIndex) {
 
-    case AMPLITUDE_THRESHOLD_SCALE_PERCENTAGE:
+    case THRESHOLD_SCALE_PERCENTAGE:
         amplitudeThresholdMinLabel.innerHTML = '0.001%';
         amplitudeThresholdMaxLabel.innerHTML = '100%';
         break;
 
-    case AMPLITUDE_THRESHOLD_SCALE_16BIT:
+    case THRESHOLD_SCALE_16BIT:
         amplitudeThresholdMinLabel.innerHTML = '0';
         amplitudeThresholdMaxLabel.innerHTML = '32768';
         break;
 
-    case AMPLITUDE_THRESHOLD_SCALE_DECIBEL:
+    case THRESHOLD_SCALE_DECIBEL:
         amplitudeThresholdMinLabel.innerHTML = '-100 dB';
         amplitudeThresholdMaxLabel.innerHTML = '0 dB';
         break;
@@ -1289,21 +1292,25 @@ function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateCh
             amplitudeThresholdDurationRadioButtons[i].addEventListener('click', checkRecordingDurationFunction);
             goertzelDurationRadioButtons[i].addEventListener('click', checkRecordingDurationFunction);
 
-            // Sync duration checkboxes
-
-            amplitudeThresholdDurationRadioButtons[i].addEventListener('change', () => {
-
-                goertzelDurationRadioButtons[i].checked = true;
-
-            });
-
-            goertzelDurationRadioButtons[i].addEventListener('change', () => {
-
-                amplitudeThresholdDurationRadioButtons[i].checked = true;
-
-            });
-
         }
+
+    }
+
+    for (let i = 0; i < amplitudeThresholdDurationRadioButtons.length; i++) {
+
+        // Sync duration checkboxes
+
+        amplitudeThresholdDurationRadioButtons[i].addEventListener('change', () => {
+
+            goertzelDurationRadioButtons[i].checked = true;
+
+        });
+
+        goertzelDurationRadioButtons[i].addEventListener('change', () => {
+
+            amplitudeThresholdDurationRadioButtons[i].checked = true;
+
+        });
 
     }
 
@@ -1375,13 +1382,13 @@ function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateCh
 
 // exports.setMinimumAmplitudeThresholdDuration = setMinimumAmplitudeThresholdDuration;
 
-// exports.setFrequencyThreshold = setFrequencyThreshold;
+// exports.setFrequencyTrigger = setFrequencyTrigger;
 
-// exports.setFrequencyThresholdFilterFreq = setFrequencyThresholdFilterFreq;
+// exports.setFrequencyTriggerFilterFreq = setFrequencyTriggerFilterFreq;
 
-// exports.setFrequencyThresholdWindowLength = setFrequencyThresholdWindowLength;
+// exports.setFrequencyTriggerWindowLength = setFrequencyTriggerWindowLength;
 
-// exports.setMinimumFrequencyThresholdDuration = setMinimumFrequencyThresholdDuration;
+// exports.setMinimumFrequencyTriggerDuration = setMinimumFrequencyTriggerDuration;
 
 // exports.filteringIsEnabled = filteringIsEnabled;
 
@@ -1392,7 +1399,7 @@ function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateCh
 // exports.getHigherSliderValue = getHigherSliderValue;
 
 // exports.getAmplitudeThreshold = getAmplitudeThreshold;
-// exports.amplitudeThresholdingIsEnabled = amplitudeThresholdingIsEnabled;
+// exports.amplitudeThresholdIsEnabled = amplitudeThresholdIsEnabled;
 // exports.getAmplitudeThresholdScaleIndex = getAmplitudeThresholdScaleIndex;
 // exports.get16BitAmplitudeThreshold = get16BitAmplitudeThreshold;
 // exports.getPercentageAmplitudeThreshold = getPercentageAmplitudeThreshold;
@@ -1400,16 +1407,16 @@ function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateCh
 // exports.getPercentageAmplitudeThresholdExponentMantissa = getPercentageAmplitudeThresholdExponentMantissa;
 
 // exports.getAmplitudeThresholdValues = getAmplitudeThresholdValues;
-// exports.getFrequencyThresholdValues = getFrequencyThresholdValues;
+// exports.getFrequencyTriggerValues = getFrequencyTriggerValues;
 
 // exports.getMinimumAmplitudeThresholdDuration = getMinimumAmplitudeThresholdDuration;
 
-// exports.frequencyThresholdingIsEnabled = frequencyThresholdingIsEnabled;
-// exports.getFrequencyThreshold = getFrequencyThreshold;
-// exports.getFrequencyThresholdFilterFreq = getFrequencyThresholdFilterFreq;
-// exports.getFrequencyThresholdWindowLength = getFrequencyThresholdWindowLength;
+// exports.frequencyTriggerIsEnabled = frequencyTriggerIsEnabled;
+// exports.getFrequencyTrigger = getFrequencyTrigger;
+// exports.getFrequencyTriggerFilterFreq = getFrequencyTriggerFilterFreq;
+// exports.getFrequencyTriggerWindowLength = getFrequencyTriggerWindowLength;
 // exports.getFrequencyFilterThresholdExponentMantissa = getFrequencyFilterThresholdExponentMantissa;
-// exports.getMinimumFrequencyThresholdDuration = getMinimumFrequencyThresholdDuration;
+// exports.getMinimumFrequencyTriggerDuration = getMinimumFrequencyTriggerDuration;
 
 // exports.getMinimumTriggerDurationGoertzel = getMinimumTriggerDurationGoertzel;
 // exports.getMinimumTriggerDurationAmp = getMinimumTriggerDurationAmp;
