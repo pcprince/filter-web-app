@@ -17,8 +17,10 @@
 /* global getThresholdTypeIndex, THRESHOLD_TYPE_NONE, THRESHOLD_TYPE_AMPLITUDE, THRESHOLD_TYPE_GOERTZEL, getFrequencyTriggerFilterFreq, getFrequencyTriggerWindowLength, updateFilterUI, getFrequencyTrigger */
 /* global thresholdScaleIndex, THRESHOLD_SCALE_PERCENTAGE, THRESHOLD_SCALE_16BIT, THRESHOLD_SCALE_DECIBEL */
 /* global thresholdTypeLabel, thresholdTypeRadioButtons, lowPassFilterSlider, highPassFilterSlider, bandPassFilterSlider, amplitudeThresholdSlider, amplitudeThresholdDurationRadioButtons, goertzelFilterCentreSlider, goertzelFilterWindowRadioButtons, goertzelDurationRadioButtons, goertzelThresholdSlider, filterRadioButtons */
-/* global getMinimumTriggerDurationAmp, getMinimumTriggerDurationGoertzel, getFilterSliderStep, setBandPass, setLowPassSliderValue, setHighPassSliderValue, roundToSliderStep, setfrequencyTriggerFilterFreq, getMinimumAmplitudeThresholdDuration, getAmplitudeThresholdValues, getFrequencyTriggerValues, setAmplitudeThresholdScaleIndex */
+/* global getMinimumTriggerDurationAmp, getMinimumTriggerDurationGoertzel, getFilterSliderStep, setBandPass, setLowPassSliderValue, setHighPassSliderValue, roundToSliderStep, setFrequencyTriggerFilterFreq, getMinimumAmplitudeThresholdDuration, getAmplitudeThresholdValues, getFrequencyTriggerValues, setAmplitudeThresholdScaleIndex */
 /* global prevThresholdScaleIndex, resetElements, disableFilterUI, enableFilterUI */
+
+/* global enableSlider, disableSlider */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -209,48 +211,6 @@ let animationTimer;
 // List of coordinates used when playback mode skips thresholded samples
 
 let skippingXCoords = [];
-
-/**
- * Disable playback slider and change CSS to display disabled cursor on hover
- */
-function disableSlider (slider, div) {
-
-    slider.disable();
-
-    const children = div.getElementsByTagName('*');
-
-    for (let i = 0; i < children.length; i++) {
-
-        if (children[i].style) {
-
-            children[i].style.cursor = 'not-allowed';
-
-        }
-
-    }
-
-}
-
-/**
- * Enable playback slider and reset CSS cursor
- */
-function enableSlider (slider, div) {
-
-    slider.enable();
-
-    const children = div.getElementsByTagName('*');
-
-    for (let i = 0; i < children.length; i++) {
-
-        if (children[i].style) {
-
-            children[i].style.cursor = '';
-
-        }
-
-    }
-
-}
 
 /**
  * Update UI based on which threshold type is selected
@@ -2525,13 +2485,9 @@ async function loadFile (exampleFilePath, exampleName) {
             const currentGoertzelFilterValue = getFrequencyTriggerFilterFreq();
 
             const newGoertzelFilterValue = currentGoertzelFilterValue > maxFreq ? maxFreq / 2 : currentGoertzelFilterValue;
-            setfrequencyTriggerFilterFreq(newGoertzelFilterValue);
+            setFrequencyTriggerFilterFreq(newGoertzelFilterValue);
 
             updateThresholdUI();
-
-            // Enable UI
-
-            
 
         }
 
@@ -3207,6 +3163,7 @@ function exportConfig () {
     case FILTER_HIGH:
         filterValue0 = highPassFilterSlider.getValue();
         break;
+    case FILTER_NONE:
     case FILTER_BAND:
         filterValue0 = Math.min(...bandPassFilterSlider.getValue());
         filterValue1 = Math.max(...bandPassFilterSlider.getValue());
@@ -3276,6 +3233,7 @@ function exportConfig () {
         version: 'playground',
         sampleRate: getSampleRate(),
         passFiltersEnabled: passFiltersEnabled,
+        filterType: filterType,
         lowerFilter: filterValue0,
         higherFilter: filterValue1,
         amplitudeThresholdingEnabled: thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE,
@@ -3289,12 +3247,6 @@ function exportConfig () {
         minimumFrequencyTriggerDuration: minimumTriggerDuration,
         frequencyTriggerThresholdScale: thresholdScales[thresholdScaleIndex]
     };
-
-    if (passFiltersEnabled) {
-
-        settings.filterType = filterType;
-
-    }
 
     const content = 'data:text/json;charset=utf-8,' + JSON.stringify(settings);
 
@@ -3561,6 +3513,8 @@ playButton.addEventListener('click', () => {
         // If already playing, stop
 
         stopAudio();
+
+        reenableUI();
 
     } else {
 

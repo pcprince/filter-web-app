@@ -381,7 +381,7 @@
                                         </div>
                                     </div>
                                 
-                                    <div class="row" style="margin-top: 8px; margin-bottom: 12px; display: flex; align-items: center;">
+                                    <div class="row" id="amplitude-threshold-slider-row" style="margin-top: 8px; margin-bottom: 12px; display: flex; align-items: center;">
                                         <div class="col-2" style="text-align: left; padding-right: 0px;">
                                             <span class="settings-text" id="amplitude-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                         </div>
@@ -512,7 +512,7 @@
                                         </div>
                                     </div>
                     
-                                    <div class="row" style="margin-top: 8px; margin-bottom: 12px; display: flex; align-items: center;">
+                                    <div class="row" id="goertzel-threshold-row" style="margin-top: 8px; margin-bottom: 12px; display: flex; align-items: center;">
                                         <div class="col-2" style="text-align: left; padding-right: 0px;">
                                             <span class="settings-text" id="goertzel-threshold-min-label" style="margin-left: 16px; font-weight: bold;">0.001%</span>
                                         </div>
@@ -577,7 +577,7 @@
                                 </button>
                             </div>
                             <div class="col-3" style="padding: 0px; text-align: left;">
-                                <select class="custom-select" id="playback-mode-select" style="vertical-align: middle; width: 185px; height: 35px; font-size: 10pt;">
+                                <select class="custom-select" id="playback-mode-select" style="vertical-align: middle; width: 200px; height: 35px; font-size: 10pt;">
                                     <option id="playback-mode-option-all" value="0" selected="selected">Play original WAV file</option>
                                     <option id="playback-mode-option-mute" value="1">Play resulting T.WAV file</option>
                                     <option id="playback-mode-option-skip" value="2">Play expanded T.WAV file</option>
@@ -736,6 +736,7 @@
     <script src="scripts/amplitudeThreshold.js"></script>
     <script src="scripts/goertzelFilter.js"></script>
     <script src="scripts/playAudio.js"></script>
+    <script src="scripts/sliderControl.js"></script>
     <script src="scripts/uiFiltering.js"></script>
     <script src="scripts/index.js"></script>
 </html>

@@ -5,8 +5,16 @@
  *****************************************************************************/
 
 // Filter Playground/Config App each have different methods of initialising Slider
+
 /* global Slider */
 // const Slider = require('bootstrap-slider');
+
+// Filter Playground/Config App import functions differently
+
+/* global enableSlider, disableSlider */
+// const sliderControl = require('./sliderControl.js');
+// const enableSlider = sliderControl.enableSlider;
+// const disableSlider = sliderControl.disableSlider;
 
 const thresholdTypeRadioButtons = document.getElementsByName('threshold-type-radio');
 
@@ -50,15 +58,21 @@ const disabledFilterSliderHolder = document.getElementById('disabled-filter-slid
 const disabledFilterSlider = new Slider('#disabled-filter-slider', {});
 
 const highPassFilterSlider = new Slider('#high-pass-filter-slider', {});
+const highPassFilterSliderHolder = document.getElementById('high-pass-filter-slider-holder');
 const lowPassFilterSlider = new Slider('#low-pass-filter-slider', {});
+const lowPassFilterSliderHolder = document.getElementById('low-pass-filter-slider-holder');
 const bandPassFilterSlider = new Slider('#band-pass-filter-slider', {});
+const bandPassFilterSliderHolder = document.getElementById('band-pass-filter-slider-holder');
 
 const filterLabel = document.getElementById('filter-label');
 
 const amplitudeThresholdMaxLabel = document.getElementById('amplitude-threshold-max-label');
 const amplitudeThresholdMinLabel = document.getElementById('amplitude-threshold-min-label');
 
+const amplitudeThresholdSliderRow = document.getElementById('amplitude-threshold-slider-row');
 const amplitudeThresholdSlider = new Slider('#amplitude-threshold-slider', {});
+const amplitudeThresholdSliderHolder = document.getElementById('amplitude-threshold-slider-holder');
+const amplitudeThresholdDurationTable = document.getElementById('amplitude-threshold-duration-table');
 const amplitudeThresholdDurationRadioButtons = document.getElementsByName('amplitude-threshold-duration-radio');
 
 const VALID_AMPLITUDE_VALUES = [0, 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112, 120, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 352, 384, 416, 448, 480, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1152, 1280, 1408, 1536, 1664, 1792, 1920, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840, 4096, 4608, 5120, 5632, 6144, 6656, 7168, 7680, 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384, 18432, 20480, 22528, 24576, 26624, 28672, 30720, 32768];
@@ -70,15 +84,18 @@ const MINIMUM_TRIGGER_DURATIONS = [0, 1, 2, 5, 10, 15, 30, 60];
 const GOERTZEL_FILTER_WINDOW_LENGTHS = [16, 32, 64, 128, 256, 512, 1024];
 
 const goertzelFilterCentreSlider = new Slider('#goertzel-filter-slider', {});
+const goertzelFilterCentreSliderHolder = document.getElementById('goertzel-filter-slider-holder');
 const goertzelFilterMaxLabel = document.getElementById('goertzel-filter-max-label');
 const goertzelFilterMinLabel = document.getElementById('goertzel-filter-min-label');
 const goertzelFilterWindowRadioButtons = document.getElementsByName('goertzel-filter-window-radio');
+const goertzelFilterRow = document.getElementById('goertzel-filter-row');
+const goertzelFilterWindowTable = document.getElementById('goertzel-filter-window-table');
 const goertzelFilterLabel = document.getElementById('goertzel-filter-label');
 const goertzelThresholdSliderHolder = document.getElementById('goertzel-threshold-slider-holder');
 const goertzelThresholdSlider = new Slider('#goertzel-threshold-slider', {});
-const goertzelThresholdMaxLabel = document.getElementById('goertzel-threshold-max-label');
-const goertzelThresholdMinLabel = document.getElementById('goertzel-threshold-min-label');
+const goertzelThresholdRow = document.getElementById('goertzel-threshold-row');
 const goertzelDurationRadioButtons = document.getElementsByName('goertzel-duration-radio');
+const goertzelDurationTable = document.getElementById('goertzel-duration-table');
 
 /* Only scale frequency sliders if they have been changed this session */
 let passFiltersHaveChanged = false;
@@ -306,6 +323,8 @@ function lookupAmplitudeThresholdSliderValue (amplitudeThreshold, scaleIndex) {
 
     }
 
+    return 0;
+
 }
 
 /**
@@ -495,20 +514,21 @@ function setFilters (enabled, lowerSliderValue, higherSliderValue, filterType) {
 
     let filterTypeIndex = FILTER_NONE;
 
+    setLowPassSliderValue(higherSliderValue);
+    setHighPassSliderValue(lowerSliderValue);
+    setBandPass(lowerSliderValue, higherSliderValue);
+
     switch (filterType) {
 
     case 'low':
-        setLowPassSliderValue(higherSliderValue);
         filterTypeIndex = FILTER_LOW;
         break;
 
     case 'high':
-        setHighPassSliderValue(lowerSliderValue);
         filterTypeIndex = FILTER_HIGH;
         break;
 
     case 'band':
-        setBandPass(lowerSliderValue, higherSliderValue);
         filterTypeIndex = FILTER_BAND;
         break;
 
@@ -1054,7 +1074,7 @@ function sampleRateChange (resetPassSliders, resetCentreSlider, sampleRate) {
 
     } else {
 
-        newCentre = currentGoertzel > maxFreq ? maxFreq / 2 : currentGoertzel;
+        newCentre = currentGoertzel > maxFreq ? maxFreq : currentGoertzel;
 
     }
 
@@ -1202,6 +1222,54 @@ function disableFilterUI () {
 
     }
 
+    lowPassRow.classList.add('grey');
+    highPassRow.classList.add('grey');
+    bandPassRow.classList.add('grey');
+
+    disableSlider(lowPassFilterSlider, lowPassFilterSliderHolder);
+    disableSlider(highPassFilterSlider, highPassFilterSliderHolder);
+    disableSlider(bandPassFilterSlider, bandPassFilterSliderHolder);
+
+    // Amplitude threshold settings
+
+    amplitudeThresholdDurationTable.classList.add('grey');
+
+    for (let i = 0; i < amplitudeThresholdDurationRadioButtons.length; i++) {
+
+        amplitudeThresholdDurationRadioButtons[i].disabled = true;
+
+    }
+
+    amplitudeThresholdSliderRow.classList.add('grey');
+
+    disableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+
+    // Frequency settings
+
+    goertzelFilterWindowTable.classList.add('grey');
+
+    for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
+
+        goertzelFilterWindowRadioButtons[i].disabled = true;
+
+    }
+
+    goertzelFilterRow.classList.add('grey');
+
+    disableSlider(goertzelFilterCentreSlider, goertzelFilterCentreSliderHolder);
+
+    goertzelDurationTable.classList.add('grey');
+
+    for (let i = 0; i < goertzelDurationRadioButtons.length; i++) {
+
+        goertzelDurationRadioButtons[i].disabled = true;
+
+    }
+
+    goertzelThresholdRow.classList.add('grey');
+
+    disableSlider(goertzelThresholdSlider, goertzelThresholdSliderHolder);
+
 }
 
 /**
@@ -1226,6 +1294,54 @@ function enableFilterUI () {
         filterRadioButtons[i].disabled = false;
 
     }
+
+    lowPassRow.classList.remove('grey');
+    highPassRow.classList.remove('grey');
+    bandPassRow.classList.remove('grey');
+
+    enableSlider(lowPassFilterSlider, lowPassFilterSliderHolder);
+    enableSlider(highPassFilterSlider, highPassFilterSliderHolder);
+    enableSlider(bandPassFilterSlider, bandPassFilterSliderHolder);
+
+    // Amplitude threshold settings
+
+    amplitudeThresholdDurationTable.classList.remove('grey');
+
+    for (let i = 0; i < amplitudeThresholdDurationRadioButtons.length; i++) {
+
+        amplitudeThresholdDurationRadioButtons[i].disabled = false;
+
+    }
+
+    amplitudeThresholdSliderRow.classList.remove('grey');
+
+    enableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+
+    // Frequency settings
+
+    goertzelFilterWindowTable.classList.remove('grey');
+
+    for (let i = 0; i < goertzelFilterWindowRadioButtons.length; i++) {
+
+        goertzelFilterWindowRadioButtons[i].disabled = false;
+
+    }
+
+    goertzelFilterRow.classList.remove('grey');
+
+    enableSlider(goertzelFilterCentreSlider, goertzelFilterCentreSliderHolder);
+
+    goertzelDurationTable.classList.remove('grey');
+
+    for (let i = 0; i < goertzelDurationRadioButtons.length; i++) {
+
+        goertzelDurationRadioButtons[i].disabled = false;
+
+    }
+
+    goertzelThresholdRow.classList.remove('grey');
+
+    enableSlider(goertzelThresholdSlider, goertzelThresholdSliderHolder);
 
 }
 
