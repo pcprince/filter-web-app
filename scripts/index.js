@@ -1298,6 +1298,12 @@ function reenableUI () {
 
     fileButton.disabled = false;
 
+    for (let i = 0; i < exampleLinks.length; i++) {
+
+        exampleLinks[i].disabled = false;
+
+    }
+
     resetButton.disabled = false;
     exportButton.disabled = false;
 
@@ -1449,6 +1455,12 @@ function disableUI (startUp) {
     if (!startUp) {
 
         fileButton.disabled = true;
+
+        for (let i = 0; i < exampleLinks.length; i++) {
+
+            exampleLinks[i].disabled = true;
+
+        }
 
     }
 
@@ -2939,12 +2951,6 @@ bandPassFilterSlider.on('slideStop', handleFilterChange);
 lowPassFilterSlider.on('slideStop', handleFilterChange);
 highPassFilterSlider.on('slideStop', handleFilterChange);
 
-for (let i = 0; i < filterRadioButtons.length; i++) {
-
-    filterRadioButtons[i].addEventListener('change', handleFilterChange);
-
-}
-
 /**
  * Handle event when a different threshold type is selected
  * @param {event} e Threshold type change event
@@ -3391,36 +3397,7 @@ function stopEvent () {
 
     // Reenable UI
 
-    fileButton.disabled = false;
-
-    for (let i = 0; i < exampleLinks.length; i++) {
-
-        exampleLinks[i].disabled = false;
-
-    }
-
-    fileButton.disabled = false;
-
-    resetButton.disabled = false;
-    exportButton.disabled = false;
-
-    updateFilterUI();
-
-    thresholdTypeLabel.classList.remove('grey');
-    for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
-
-        thresholdTypeRadioButtons[i].disabled = false;
-
-    }
-
-    updateThresholdTypePlaybackUI();
-    updateThresholdUI();
-
-    enableSlider(playbackSpeedSlider, playbackSpeedDiv);
-    playbackModeSelect.disabled = false;
-
-    updateYZoomUI();
-    updateNavigationUI();
+    reenableUI();
 
     // Switch from stop icon to play icon
 
@@ -3721,6 +3698,8 @@ prepareUI(null, null, () => {
     const passFiltersHaveChanged = getPassFiltersHaveChanged();
     const centreHasChanged = getCentreHasChanged();
     sampleRateChange(!passFiltersHaveChanged, !centreHasChanged, getSampleRate());
+
+    handleFilterChange();
 
 }); // First 2 arguments only used in Config app
 

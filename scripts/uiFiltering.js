@@ -1172,9 +1172,9 @@ function updateThresholdTypeUI () {
 
 /**
  * Add listeners to all radio buttons which update the filter sliders
- * @param {function} sampleRateChangeFunction Function called when the sample rate changes
+ * @param {function} filterValueChangeFunction Function called when values associated with the filter (sample rate, slider value, filter type) change
  */
-function addFilterRadioButtonListeners (sampleRateChangeFunction) {
+function addFilterRadioButtonListeners (filterValueChangeFunction) {
 
     for (let i = 0; i < filterRadioButtons.length; i++) {
 
@@ -1191,7 +1191,7 @@ function addFilterRadioButtonListeners (sampleRateChangeFunction) {
             }
 
             // If a Goertzel value has been changed, don't rescale the values to defaults as sample rate changes
-            sampleRateChangeFunction(!passFiltersHaveChanged, !centreHasChanged);
+            filterValueChangeFunction(!passFiltersHaveChanged, !centreHasChanged);
 
         });
 
@@ -1230,6 +1230,8 @@ function disableFilterUI () {
     disableSlider(highPassFilterSlider, highPassFilterSliderHolder);
     disableSlider(bandPassFilterSlider, bandPassFilterSliderHolder);
 
+    filterLabel.classList.add('grey');
+
     // Amplitude threshold settings
 
     amplitudeThresholdDurationTable.classList.add('grey');
@@ -1243,6 +1245,8 @@ function disableFilterUI () {
     amplitudeThresholdSliderRow.classList.add('grey');
 
     disableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+
+    thresholdLabel.classList.add('grey');
 
     // Frequency settings
 
@@ -1269,6 +1273,8 @@ function disableFilterUI () {
     goertzelThresholdRow.classList.add('grey');
 
     disableSlider(goertzelThresholdSlider, goertzelThresholdSliderHolder);
+
+    goertzelFilterLabel.classList.add('grey');
 
 }
 
@@ -1303,6 +1309,8 @@ function enableFilterUI () {
     enableSlider(highPassFilterSlider, highPassFilterSliderHolder);
     enableSlider(bandPassFilterSlider, bandPassFilterSliderHolder);
 
+    updateFilterUI();
+
     // Amplitude threshold settings
 
     amplitudeThresholdDurationTable.classList.remove('grey');
@@ -1316,6 +1324,8 @@ function enableFilterUI () {
     amplitudeThresholdSliderRow.classList.remove('grey');
 
     enableSlider(amplitudeThresholdSlider, amplitudeThresholdSliderHolder);
+
+    thresholdLabel.classList.remove('grey');
 
     // Frequency settings
 
@@ -1342,6 +1352,8 @@ function enableFilterUI () {
     goertzelThresholdRow.classList.remove('grey');
 
     enableSlider(goertzelThresholdSlider, goertzelThresholdSliderHolder);
+
+    goertzelFilterLabel.classList.remove('grey');
 
 }
 
@@ -1370,9 +1382,9 @@ function resetElements () {
  * Prepare UI
  * @param {function} changeFunction Function called when values which would affect life calculations change
  * @param {function} checkRecordingDurationFunction Function called if recording length should be validated
- * @param {function} sampleRateChangeFunction Function called when sample rate changes
+ * @param {function} filterValueChangeFunction Function called when values associated with the filter (sample rate, slider value, filter type) change
  */
-function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateChangeFunction) {
+function prepareUI (changeFunction, checkRecordingDurationFunction, filterValueChangeFunction) {
 
     if (changeFunction) {
 
@@ -1380,7 +1392,7 @@ function prepareUI (changeFunction, checkRecordingDurationFunction, sampleRateCh
 
     }
 
-    addFilterRadioButtonListeners(sampleRateChangeFunction);
+    addFilterRadioButtonListeners(filterValueChangeFunction);
 
     for (let i = 0; i < thresholdTypeRadioButtons.length; i++) {
 
