@@ -2030,22 +2030,26 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     if (reapplyFilter && isFiltering && thresholdTypeIndex !== THRESHOLD_TYPE_GOERTZEL) {
 
+        let lowPassFilterValue;
+        let highPassFilterValue;
         let bandPassFilterValue0, bandPassFilterValue1;
 
         switch (filterIndex) {
 
         case FILTER_LOW:
-            console.log('Applying low-pass filter');
-            applyLowPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), lowPassFilterSlider.getValue());
+            lowPassFilterValue = lowPassFilterSlider.getValue();
+            console.log('Applying low-pass filter at', lowPassFilterValue);
+            applyLowPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), lowPassFilterValue);
             break;
         case FILTER_HIGH:
-            console.log('Applying high-pass filter');
-            applyHighPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), highPassFilterSlider.getValue());
+            highPassFilterValue = highPassFilterSlider.getValue();
+            console.log('Applying high-pass filter at', highPassFilterValue);
+            applyHighPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), highPassFilterValue);
             break;
         case FILTER_BAND:
-            console.log('Applying band-pass filter');
             bandPassFilterValue0 = Math.min(...bandPassFilterSlider.getValue());
             bandPassFilterValue1 = Math.max(...bandPassFilterSlider.getValue());
+            console.log('Applying band-pass filter between', bandPassFilterValue0, 'and', bandPassFilterValue1);
             applyBandPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), bandPassFilterValue0, bandPassFilterValue1);
             break;
 
