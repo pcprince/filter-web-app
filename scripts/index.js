@@ -2038,18 +2038,18 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
         case FILTER_LOW:
             lowPassFilterValue = lowPassFilterSlider.getValue();
-            console.log('Applying low-pass filter at', lowPassFilterValue);
+            console.log('Applying low-pass filter at', lowPassFilterValue, 'Hz');
             applyLowPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), lowPassFilterValue);
             break;
         case FILTER_HIGH:
             highPassFilterValue = highPassFilterSlider.getValue();
-            console.log('Applying high-pass filter at', highPassFilterValue);
+            console.log('Applying high-pass filter at', highPassFilterValue, 'Hz');
             applyHighPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), highPassFilterValue);
             break;
         case FILTER_BAND:
             bandPassFilterValue0 = Math.min(...bandPassFilterSlider.getValue());
             bandPassFilterValue1 = Math.max(...bandPassFilterSlider.getValue());
-            console.log('Applying band-pass filter between', bandPassFilterValue0, 'and', bandPassFilterValue1);
+            console.log('Applying band-pass filter between', bandPassFilterValue0, 'and', bandPassFilterValue1, 'Hz');
             applyBandPassFilter(unfilteredSamples, filteredSamples, getSampleRate(), bandPassFilterValue0, bandPassFilterValue1);
             break;
 
@@ -3742,6 +3742,18 @@ if (!isChrome) {
 
 }
 
-// This should only be true when developing
-// loadExampleFiles(true);
-loadExampleFiles();
+// Check for dev mode
+
+const queryString = window.location.search;
+const urlParams = new URLSearchParams(queryString);
+
+if (urlParams.get('dev')) {
+
+    console.log('DEV MODE - Files will not be loaded automatically.');
+    loadExampleFiles(true);
+
+} else {
+
+    loadExampleFiles();
+
+}
