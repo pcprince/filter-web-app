@@ -3743,5 +3743,5 @@ if (!isChrome) {
 }
 
 // This should only be true when developing
-loadExampleFiles(true);
-// loadExampleFiles();
+// loadExampleFiles(true);
+loadExampleFiles();
