@@ -2468,9 +2468,13 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Update filter range, resetting values if it's an example file
 
+        console.log(exampleFilePath !== undefined, exampleFilePath === undefined, getSampleRate());
+
         sampleRateChange(exampleFilePath !== undefined, exampleFilePath === undefined, getSampleRate());
 
         if (sampleRate !== prevSampleRate || exampleFilePath !== undefined) {
+
+            console.log('hello');
 
             // Handle band/low/high-pass filter sliders
 
