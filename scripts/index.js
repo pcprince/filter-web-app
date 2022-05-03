@@ -2470,11 +2470,13 @@ async function loadFile (exampleFilePath, exampleName) {
 
         console.log(exampleFilePath !== undefined, getSampleRate());
         console.log(exampleFilePath);
-        console.log(sampleRate !== prevSampleRate || exampleFilePath !== undefined);
+        console.log(sampleRate !== prevSampleRate, exampleFilePath !== undefined);
 
-        sampleRateChange(exampleFilePath !== undefined, exampleFilePath !== undefined, getSampleRate());
+        const resetSliders = exampleFilePath !== undefined || sampleRate !== prevSampleRate;
 
-        if (sampleRate !== prevSampleRate || exampleFilePath !== undefined) {
+        sampleRateChange(resetSliders, resetSliders, getSampleRate());
+
+        if (resetSliders) {
 
             console.log('hello');
 
