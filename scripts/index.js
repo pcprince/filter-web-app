@@ -2466,15 +2466,11 @@ async function loadFile (exampleFilePath, exampleName) {
         spectrumMin = 0.0;
         spectrumMax = 0.0;
 
-        // Update filter range
+        // Update filter range, resetting values if it's an example file
 
-        console.log(sampleRate !== prevSampleRate && prevSampleRate !== undefined, sampleRate !== prevSampleRate, prevSampleRate !== undefined);
+        sampleRateChange(exampleFilePath !== undefined, exampleFilePath === undefined, getSampleRate());
 
-        sampleRateChange(prevSampleRate === undefined, prevSampleRate === undefined, getSampleRate());
-
-        if (sampleRate !== prevSampleRate && prevSampleRate !== undefined) {
-
-            console.log('getSampleRate()', getSampleRate());
+        if (sampleRate !== prevSampleRate || exampleFilePath !== undefined) {
 
             // Handle band/low/high-pass filter sliders
 
