@@ -2468,8 +2468,7 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Update filter range
 
-        console.log('sampleRate', sampleRate, 'prevSampleRate', prevSampleRate, 'sampleRateChange()', prevSampleRate === undefined, prevSampleRate === undefined);
-        console.log('getSampleRate()', getSampleRate());
+        console.log(sampleRate !== prevSampleRate && prevSampleRate !== undefined, sampleRate !== prevSampleRate, prevSampleRate !== undefined);
 
         sampleRateChange(prevSampleRate === undefined, prevSampleRate === undefined, getSampleRate());
 
