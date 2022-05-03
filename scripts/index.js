@@ -2469,6 +2469,8 @@ async function loadFile (exampleFilePath, exampleName) {
         // Update filter range, resetting values if it's an example file
 
         console.log(exampleFilePath !== undefined, exampleFilePath === undefined, getSampleRate());
+        console.log(exampleFilePath);
+        console.log(sampleRate !== prevSampleRate || exampleFilePath !== undefined);
 
         sampleRateChange(exampleFilePath !== undefined, exampleFilePath === undefined, getSampleRate());
 
