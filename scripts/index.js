@@ -2474,6 +2474,8 @@ async function loadFile (exampleFilePath, exampleName) {
 
         if (sampleRate !== prevSampleRate && prevSampleRate !== undefined) {
 
+            console.log('getSampleRate()', getSampleRate());
+
             // Handle band/low/high-pass filter sliders
 
             const maxFreq = getSampleRate() / 2;
