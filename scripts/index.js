@@ -2468,17 +2468,11 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Update filter range, resetting values if it's an example file
 
-        console.log(exampleFilePath !== undefined, getSampleRate());
-        console.log(exampleFilePath);
-        console.log(sampleRate !== prevSampleRate, exampleFilePath !== undefined);
-
         const resetSliders = exampleFilePath !== undefined || sampleRate !== prevSampleRate;
 
         sampleRateChange(resetSliders, resetSliders, getSampleRate());
 
         if (resetSliders) {
-
-            console.log('hello');
 
             // Handle band/low/high-pass filter sliders
 
