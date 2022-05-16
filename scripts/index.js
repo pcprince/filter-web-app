@@ -21,6 +21,7 @@
 /* global prevThresholdScaleIndex, resetElements, disableFilterUI, enableFilterUI */
 
 /* global enableSlider, disableSlider */
+/* global setCentreObserved, setPassFiltersObserved */
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -128,6 +129,14 @@ const goertzelLoadingSVG = document.getElementById('goertzel-loading-svg');
 
 const timeLabelSVG = document.getElementById('time-axis-label-svg');
 const timeAxisHeadingSVG = document.getElementById('time-axis-heading-svg');
+
+// Loading animation flag
+
+let loadingPlots = false;
+
+// How many dots appear after "Loading"
+
+const MAX_LOADING_DOTS = 5;
 
 // Y axis label canvases
 
@@ -1090,7 +1099,7 @@ function drawGoertzelFilter () {
     const bandwidth = 4.0 * sampleRate / windowLength;
     const bandwidthY = (h * bandwidth / nyquist) / 2;
 
-    // Draw central frequency
+    // Draw centre frequency
 
     filterCtx.moveTo(0, freqY);
     filterCtx.lineTo(w, freqY);
@@ -1269,14 +1278,24 @@ function drawGoertzelThresholdedPeriods () {
  * Draw a loading message to the given canvas
  * @param {object} canvas The canvas to be cleared and display the loading message
  */
-function drawLoadingImage (svgCanvas) {
+function drawLoadingImage (svgCanvas, dotCount) {
 
     const w = svgCanvas.width.baseVal.value;
     const h = svgCanvas.height.baseVal.value;
 
     clearSVG(svgCanvas);
 
-    addSVGText(svgCanvas, 'Loading...', w / 2, h / 2, 'middle');
+    addSVGText(svgCanvas, 'Loading' + '.'.repeat(dotCount), w / 2 - 20, h / 2, 'start');
+
+    setTimeout(() => {
+
+        if (loadingPlots) {
+
+            drawLoadingImage(svgCanvas, (dotCount + 1) % MAX_LOADING_DOTS);
+
+        }
+
+    }, 300);
 
 }
 
@@ -1285,10 +1304,11 @@ function drawLoadingImage (svgCanvas) {
  */
 function drawLoadingImages () {
 
+    loadingPlots = true;
     resetCanvas(spectrogramCanvas);
-    drawLoadingImage(spectrogramLoadingSVG);
+    drawLoadingImage(spectrogramLoadingSVG, 0);
     resetCanvas(waveformCanvas);
-    drawLoadingImage(waveformLoadingSVG);
+    drawLoadingImage(waveformLoadingSVG, 0);
 
 }
 
@@ -1365,6 +1385,7 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
         resetCanvas(waveformThresholdCanvas);
         resetCanvas(waveformThresholdLineCanvas);
 
+        loadingPlots = false;
         clearSVG(waveformLoadingSVG);
 
         if (thresholdTypeIndex === THRESHOLD_TYPE_AMPLITUDE) {
@@ -1438,6 +1459,7 @@ function drawPlots (samples, isInitialRender) {
     drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async (completionTime) => {
 
         resetCanvas(spectrogramThresholdCanvas);
+        loadingPlots = false;
         clearSVG(spectrogramLoadingSVG);
 
         drawWaveformPlot(samples, isInitialRender, completionTime);
@@ -3114,6 +3136,9 @@ function reset () {
         updateFilterUI();
         updateThresholdTypePlaybackUI();
         updateThresholdUI();
+
+        setCentreObserved(false);
+        setPassFiltersObserved(false);
 
         playbackModeSelect.value = 0;
 
