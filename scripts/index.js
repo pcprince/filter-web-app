@@ -228,7 +228,6 @@ let skippingXCoords = [];
 
 const exportModalButton = document.getElementById('export-modal-button');
 const exportPNGButton = document.getElementById('export-png-button');
-const exportTweetButton = document.getElementById('export-tweet-button');
 const exportPDFButton = document.getElementById('export-pdf-button');
 
 /**
