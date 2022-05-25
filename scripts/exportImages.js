@@ -55,7 +55,6 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     // Give plots a border
 
     pdfDoc.setDrawColor('#CDCDCD');
-    pdfDoc.setLineWidth(2);
 
     pdfDoc.rect(yAxisW, topSpacing + 1, canvas0.width, canvas0.height);
 
@@ -64,7 +63,6 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     // Add x axis labels
 
     pdfDoc.setDrawColor('#000000');
-    pdfDoc.setLineWidth(1);
 
     const xLines = xAxisSVG.getElementsByTagName('line');
     const xLabels = xAxisSVG.getElementsByTagName('text');
