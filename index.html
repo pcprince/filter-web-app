@@ -6,6 +6,7 @@
         <link rel="stylesheet" href="css/external/bootstrap.min.css">
         <link rel="stylesheet" href="css/external/bootstrap-slider.css">
         <link rel="stylesheet" href="css/index.css">
+        <script src="scripts/external/jspdf.umd.min.js"></script>
     </head>
     <body style="font-size: 10pt;">
         <div class="container-fluid" style="padding: 11px; margin-left: 0px; margin-right: 0px;">
@@ -586,11 +587,37 @@
                             <div id='playback-speed-div' class="col-4 playback-slider" style="padding-top: 5px;">
                                 <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
                             </div>
-                            <div class="col-4" style="padding-left: 0px;"></div>
+                            <div class="col-3">
+                                <button class="btn btn-warning nav-button" id="export-modal-button" style="width: fit-content; height: 40px;" data-toggle="modal" data-target="#exportModal" disabled>
+                                    Export Image
+                                </button>
+                            </div>
+                            <div class="col-1" style="padding-left: 0px;"></div>
                         </div>
                     </div>
                 </div>
                 <div class="col control-width control-margin" style="padding-left: 0px;"></div>
+            </div>
+
+            <div class="modal fade" id="exportModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Export Image</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        </div>
+                        <div class="modal-body">
+                            The current view can be downloaded as a PNG or PDF file.
+                        </div>
+                        <div class="modal-footer">
+                            <button id="export-png-button" type="button" class="btn btn-success">PNG</button>
+                            <button id="export-pdf-button" type="button" class="btn btn-success">PDF</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="row justify-content-md-center" style="margin-top: 15px;">
@@ -740,5 +767,6 @@
     <script src="scripts/playAudio.js"></script>
     <script src="scripts/sliderControl.js"></script>
     <script src="scripts/uiFiltering.js"></script>
+    <script src="scripts/exportImages.js"></script>
     <script src="scripts/index.js"></script>
 </html>

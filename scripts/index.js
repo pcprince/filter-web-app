@@ -23,6 +23,8 @@
 /* global enableSlider, disableSlider */
 /* global setCentreObserved, setPassFiltersObserved */
 
+/* global exportPNG, exportPDF */
+
 // Use these values to fill in the axis labels before samples have been loaded
 
 const FILLER_SAMPLE_RATE = 384000;
@@ -221,6 +223,13 @@ let animationTimer;
 // List of coordinates used when playback mode skips thresholded samples
 
 let skippingXCoords = [];
+
+// Export image UI
+
+const exportModalButton = document.getElementById('export-modal-button');
+const exportPNGButton = document.getElementById('export-png-button');
+const exportTweetButton = document.getElementById('export-tweet-button');
+const exportPDFButton = document.getElementById('export-pdf-button');
 
 /**
  * Update UI based on which threshold type is selected
@@ -1327,6 +1336,7 @@ function reenableUI () {
 
     resetButton.disabled = false;
     exportButton.disabled = false;
+    exportModalButton.disabled = false;
 
     updateNavigationUI();
     updateYZoomUI();
@@ -1346,6 +1356,7 @@ function reenableUI () {
 
     resetButton.disabled = false;
     exportButton.disabled = false;
+    exportModalButton.disabled = false;
 
     playButton.disabled = false;
     enableSlider(playbackSpeedSlider, playbackSpeedDiv);
@@ -1489,6 +1500,7 @@ function disableUI (startUp) {
 
     resetButton.disabled = true;
     exportButton.disabled = true;
+    exportModalButton.disabled = true;
 
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
@@ -3564,6 +3576,7 @@ playButton.addEventListener('click', () => {
 
             resetButton.disabled = true;
             exportButton.disabled = true;
+            exportModalButton.disabled = true;
 
             disableSlider(playbackSpeedSlider, playbackSpeedDiv);
             playbackModeSelect.disabled = true;
@@ -3712,6 +3725,70 @@ browserErrorDisplay.addEventListener('click', () => {
         browserErrorDisplay.style.display = 'none';
 
     };
+
+});
+
+// Export UI
+
+function exportImage(exportFunction) {
+
+    let plot0yAxis = 'Amplitude';
+    const plot1yAxis = 'Frequency';
+
+    const canvas0array = [];
+    const canvas1array = [spectrogramCanvas];
+
+    let yAxis0svg = waveformLabelSVG;
+    const yAxis1svg = spectrogramLabelSVG;
+
+    // Each threshold mode has its own axis labels and combination of canvas layers
+
+    switch (getThresholdTypeIndex()) {
+
+    case THRESHOLD_TYPE_AMPLITUDE:
+
+        canvas0array.push(waveformCanvas);
+        canvas0array.push(waveformThresholdCanvas);
+        canvas0array.push(waveformThresholdLineCanvas);
+
+        break;
+
+    case THRESHOLD_TYPE_GOERTZEL:
+
+        canvas0array.push(goertzelCanvas);
+        canvas0array.push(goertzelThresholdCanvas);
+        canvas0array.push(goertzelThresholdLineCanvas);
+
+        canvas1array.push(spectrogramThresholdCanvas);
+        canvas1array.push(spectrogramGoertzelCanvas);
+
+        plot0yAxis = 'Frequency Response';
+
+        yAxis0svg = goertzelLabelSVG;
+
+        break;
+
+    case THRESHOLD_TYPE_NONE:
+
+        canvas0array.push(waveformCanvas);
+
+        break;
+
+    }
+
+    exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, fileSpan.innerText);
+
+}
+
+exportPNGButton.addEventListener('click', () => {
+
+    exportImage(exportPNG);
+
+});
+
+exportPDFButton.addEventListener('click', () => {
+
+    exportImage(exportPDF);
 
 });
 
