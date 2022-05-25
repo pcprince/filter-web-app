@@ -570,8 +570,11 @@
                 <div class="col plot-width" style="padding: 0px;">
                     <div class="wrapper" style="width: 793px;">
                         <div class="row">
-                            <div class="col-1">
-                                <button class="btn btn-success nav-button" id="play-button" disabled style="margin-right: 15px;">
+                            <div class="col-2" style="padding-right: 0px;">
+                                <button class="btn btn-warning nav-button" id="export-modal-button" data-toggle="modal" data-target="#export-modal" disabled style="margin-left: 15px;">
+                                    <img id="camera-icon" class="button-icon" src="./assets/camera.svg" alt="Bootstrap">
+                                </button>
+                                <button class="btn btn-success nav-button" id="play-button" disabled style="margin-left: 10px;">
                                     <img id="play-icon" class="button-icon" src="./assets/play.svg" alt="Bootstrap">
                                     <img id='stop-icon' class="button-icon" src="./assets/stop.svg" alt="Bootstrap" style="display: none;">
                                 </button>
@@ -586,19 +589,14 @@
                             <div id='playback-speed-div' class="col-4 playback-slider" style="padding-top: 5px;">
                                 <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
                             </div>
-                            <div class="col-3">
-                                <button class="btn btn-warning nav-button" id="export-modal-button" style="width: fit-content; height: 40px;" data-toggle="modal" data-target="#exportModal" disabled>
-                                    Export Image
-                                </button>
-                            </div>
-                            <div class="col-1" style="padding-left: 0px;"></div>
+                            <div class="col-3" style="padding-left: 0px;"></div>
                         </div>
                     </div>
                 </div>
                 <div class="col control-width control-margin" style="padding-left: 0px;"></div>
             </div>
 
-            <div class="modal fade" id="exportModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal fade" id="export-modal" tabindex="-1" role="dialog" aria-labelledby="exportModalLabel" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -613,7 +611,8 @@
                         <div class="modal-footer">
                             <button id="export-png-button" type="button" class="btn btn-success">PNG</button>
                             <button id="export-pdf-button" type="button" class="btn btn-success">PDF</button>
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button id="export-both-button" type="button" class="btn btn-success">Both</button>
+                            <button id="export-close-button" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         </div>
                     </div>
                 </div>

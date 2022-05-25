@@ -55,10 +55,11 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     // Give plots a border
 
     pdfDoc.setDrawColor('#CDCDCD');
+    pdfDoc.setLineWidth(1);
 
-    pdfDoc.rect(yAxisW, topSpacing + 1, canvas0.width, canvas0.height);
+    pdfDoc.rect(yAxisW, topSpacing, canvas0.width, canvas0.height);
 
-    pdfDoc.rect(yAxisW, topSpacing + canvas0.height + plotSpacing + 1, canvas1.width, canvas1.height);
+    pdfDoc.rect(yAxisW, topSpacing + canvas0.height + plotSpacing, canvas1.width, canvas1.height);
 
     // Add x axis labels
 
@@ -109,7 +110,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
         y += topSpacing;
 
-        pdfDoc.line(yAxisW, y, yAxisW - 5, y);
+        pdfDoc.line(yAxisW, y - 1, yAxisW - 5, y - 1);
 
         pdfDoc.text(labelText, yAxisW - 7, y, {align: 'right', baseline: baseline});
 
@@ -130,7 +131,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         y += topSpacing + canvas0.height + plotSpacing;
         labelY += topSpacing + canvas0.height + plotSpacing;
 
-        pdfDoc.line(yAxisW, y, yAxisW - 5, y);
+        pdfDoc.line(yAxisW, y - 1, yAxisW - 5, y - 1);
 
         pdfDoc.text(labelText, yAxisW - 7, labelY, {align: 'right', baseline: 'middle'});
 

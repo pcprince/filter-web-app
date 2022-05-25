@@ -227,8 +227,11 @@ let skippingXCoords = [];
 // Export image UI
 
 const exportModalButton = document.getElementById('export-modal-button');
+const exportCloseButton = document.getElementById('export-close-button');
+
 const exportPNGButton = document.getElementById('export-png-button');
 const exportPDFButton = document.getElementById('export-pdf-button');
+const exportBothButton = document.getElementById('export-both-button');
 
 /**
  * Update UI based on which threshold type is selected
@@ -3783,11 +3786,24 @@ exportPNGButton.addEventListener('click', () => {
 
     exportImage(exportPNG);
 
+    exportCloseButton.click();
+
 });
 
 exportPDFButton.addEventListener('click', () => {
 
     exportImage(exportPDF);
+
+    exportCloseButton.click();
+
+});
+
+exportBothButton.addEventListener('click', () => {
+
+    exportImage(exportPNG);
+    exportImage(exportPDF);
+
+    exportCloseButton.click();
 
 });
 
