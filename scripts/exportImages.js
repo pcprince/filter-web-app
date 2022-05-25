@@ -10,6 +10,8 @@ window.jsPDF = window.jspdf.jsPDF;
 
 function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, fileName) {
 
+    console.log('Exporting to PDF');
+
     const xAxisLabelH = 10;
     const yAxisLabelW = 10;
     const xAxisMarkerH = 25;
@@ -162,6 +164,8 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
  * @param {string} fileName Name of file being drawn
  */
 function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, fileName) {
+
+    console.log('Exporting to PNG');
 
     // Calculate size of overall canvas
 
