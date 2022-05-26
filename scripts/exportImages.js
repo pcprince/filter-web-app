@@ -13,23 +13,24 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     console.log('Exporting to PDF');
 
     const xAxisLabelH = 10;
-    const yAxisLabelW = 10;
+    const yAxisLabelW = 15;
     const xAxisMarkerH = 25;
     const yAxisMarkerW = 40;
 
     const edgeSpacing = 15;
 
-    const topSpacing = 15 + edgeSpacing;
+    const topSpacing = 25 + edgeSpacing;
 
     const xAxisH = xAxisMarkerH + xAxisLabelH;
     const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacing;
-    const plotSpacing = 10;
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
 
     const w = canvas0.width + yAxisW + edgeSpacing;
-    const h = topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisH + edgeSpacing;
+    const h = w / 4 * 3;
+
+    const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacing);
 
     const pdfDoc = new jsPDF({
         orientation: 'landscape',
@@ -54,11 +55,9 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     // Give plots a border
 
-    pdfDoc.setDrawColor('#CDCDCD');
-    pdfDoc.setLineWidth(1);
+    pdfDoc.setDrawColor('#000000');
 
     pdfDoc.rect(yAxisW, topSpacing, canvas0.width, canvas0.height);
-
     pdfDoc.rect(yAxisW, topSpacing + canvas0.height + plotSpacing, canvas1.width, canvas1.height);
 
     // Add x axis labels
@@ -68,7 +67,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xLines = xAxisSVG.getElementsByTagName('line');
     const xLabels = xAxisSVG.getElementsByTagName('text');
 
-    const xOffset = 16;
+    const xOffset = 45;
     const yOffset = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
     pdfDoc.setFont('Helvetica');
@@ -77,8 +76,11 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     for (let i = 0; i < xLines.length; i++) {
 
-        const x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
+        let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
         const labelText = xLabels[i].innerHTML;
+
+        x = (i === 0) ? x - 1 : x;
+        x = (i === xLines.length - 1) ? x + 0.5 : x;
 
         pdfDoc.line(x, yOffset, x, yOffset + 5);
 
@@ -96,23 +98,14 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         let y = parseFloat(y0Lines[i].getAttribute('y1'));
         const labelText = y0Labels[i].innerHTML;
 
-        let baseline = 'middle';
-
-        if (y - 10 <= 0) {
-
-            baseline = 'top';
-
-        } else if (y + 10 >= canvas0.height) {
-
-            baseline = 'bottom';
-
-        }
-
         y += topSpacing;
 
-        pdfDoc.line(yAxisW, y - 1, yAxisW - 5, y - 1);
+        y = (i === y0Lines.length - 1) ? y - 0.5 : y;
+        y = (i === 0) ? y + 0.5 : y;
 
-        pdfDoc.text(labelText, yAxisW - 7, y, {align: 'right', baseline: baseline});
+        pdfDoc.line(yAxisW, y, yAxisW - 5, y);
+
+        pdfDoc.text(labelText, yAxisW - 7, y, {align: 'right', baseline: 'middle'});
 
     }
 
@@ -124,28 +117,29 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     for (let i = 0; i < y1Lines.length; i++) {
 
         let y = parseFloat(y1Lines[i].getAttribute('y1'));
+        y += topSpacing + canvas0.height + plotSpacing;
 
         const labelText = y1Labels[i].innerHTML;
-        let labelY = parseFloat(y1Labels[i].getAttribute('y'));
 
-        y += topSpacing + canvas0.height + plotSpacing;
-        labelY += topSpacing + canvas0.height + plotSpacing;
+        y = (i === 0) ? y + 0.5 : y;
+        y = (i === y1Lines.length - 1) ? y - 0.5 : y;
 
-        pdfDoc.line(yAxisW, y - 1, yAxisW - 5, y - 1);
+        pdfDoc.line(yAxisW, y, yAxisW - 5, y);
 
-        pdfDoc.text(labelText, yAxisW - 7, labelY, {align: 'right', baseline: 'middle'});
+        pdfDoc.text(labelText, yAxisW - 7, y, {align: 'right', baseline: 'middle'});
 
     }
 
     // Add titles
-
-    pdfDoc.text(fileName + '.WAV', yAxisW + (canvas0.width / 2), edgeSpacing, {align: 'center', baseline: 'top'});
 
     pdfDoc.text('Time (secs)', yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH, {align: 'center', baseline: 'top'});
 
     pdfDoc.text(yAxisTitle0, edgeSpacing + 5, topSpacing + (canvas0.height / 2) + 20, null, 90);
 
     pdfDoc.text(yAxisTitle1, edgeSpacing + 5, topSpacing + canvas0.height + plotSpacing + (canvas1.height / 2) + 25, null, 90);
+
+    pdfDoc.setFontSize(10);
+    pdfDoc.text(fileName + '.WAV', yAxisW + (canvas0.width / 2), edgeSpacing, {align: 'center', baseline: 'top'});
 
     pdfDoc.save(fileName + '.pdf');
 
@@ -169,23 +163,24 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     // Calculate size of overall canvas
 
     const xAxisLabelH = 10;
-    const yAxisLabelW = 10;
+    const yAxisLabelW = 15;
     const xAxisMarkerH = 25;
     const yAxisMarkerW = 40;
 
     const edgeSpacing = 15;
 
-    const topSpacing = 15 + edgeSpacing;
+    const topSpacing = 25 + edgeSpacing;
 
     const xAxisH = xAxisMarkerH + xAxisLabelH;
     const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacing;
-    const plotSpacing = 10;
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
 
     const w = canvas0.width + yAxisW + edgeSpacing;
-    const h = topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisH + edgeSpacing;
+    const h = w / 4 * 3;
+
+    const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacing);
 
     // Create canvas
 
@@ -216,12 +211,13 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     // Give plots a border
 
-    ctx.strokeStyle = '#CDCDCD';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
 
-    ctx.rect(yAxisW, topSpacing + 1, canvas0.width, canvas0.height);
+    ctx.rect(yAxisW, topSpacing, canvas0.width, canvas0.height);
     ctx.stroke();
 
-    ctx.rect(yAxisW, topSpacing + canvas0.height + plotSpacing + 1, canvas1.width, canvas1.height);
+    ctx.rect(yAxisW, topSpacing + canvas0.height + plotSpacing, canvas1.width, canvas1.height);
     ctx.stroke();
 
     // Add x axis labels
@@ -231,10 +227,10 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xLines = xAxisSVG.getElementsByTagName('line');
     const xLabels = xAxisSVG.getElementsByTagName('text');
 
-    const xOffset = 16;
+    const xOffset = 45;
     const yOffset = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
-    ctx.font = '10px Arial';
+    ctx.font = '11px Helvetica';
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
 
@@ -260,25 +256,12 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const y0Labels = yAxis0SVG.getElementsByTagName('text');
 
     ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
 
     for (let i = 0; i < y0Lines.length; i++) {
 
         let y = parseFloat(y0Lines[i].getAttribute('y1'));
         const labelText = y0Labels[i].innerHTML;
-
-        if (y - 10 <= 0) {
-
-            ctx.textBaseline = 'top';
-
-        } else if (y + 10 >= canvas0.height) {
-
-            ctx.textBaseline = 'bottom';
-
-        } else {
-
-            ctx.textBaseline = 'middle';
-
-        }
 
         y += topSpacing;
 
@@ -322,8 +305,6 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
-    ctx.fillText(fileName + '.WAV', yAxisW + (canvas0.width / 2), edgeSpacing);
-
     ctx.fillText('Time (secs)', yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH);
 
     ctx.save();
@@ -337,6 +318,9 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     ctx.rotate(-Math.PI / 2);
     ctx.fillText(yAxisTitle1, 0, 0);
     ctx.restore();
+
+    ctx.font = '12px Helvetica';
+    ctx.fillText(fileName + '.WAV', yAxisW + (canvas0.width / 2), edgeSpacing);
 
     // Save image
 
