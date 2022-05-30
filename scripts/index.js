@@ -108,7 +108,8 @@ const amplitudeThresholdScaleSelect = document.getElementById('amplitude-thresho
 
 const spectrogramPlaybackCanvas = document.getElementById('spectrogram-playback-canvas'); // Canvas layer where playback progress
 const spectrogramDragCanvas = document.getElementById('spectrogram-drag-canvas'); // Canvas layer where zoom overlay is drawn
-const spectrogramGoertzelCanvas = document.getElementById('spectrogram-goertzel-canvas'); // Canvas layer where Goertzel thresholded periods are drawn
+const spectrogramGoertzelCanvas = document.getElementById('spectrogram-goertzel-canvas'); // Canvas layer where Goertzel filter is drawn
+const spectrogramGoertzelLineCanvas = document.getElementById('spectrogram-goertzel-line-canvas'); // Canvas layer where Goertzel filter centre is drawn
 const spectrogramThresholdCanvas = document.getElementById('spectrogram-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
 const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canvas layer where spectrogram is drawn
 const spectrogramLoadingSVG = document.getElementById('spectrogram-loading-svg');
@@ -272,6 +273,7 @@ function updateThresholdTypePlaybackUI () {
 
         goertzelCanvasHolder.style.display = 'none';
         spectrogramGoertzelCanvas.style.display = 'none';
+        spectrogramGoertzelLineCanvas.style.display = 'none';
 
         waveformHolder.style.display = '';
 
@@ -281,6 +283,7 @@ function updateThresholdTypePlaybackUI () {
 
         goertzelCanvasHolder.style.display = 'none';
         spectrogramGoertzelCanvas.style.display = 'none';
+        spectrogramGoertzelLineCanvas.style.display = 'none';
 
         waveformHolder.style.display = '';
 
@@ -290,6 +293,7 @@ function updateThresholdTypePlaybackUI () {
 
         goertzelCanvasHolder.style.display = '';
         spectrogramGoertzelCanvas.style.display = '';
+        spectrogramGoertzelLineCanvas.style.display = '';
 
         waveformHolder.style.display = 'none';
 
@@ -1063,23 +1067,17 @@ function updateNavigationUI () {
 }
 
 /**
- * Draw amplitude threshold value to its overlay layer
+ * Get the offset from centre the two amplitude threshold lines should be drawn
+ * @returns Offset from centre
  */
-function drawAmplitudeThresholdLines () {
+function getAmplitudeThresholdLineOffset () {
 
-    const thresholdCtx = waveformThresholdLineCanvas.getContext('2d');
-    const w = waveformThresholdLineCanvas.width;
     const h = waveformThresholdLineCanvas.height;
-
-    resetCanvas(waveformThresholdLineCanvas);
-
-    thresholdCtx.strokeStyle = 'black';
-    thresholdCtx.lineWidth = 1;
-
-    const amplitudeThresholdValues = getAmplitudeThresholdValues();
 
     const centre = h / 2;
     let offsetFromCentre = 0;
+
+    const amplitudeThresholdValues = getAmplitudeThresholdValues();
 
     if (thresholdScaleIndex === THRESHOLD_SCALE_PERCENTAGE) {
 
@@ -1097,6 +1095,28 @@ function drawAmplitudeThresholdLines () {
         offsetFromCentre = Math.round(amplitudeThresholdRatio * centre * getDecibelZoomY());
 
     }
+
+    return offsetFromCentre;
+
+}
+
+/**
+ * Draw amplitude threshold value to its overlay layer
+ */
+function drawAmplitudeThresholdLines () {
+
+    const thresholdCtx = waveformThresholdLineCanvas.getContext('2d');
+    const w = waveformThresholdLineCanvas.width;
+    const h = waveformThresholdLineCanvas.height;
+
+    const centre = h / 2;
+
+    resetCanvas(waveformThresholdLineCanvas);
+
+    thresholdCtx.strokeStyle = 'black';
+    thresholdCtx.lineWidth = 1;
+
+    const offsetFromCentre = getAmplitudeThresholdLineOffset();
 
     const positiveY = centre - offsetFromCentre;
     const negativeY = centre + offsetFromCentre;
@@ -1140,13 +1160,16 @@ function drawGoertzelThresholdLine () {
 function drawGoertzelFilter () {
 
     const filterCtx = spectrogramGoertzelCanvas.getContext('2d');
+    const filterLineCtx = spectrogramGoertzelLineCanvas.getContext('2d');
+
     const w = spectrogramGoertzelCanvas.width;
     const h = spectrogramGoertzelCanvas.height;
 
     resetCanvas(spectrogramGoertzelCanvas);
+    resetCanvas(spectrogramGoertzelLineCanvas);
 
-    filterCtx.lineWidth = 1;
-    filterCtx.strokeStyle = 'black';
+    filterLineCtx.lineWidth = 1;
+    filterLineCtx.strokeStyle = 'black';
 
     const nyquist = sampleRate / 2.0;
 
@@ -1159,9 +1182,9 @@ function drawGoertzelFilter () {
 
     // Draw centre frequency
 
-    filterCtx.moveTo(0, freqY);
-    filterCtx.lineTo(w, freqY);
-    filterCtx.stroke();
+    filterLineCtx.moveTo(0, freqY);
+    filterLineCtx.lineTo(w, freqY);
+    filterLineCtx.stroke();
 
     // Shade thresholded frequency
 
@@ -3779,7 +3802,7 @@ browserErrorDisplay.addEventListener('click', () => {
 
 // Export UI
 
-function exportImage(exportFunction) {
+function exportImage (exportFunction) {
 
     let plot0yAxis = 'Amplitude';
     const plot1yAxis = 'Frequency';
@@ -3790,6 +3813,17 @@ function exportImage(exportFunction) {
     let yAxis0svg = waveformLabelSVG;
     const yAxis1svg = spectrogramLabelSVG;
 
+    let linesY0 = [-1];
+    let linesY1 = [-1];
+
+    let offsetFromCentre;
+    const centre = waveformThresholdLineCanvas.height / 2;
+
+    const goertzelH = goertzelThresholdLineCanvas.height;
+
+    const spectrogramH = spectrogramGoertzelCanvas.height;
+    const nyquist = sampleRate / 2.0;
+
     // Each threshold mode has its own axis labels and combination of canvas layers
 
     switch (getThresholdTypeIndex()) {
@@ -3798,7 +3832,10 @@ function exportImage(exportFunction) {
 
         canvas0array.push(waveformCanvas);
         canvas0array.push(waveformThresholdCanvas);
-        canvas0array.push(waveformThresholdLineCanvas);
+
+        offsetFromCentre = getAmplitudeThresholdLineOffset();
+
+        linesY0 = [centre - offsetFromCentre, centre + offsetFromCentre];
 
         break;
 
@@ -3806,7 +3843,6 @@ function exportImage(exportFunction) {
 
         canvas0array.push(goertzelCanvas);
         canvas0array.push(goertzelThresholdCanvas);
-        canvas0array.push(goertzelThresholdLineCanvas);
 
         canvas1array.push(spectrogramThresholdCanvas);
         canvas1array.push(spectrogramGoertzelCanvas);
@@ -3814,6 +3850,9 @@ function exportImage(exportFunction) {
         plot0yAxis = 'Frequency Response';
 
         yAxis0svg = goertzelLabelSVG;
+
+        linesY0 = [goertzelH - (goertzelH * getFrequencyTrigger() / 100.0 * getGoertzelZoomY())];
+        linesY1 = [spectrogramH - (spectrogramH * getFrequencyTriggerFilterFreq() / nyquist)];
 
         break;
 
@@ -3825,7 +3864,7 @@ function exportImage(exportFunction) {
 
     }
 
-    exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, fileSpan.innerText);
+    exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileSpan.innerText);
 
 }
 

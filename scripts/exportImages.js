@@ -8,7 +8,20 @@
 
 window.jsPDF = window.jspdf.jsPDF;
 
-function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, fileName) {
+/**
+ * Save both visible plots as "fileName.pdf"
+ * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
+ * @param {canvas[]} canvas1array Ordered array of canvas layers for bottom plot
+ * @param {canvas} xAxisSVG SVG canvas containing x axis labels
+ * @param {canvas} yAxis0SVG SVG canvas containing y axis labels of top plot
+ * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
+ * @param {string} yAxisTitle0 Title of top plot's y axis
+ * @param {string} yAxisTitle1 Title of bottom plot's y axis
+ * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
+ * @param {string} fileName Name of file being drawn
+ */
+function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName) {
 
     console.log('Exporting to PDF');
 
@@ -133,6 +146,38 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     }
 
+    // Draw threshold lines
+
+    pdfDoc.setDrawColor('#000000');
+    pdfDoc.setLineWidth(1.2);
+
+    const lineXstart = yAxisW;
+    const lineXend = yAxisW + canvas0.width;
+
+    for (let i = 0; i < linesY0.length; i++) {
+
+        if (linesY0[i] !== -1) {
+
+            const lineY = linesY0[i] + topSpacing;
+
+            pdfDoc.line(lineXstart, lineY, lineXend, lineY);
+
+        }
+
+    }
+
+    for (let i = 0; i < linesY1.length; i++) {
+
+        if (linesY1[i] !== -1) {
+
+            const lineY = linesY1[i] + topSpacing + canvas0.height + plotSpacing;
+
+            pdfDoc.line(lineXstart, lineY, lineXend, lineY);
+
+        }
+
+    }
+
     // Add titles
 
     pdfDoc.text('Time (secs)', yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH, {align: 'center', baseline: 'top'});
@@ -157,9 +202,11 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
  * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
  * @param {string} yAxisTitle0 Title of top plot's y axis
  * @param {string} yAxisTitle1 Title of bottom plot's y axis
+ * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
  */
-function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, fileName) {
+function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName) {
 
     console.log('Exporting to PNG');
 
@@ -306,6 +353,44 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         ctx.stroke();
 
         ctx.fillText(labelText, yAxisW - 7, labelY);
+
+    }
+
+    // Draw threshold lines
+
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+
+    const lineXstart = yAxisW;
+    const lineXend = yAxisW + canvas0.width;
+
+    for (let i = 0; i < linesY0.length; i++) {
+
+        if (linesY0[i] !== -1) {
+
+            const lineY = linesY0[i] + topSpacing;
+
+            ctx.beginPath();
+            ctx.moveTo(lineXstart, lineY);
+            ctx.lineTo(lineXend, lineY);
+            ctx.stroke();
+
+        }
+
+    }
+
+    for (let i = 0; i < linesY1.length; i++) {
+
+        if (linesY1[i] !== -1) {
+
+            const lineY = linesY1[i] + topSpacing + canvas0.height + plotSpacing;
+
+            ctx.beginPath();
+            ctx.moveTo(lineXstart, lineY);
+            ctx.lineTo(lineXend, lineY);
+            ctx.stroke();
+
+        }
 
     }
 
