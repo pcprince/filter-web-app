@@ -359,7 +359,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     // Draw threshold lines
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.2;
 
     const lineXstart = yAxisW;
     const lineXend = yAxisW + canvas0.width;
