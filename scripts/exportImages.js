@@ -19,7 +19,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     const edgeSpacing = 15;
 
-    const topSpacing = 25 + edgeSpacing;
+    const topSpacing = 30 + edgeSpacing;
 
     const xAxisH = xAxisMarkerH + xAxisLabelH;
     const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacing;
@@ -68,7 +68,8 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xLabels = xAxisSVG.getElementsByTagName('text');
 
     const xOffset = 45;
-    const yOffset = topSpacing + canvas0.height + plotSpacing + canvas1.height;
+    const yOffset0 = topSpacing + canvas0.height;
+    const yOffset1 = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
     pdfDoc.setFont('Helvetica');
     pdfDoc.setFontSize(8);
@@ -82,9 +83,11 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         x = (i === 0) ? x - 1 : x;
         x = (i === xLines.length - 1) ? x + 0.5 : x;
 
-        pdfDoc.line(x, yOffset, x, yOffset + 5);
+        pdfDoc.line(x, yOffset0, x, yOffset0 + 5);
+        pdfDoc.text(labelText, x, yOffset0 + 15, {align: 'center'});
 
-        pdfDoc.text(labelText, x, yOffset + 15, {align: 'center'});
+        pdfDoc.line(x, yOffset1, x, yOffset1 + 5);
+        pdfDoc.text(labelText, x, yOffset1 + 15, {align: 'center'});
 
     }
 
@@ -228,7 +231,8 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xLabels = xAxisSVG.getElementsByTagName('text');
 
     const xOffset = 45;
-    const yOffset = topSpacing + canvas0.height + plotSpacing + canvas1.height;
+    const yOffset0 = topSpacing + canvas0.height;
+    const yOffset1 = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
     ctx.font = '11px Helvetica';
     ctx.fillStyle = 'black';
@@ -240,11 +244,16 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         const labelText = xLabels[i].innerHTML;
 
         ctx.beginPath();
-        ctx.moveTo(x, yOffset);
-        ctx.lineTo(x, yOffset + 5);
+        ctx.moveTo(x, yOffset0);
+        ctx.lineTo(x, yOffset0 + 5);
         ctx.stroke();
+        ctx.fillText(labelText, x, yOffset0 + 15);
 
-        ctx.fillText(labelText, x, yOffset + 15);
+        ctx.beginPath();
+        ctx.moveTo(x, yOffset1);
+        ctx.lineTo(x, yOffset1 + 5);
+        ctx.stroke();
+        ctx.fillText(labelText, x, yOffset1 + 15);
 
     }
 
