@@ -2433,7 +2433,7 @@ function updateFileSizePanel () {
     } else {
 
         sizeInformationPanel.innerHTML = 'File size: ' + formatFileSize(totalFileSize) + '.<br>';
-        sizeInformationPanel.innerHTML += 'Enable thresholding to estimate file size reduction.';
+        sizeInformationPanel.innerHTML += 'Enable triggering to estimate file size reduction.';
 
     }
 
