@@ -631,63 +631,63 @@ function drawAxisLabels () {
             step16Bit: 8192,
             stepPercentage: 20,
             precisionPercentage: 0,
-            labelsDecibel: [0, -2, -4, -6, -12]
+            labelsDecibel: [-12, -6, -4, -2, 0]
         },
         {
             // 50%
             step16Bit: 4096,
             stepPercentage: 10,
             precisionPercentage: 0,
-            labelsDecibel: [-6, -8, -10, -12, -18]
+            labelsDecibel: [-18, -12, -10, -8, -6]
         },
         {
             // 25%
             step16Bit: 2048,
             stepPercentage: 10,
             precisionPercentage: 0,
-            labelsDecibel: [-12, -14, -16, -18, -24]
+            labelsDecibel: [-24, -18, -16, -14, -12]
         },
         {
             // 12.5%
             step16Bit: 1024,
             stepPercentage: 5,
             precisionPercentage: 0,
-            labelsDecibel: [-18, -20, -22, -24, -30]
+            labelsDecibel: [-30, -24, -22, -20, -18]
         },
         {
             // 6.25%
             step16Bit: 512,
             stepPercentage: 1,
             precisionPercentage: 0,
-            labelsDecibel: [-24, -26, -28, -30, -36]
+            labelsDecibel: [-36, -30, -28, -26, -24]
         },
         {
             // 3.125%
             step16Bit: 256,
             stepPercentage: 1,
             precisionPercentage: 0,
-            labelsDecibel: [-30, -32, -34, -36, -42]
+            labelsDecibel: [-42, -36, -34, -32, -30]
         },
         {
             // 1.5625%
             step16Bit: 128,
             stepPercentage: 0.5,
             precisionPercentage: 1,
-            labelsDecibel: [-36, -38, -40, -42, -48]
+            labelsDecibel: [-48, -42, -40, -38, -36]
         },
         {
             // 0.78125%
             step16Bit: 64,
             stepPercentage: 0.2,
             precisionPercentage: 1,
-            labelsDecibel: [-42, -44, -46, -48, -54]
+            labelsDecibel: [-54, -48, -46, -44, -42]
         },
         {
             // 0.390625%
             step16Bit: 32,
             stepPercentage: 0.1,
             precisionPercentage: 1,
-            labelsDecibel: [-48, -50, -52, -54, -60]
+            labelsDecibel: [-60, -54, -52, -50, -48]
         }
     ];
 
@@ -781,8 +781,8 @@ function drawAxisLabels () {
 
             // No label is drawn for 0, so no need to check that here
 
-            waveformLabelTexts.push(yLabelDecibelLabels[i] + 'dB');
-            waveformLabelYPositions.push(waveformCanvasHCentre + (getDecibelZoomY() * labelPosition * waveformCanvasHCentre));
+            waveformLabelTexts.unshift(yLabelDecibelLabels[i] + 'dB');
+            waveformLabelYPositions.unshift(waveformCanvasHCentre + (getDecibelZoomY() * labelPosition * waveformCanvasHCentre));
 
         }
 
@@ -798,11 +798,11 @@ function drawAxisLabels () {
 
         let baseline = 'middle';
 
-        if (i === 0) {
+        if (markerY === waveformCanvasH) {
 
             baseline = 'text-bottom';
 
-        } else if (i === waveformLabelTexts.length - 1) {
+        } else if (markerY === 0) {
 
             baseline = 'hanging';
             labelY -= 1;
