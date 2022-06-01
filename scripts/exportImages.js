@@ -8,6 +8,9 @@
 
 window.jsPDF = window.jspdf.jsPDF;
 
+const w = 824;
+const h = Math.ceil(w / 4 * 3);
+
 /**
  * Save both visible plots as "fileName.pdf"
  * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
@@ -42,9 +45,6 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
-
-    const w = 824;
-    const h = Math.ceil(w / 4 * 3);
 
     const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacingH);
 
@@ -232,9 +232,6 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
-
-    const w = 824;
-    const h = Math.ceil(w / 4 * 3);
 
     const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacingH);
 

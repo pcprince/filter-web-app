@@ -49,7 +49,7 @@ const trimmedSpan = document.getElementById('trimmed-span');
 
 const exampleLinks = [document.getElementById('example-link1'), document.getElementById('example-link2'), document.getElementById('example-link3')];
 const examplePaths = ['./assets/BAT.WAV', './assets/SWEEP.WAV', './assets/METRONOME.WAV'];
-const exampleNames = ['Bat', 'Frequency sweep', 'Metronome'];
+const exampleNames = ['Bat', 'Frequency Sweep', 'Metronome'];
 const exampleResultObjects = {};
 
 // Plot navigation buttons
@@ -3848,7 +3848,20 @@ function exportImage (exportFunction) {
 
     }
 
-    exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileSpan.innerText);
+    let title = fileSpan.innerText;
+
+    for (let i = 0; i < exampleNames.length; i++) {
+
+        if (title.includes(exampleNames[i])) {
+
+            title += ' Example';
+            break;
+
+        }
+
+    }
+
+    exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileSpan.innerText, title);
 
 }
 
