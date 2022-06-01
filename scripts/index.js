@@ -3815,6 +3815,8 @@ function exportImage (exportFunction) {
         canvas0array.push(waveformCanvas);
         canvas0array.push(waveformThresholdCanvas);
 
+        canvas1array.push(spectrogramThresholdCanvas);
+
         offsetFromCentre = getAmplitudeThresholdLineOffset();
 
         linesY0 = [centre - offsetFromCentre, centre + offsetFromCentre];
