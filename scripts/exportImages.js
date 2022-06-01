@@ -32,7 +32,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xAxisMarkerH = 25;
     const yAxisMarkerW = 40;
 
-    const edgeSpacingW = 12;
+    const edgeSpacingW = 8;
     const edgeSpacingH = 15;
 
     const topSpacing = 30 + edgeSpacingH;
@@ -43,7 +43,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
 
-    const w = canvas0.width + yAxisW + edgeSpacingW;
+    const w = 824;
     const h = Math.ceil(w / 4 * 3);
 
     const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacingH);
@@ -222,7 +222,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const xAxisMarkerH = 25;
     const yAxisMarkerW = 40;
 
-    const edgeSpacingW = 12;
+    const edgeSpacingW = 8;
     const edgeSpacingH = 15;
 
     const topSpacing = 30 + edgeSpacingH;
@@ -233,7 +233,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
 
-    const w = canvas0.width + yAxisW + edgeSpacingW;
+    const w = 824;
     const h = Math.ceil(w / 4 * 3);
 
     const plotSpacing = h - (topSpacing + canvas0.height + canvas1.height + xAxisH + edgeSpacingH);
@@ -326,10 +326,10 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     for (let i = 0; i < y0Lines.length; i++) {
 
         let y = parseFloat(y0Lines[i].getAttribute('y1'));
+        y = y - (y % 1) + 0.5;
+        y += topSpacing;
 
         const labelText = y0Labels[i].innerHTML;
-
-        y += topSpacing;
 
         ctx.beginPath();
         ctx.moveTo(yAxisW, y);
@@ -350,20 +350,17 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     for (let i = 0; i < y1Lines.length; i++) {
 
         let y = parseFloat(y1Lines[i].getAttribute('y1'));
-        y = (y % 1 > 0) ? y : y + 0.5;
+        y = y - (y % 1) + 0.5;
+        y += topSpacing + canvas0.height + plotSpacing;
 
         const labelText = y1Labels[i].innerHTML;
-        let labelY = parseFloat(y1Labels[i].getAttribute('y'));
-
-        y += topSpacing + canvas0.height + plotSpacing;
-        labelY += topSpacing + canvas0.height + plotSpacing;
 
         ctx.beginPath();
         ctx.moveTo(yAxisW, y);
         ctx.lineTo(yAxisW - 5, y);
         ctx.stroke();
 
-        ctx.fillText(labelText, yAxisW - 7, labelY);
+        ctx.fillText(labelText, yAxisW - 7, y);
 
     }
 
@@ -380,7 +377,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         if (linesY0[i] !== -1) {
 
             let lineY = linesY0[i] + topSpacing;
-            lineY = (lineY % 1 > 0) ? lineY : lineY + 0.5;
+            lineY = lineY - (lineY % 1) + 0.5;
 
             ctx.beginPath();
             ctx.moveTo(lineXstart, lineY);
@@ -396,7 +393,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         if (linesY1[i] !== -1) {
 
             let lineY = linesY1[i] + topSpacing + canvas0.height + plotSpacing;
-            lineY = (lineY % 1 > 0) ? lineY : lineY + 0.5;
+            lineY = lineY - (lineY % 1) + 0.5;
 
             ctx.beginPath();
             ctx.moveTo(lineXstart, lineY);
