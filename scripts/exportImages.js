@@ -192,7 +192,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     pdfDoc.text(yAxisTitle1, edgeSpacingW + 5, topSpacing + canvas0.height + plotSpacing + (canvas1.height / 2) + 25, null, 90);
 
-    pdfDoc.setFontSize(12);
+    pdfDoc.setFontSize(11);
     pdfDoc.text(title, yAxisW + (canvas0.width / 2), edgeSpacingH + 2, {align: 'center', baseline: 'top'});
 
     pdfDoc.save(fileName + '.pdf');
@@ -422,7 +422,7 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     ctx.fillText(yAxisTitle1, 0, 0);
     ctx.restore();
 
-    ctx.font = '14px Helvetica';
+    ctx.font = '13px Helvetica';
     ctx.fillText(title, yAxisW + (canvas0.width / 2), edgeSpacingH + 8);
 
     // Save image
