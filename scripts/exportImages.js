@@ -23,8 +23,9 @@ const h = Math.ceil(w / 4 * 3);
  * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
  * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
+ * @param {string} title Title to be drawn at the top of the file(s)
  */
-function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName) {
+function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     console.log('Exporting to PDF');
 
@@ -191,8 +192,8 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     pdfDoc.text(yAxisTitle1, edgeSpacingW + 5, topSpacing + canvas0.height + plotSpacing + (canvas1.height / 2) + 25, null, 90);
 
-    pdfDoc.setFontSize(10);
-    pdfDoc.text(fileName, yAxisW + (canvas0.width / 2), edgeSpacingH, {align: 'center', baseline: 'top'});
+    pdfDoc.setFontSize(12);
+    pdfDoc.text(title, yAxisW + (canvas0.width / 2), edgeSpacingH + 2, {align: 'center', baseline: 'top'});
 
     pdfDoc.save(fileName + '.pdf');
 
@@ -210,8 +211,9 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
  * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
  * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
+ * @param {string} title Title to be drawn at the top of the file(s)
  */
-function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName) {
+function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     console.log('Exporting to PNG');
 
@@ -420,8 +422,8 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     ctx.fillText(yAxisTitle1, 0, 0);
     ctx.restore();
 
-    ctx.font = '12px Helvetica';
-    ctx.fillText(fileName, yAxisW + (canvas0.width / 2), edgeSpacingH);
+    ctx.font = '14px Helvetica';
+    ctx.fillText(title, yAxisW + (canvas0.width / 2), edgeSpacingH + 8);
 
     // Save image
 
