@@ -294,10 +294,12 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
     for (let i = 0; i < xLines.length; i++) {
 
         let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
-        x = (x % 1 > 0) ? x : x + 0.5;
+        x = x - (x % 1) + 0.5;
         x = (i === 0) ? x - 1 : x;
 
         const labelText = xLabels[i].innerHTML;
+
+        console.log(labelText, x);
 
         ctx.beginPath();
         ctx.moveTo(x, yOffset0);
