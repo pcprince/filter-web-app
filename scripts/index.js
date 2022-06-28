@@ -23,7 +23,7 @@
 /* global enableSlider, disableSlider */
 /* global setCentreObserved, setPassFiltersObserved */
 
-/* global exportPNG, exportPDF */
+/* global exportPNG, exportPDF, exportAudio */
 
 /* global enableSampleRateControl, disableSampleRateControl, updateSampleRateUI, getSampleRateSelection, addSampleRateUIListeners */
 
@@ -148,6 +148,7 @@ const goertzelLabelSVG = document.getElementById('goertzel-label-svg');
 
 // File variables
 
+let currentHeader;
 let fileHandler;
 let unfilteredSamples;
 let filteredSamples;
@@ -235,6 +236,10 @@ const exportCloseButton = document.getElementById('export-close-button');
 const exportPNGButton = document.getElementById('export-png-button');
 const exportPDFButton = document.getElementById('export-pdf-button');
 const exportBothButton = document.getElementById('export-both-button');
+
+// Export audio button
+
+const exportAudioButton = document.getElementById('export-audio-button');
 
 /**
  * Update UI based on which threshold type is selected
@@ -1390,10 +1395,6 @@ function reenableUI () {
 
     enableSampleRateControl();
 
-    resetButton.disabled = false;
-    exportButton.disabled = false;
-    exportModalButton.disabled = false;
-
     updateNavigationUI();
     updateYZoomUI();
 
@@ -1413,6 +1414,7 @@ function reenableUI () {
     resetButton.disabled = false;
     exportButton.disabled = false;
     exportModalButton.disabled = false;
+    exportAudioButton.disabled = false;
 
     playButton.disabled = false;
     enableSlider(playbackSpeedSlider, playbackSpeedDiv);
@@ -1559,6 +1561,7 @@ function disableUI (startUp) {
     resetButton.disabled = true;
     exportButton.disabled = true;
     exportModalButton.disabled = true;
+    exportAudioButton.disbled = true;
 
     zoomInButton.disabled = true;
     zoomOutButton.disabled = true;
@@ -2342,9 +2345,13 @@ function processReadResult (result, callback) {
 
         showErrorDisplay(errorMessage);
 
+        reenableUI();
+
         return;
 
     }
+
+    currentHeader = result.header;
 
     errorDisplay.style.display = 'none';
 
@@ -3763,6 +3770,7 @@ playButton.addEventListener('click', () => {
             resetButton.disabled = true;
             exportButton.disabled = true;
             exportModalButton.disabled = true;
+            exportAudioButton.disabled = true;
 
             disableSlider(playbackSpeedSlider, playbackSpeedDiv);
             playbackModeSelect.disabled = true;
@@ -4019,6 +4027,108 @@ exportBothButton.addEventListener('click', () => {
     exportImage(exportPDF);
 
     exportCloseButton.click();
+
+});
+
+function handleExportAudioResult (err) {
+
+    if (err) {
+
+        console.error(err);
+
+        showErrorDisplay(err);
+
+    }
+
+}
+
+exportAudioButton.addEventListener('click', () => {
+
+    // Get mode which dictates how amplitude thresholded periods are handled
+
+    const playbackMode = getPlaybackMode();
+
+    // Get currently displayed samples to play
+
+    const filterIndex = getFilterRadioValue();
+
+    const samples = (filterIndex !== FILTER_NONE && playbackMode !== PLAYBACK_MODE_ALL) ? filteredSamples : downsampledUnfilteredSamples;
+
+    let playbackBufferLength = displayLength;
+
+    const thresholdTypeIndex = getThresholdTypeIndex();
+
+    // If playback mode is to skip thresholded periods, build an array of X axis locations which map to playback progress
+
+    if (playbackMode === PLAYBACK_MODE_SKIP) {
+
+        // Create x coordinate map
+
+        skippingXCoords = new Array(displayLength).fill(0);
+
+        const waveformW = waveformPlaybackCanvas.width;
+
+        let n = 0;
+
+        const displayedTime = displayLength / getSampleRate();
+
+        // Create mapping from sample index to x coordinate
+
+        const start = Math.floor(offset / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
+        const end = Math.floor((offset + displayLength - 1) / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
+
+        for (let i = start; i <= end; i++) {
+
+            const sampleIndex = i * AMPLITUDE_THRESHOLD_BUFFER_LENGTH;
+
+            const sampleAboveThreshold = (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold[i] : samplesAboveThreshold[i];
+
+            if (sampleAboveThreshold) {
+
+                // Add an x coordinate for each sample within the period above the threshold
+
+                for (let j = 0; j < AMPLITUDE_THRESHOLD_BUFFER_LENGTH; j++) {
+
+                    const periodSample = sampleIndex + j - offset;
+
+                    if (periodSample >= 0 && periodSample < displayLength) {
+
+                        let xCoord = periodSample / getSampleRate() / displayedTime;
+                        xCoord *= waveformW;
+
+                        skippingXCoords[n] = xCoord;
+                        n++;
+
+                    }
+
+                }
+
+            }
+
+        }
+
+        // Reduce length to just unthresholded samples on screen
+
+        skippingXCoords.length = n;
+        playbackBufferLength = n;
+
+    }
+
+    // Export audio as WAV file
+
+    if (playbackBufferLength > 0) {
+
+        if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+
+            exportAudio(samples, samplesAboveGoertzelThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader, handleExportAudioResult);
+
+        } else {
+
+            exportAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader, handleExportAudioResult);
+
+        }
+
+    }
 
 });
 
