@@ -15,8 +15,11 @@ function readString (state, length) {
 
     if (state.buffer.length - state.index < length) throw new Error('WAVE header exceeded buffer length.');
 
-    const utf8Decoder = new TextDecoder();
-    const result = utf8Decoder.decode(state.buffer).substring(state.index, state.index + length).replace(/\0/g, '');
+    const utf8decoder = new TextDecoder();
+
+    const bufferSplit = state.buffer.slice(state.index, state.index + length);
+    const intBuffer = new Uint16Array(bufferSplit);
+    const result = utf8decoder.decode(intBuffer).replace(/\0/g, '');
 
     state.index += length;
     return result;
