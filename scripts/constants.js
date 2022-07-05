@@ -24,8 +24,6 @@ const PLAYBACK_MODE_MUTE = 2; // Play silence when at a sample below the thresho
 
 /* WAV file constants */
 
-const MAX_FILE_SIZE = 488 + 2 * 60 * 384000;
-
 const UINT16_LENGTH = 2;
 const UINT32_LENGTH = 4;
 const RIFF_ID_LENGTH = 4;

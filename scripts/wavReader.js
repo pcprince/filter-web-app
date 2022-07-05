@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global MAX_FILE_SIZE, UINT16_LENGTH, UINT32_LENGTH, RIFF_ID_LENGTH, LENGTH_OF_WAV_HEADER */
+/* global UINT16_LENGTH, UINT32_LENGTH, RIFF_ID_LENGTH, LENGTH_OF_WAV_HEADER */
 /* global PCM_FORMAT, NUMBER_OF_CHANNELS, NUMBER_OF_BITS_IN_SAMPLE, NUMBER_OF_BYTES_IN_SAMPLE */
 
 /* WAV header component read functions */
@@ -296,17 +296,6 @@ async function readWav (fileHandler) {
     try {
 
         file = await fileHandler.getFile();
-
-        if (file.size > MAX_FILE_SIZE) {
-
-            return {
-                success: false,
-                error: 'File is too large. Use the Split function in the AudioMoth Configuration App to split your recording into 60 second sections.',
-                header: null,
-                samples: null
-            };
-
-        }
 
         contents = await file.arrayBuffer();
 

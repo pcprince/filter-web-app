@@ -19,24 +19,16 @@
                 </div>
             </div>
 
-            <!-- Incorrect browser error -->
-
-            <div id="browser-error-display" class="row justify-content-md-center" style="display: none; margin-top: 10px;">
-                <div class="col total-width">
-                    <div class="card text-white bg-danger mb-3" style="width: 100%;">
-                        <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>Current browser is not fully supported.</b></div>
-                        <div class="card-body" style="padding-top: 10px; padding-bottom: 10px;">
-                            <p class="card-text">Switch to Google Chrome to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline; color: white; font-weight: bold;">example files</a>.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- File selection description -->
 
             <div id="file-selection-title-div" class="row justify-content-md-center" style="margin-top: 0px;">
                 <div class="col total-width">
-                    <span>Select an AudioMoth WAV file up to 60 seconds in length:</span>
+                    <span id="file-selection-title-span">Select an AudioMoth WAV file up to 60 seconds in length:</span>
+                    <div id="browser-error-spans" style="display: none;">
+                        <span style="color: red; font-weight: bold;"">Current browser not fully supported.</span>
+                        </br>
+                        <span style="color: red; font-weight: bold;">Switch to Google Chrome to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline; font-weight: bold;">example files</a>.</span>
+                    </div>
                 </div>
             </div>
 
@@ -48,20 +40,8 @@
                     <button class="btn btn-primary" id="disabled-file-button" style="vertical-align: middle;" disabled>Select File</button>
                     <span id="file-span" style="margin-left: 10px; vertical-align: middle; display: none;"></span>
                     <span class="loading" id="loading-span" style="margin-left: 10px; vertical-align: middle;">Loading</span>
-                    <span id="trimmed-span" style="color: red; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">File has been trimmed to initial 60 seconds.</span>
-                </div>
-            </div>
-
-            <!-- General error display -->
-
-            <div id="error-display" class="row justify-content-md-center" style="display: none; margin-top: 5px;">
-                <div class="col total-width">
-                    <div class="card text-white bg-danger mb-3" style="width: 100%;">
-                        <div class="card-header" style="padding-top: 10px; padding-bottom: 10px;"><b>An error has occurred.</b></div>
-                        <div class="card-body" style="padding-top: 10px; padding-bottom: 10px;">
-                            <p class="card-text" id="error-text">.</p>
-                        </div>
-                    </div>
+                    <span id="trimmed-span" style="color: blue; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">File has been trimmed to initial 60 seconds.</span>
+                    <span id="error-span" style="color: red; font-weight: bold; vertical-align: middle; margin-left: 10px; display: none;">.</span>
                 </div>
             </div>
 
