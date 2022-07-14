@@ -24,9 +24,7 @@
             <div id="file-selection-title-div" class="row justify-content-md-center" style="margin-top: 0px;">
                 <div class="col total-width">
                     <span id="file-selection-title-span">Select an AudioMoth WAV file up to 60 seconds in length:</span>
-                    <div id="browser-error-spans" style="display: none;">
-                        <span style="color: red;">Switch to Google Chrome to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline;">example files</a>.</span>
-                    </div>
+                    <span id="browser-error-span" style="color: red; display: none;">Switch to Google Chrome to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline;">example files</a>.</span>
                 </div>
             </div>
 
@@ -654,9 +652,17 @@
                 <div class="col plot-width" style="padding: 0px;">
                     <div class="wrapper" style="width: 793px;">
                         <div class="row">
-                            <div class="col-2" style="padding-right: 0px;">
+                            <div class="col-3" style="padding-right: 0px;">
                                 <button id="export-audio-button" class="btn btn-warning nav-button" style="margin-left: 15px;" disabled>
                                     <img id="download-icon" class="button-icon" src="./assets/download.svg" alt="Bootstrap">
+                                </button>
+                                <button id="export-video-button" class="btn btn-warning nav-button" style="margin-left: 5px;" disabled>
+                                    <img id="video-icon" class="button-icon" src="./assets/camera-video.svg" alt="Bootstrap">
+                                    <div class="d-flex justify-content-center">
+                                        <div id="video-spinner" class="spinner-border spinner-border-sm" role="status" style="display: none;">
+                                            <span class="sr-only">Loading...</spa>
+                                        </div>
+                                    </div>
                                 </button>
                                 <button class="btn btn-warning nav-button" id="export-modal-button" data-toggle="modal" data-target="#export-modal" disabled style="margin-left: 5px;">
                                     <img id="camera-icon" class="button-icon" src="./assets/camera.svg" alt="Bootstrap">
@@ -676,7 +682,7 @@
                             <div id='playback-speed-div' class="col-4 playback-slider" style="padding-top: 5px;">
                                 <input id="playback-speed-slider" data-slider-id="playback-speed-slider" type="text" class="span2" value="1" style="width: 100%;">
                             </div>
-                            <div class="col-3" style="padding-left: 0px;"></div>
+                            <div class="col-2" style="padding-left: 0px;"></div>
                         </div>
                     </div>
                 </div>
@@ -839,6 +845,7 @@
         </div>
     </body>
     <script src="scripts/constants.js"></script>
+    <!-- <script src="scripts/external/ffmpeg-mp4.browser.js"></script> -->
     <script src="scripts/external/jspdf.umd.min.js"></script>
     <script src="scripts/external/FreeSans-normal.js"></script>
     <script src="scripts/external/complex.min.js"></script>
@@ -858,6 +865,8 @@
     <script src="scripts/uiFiltering.js"></script>
     <script src="scripts/exportImages.js"></script>
     <script src="scripts/exportAudio.js"></script>
+    <!-- <script src="scripts/exportVideo.browser.js"></script> -->
+    <script src="scripts/exportVideo.js"></script>
     <script src="scripts/downsampler.js"></script>
     <script src="scripts/index.js"></script>
 </html>

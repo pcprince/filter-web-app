@@ -106,22 +106,7 @@ function writeHeader (buffer, header) {
 
 }
 
-function writeFile (header, samples, fileName, callback) {
-
-    const blob = new Blob([header, samples.buffer], {type: 'audio/wav'});
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.download = fileName;
-    link.href = url;
-    link.click();
-    link.remove();
-
-    callback();
-
-}
-
-function exportAudio (samples, unthresholdedSamples, start, length, sampleRate, mode, playbackBufferLength, header, fileName, callback) {
+function createAudioArray (samples, unthresholdedSamples, start, length, sampleRate, mode, playbackBufferLength, header) {
 
     /**
      * Get array of samples like playAudio uses - DONE
@@ -181,6 +166,31 @@ function exportAudio (samples, unthresholdedSamples, start, length, sampleRate, 
 
     writeHeader(headerBuffer, newHeader);
 
-    writeFile(headerBuffer, sampleArray, fileName, callback);
+    return [headerBuffer, sampleArray];
+
+}
+
+function writeFile (audioArray, fileName, callback) {
+
+    const blob = new Blob(audioArray, {type: 'audio/wav'});
+    const url = URL.createObjectURL(blob);
+
+    const newFileName = fileName.substring(0, fileName.length - 4) + '_EXPORT.wav';
+
+    const link = document.createElement('a');
+    link.download = newFileName;
+    link.href = url;
+    link.click();
+    link.remove();
+
+    callback();
+
+}
+
+function exportAudio (samples, unthresholdedSamples, start, length, sampleRate, mode, playbackBufferLength, header, fileName, callback) {
+
+    const audioArray = createAudioArray(samples, unthresholdedSamples, start, length, sampleRate, mode, playbackBufferLength, header);
+
+    writeFile(audioArray, fileName, callback);
 
 }
