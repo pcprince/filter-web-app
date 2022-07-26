@@ -4,9 +4,9 @@
  * July 2022
  *****************************************************************************/
 
-// TODO: Disable button in cases where it would run out of memory
-
 /* global Worker, Blob, webkitURL */
+
+const MILLISECONDS_IN_SECOND = 1000;
 
 function convertDataURIToBinary (dataURI) {
 
@@ -40,9 +40,9 @@ function done (output, name) {
 
 }
 
-function finaliseVideo (imageData, audioData, length, fileName, callback) {
+function finaliseVideo (imageData, audioData, durationInMilliseconds, fileName, callback) {
 
-    const videoName = fileName.substring(0, fileName.length - 4) + '_EXPORT.mp4';
+    const videoName = fileName + '_EXPORT.mp4';
 
     const worker = new Worker('/scripts/external/ffmpeg-worker-mp4.js');
 
@@ -54,11 +54,22 @@ function finaliseVideo (imageData, audioData, length, fileName, callback) {
 
         let succeeded;
 
+        let millisecondsPerFrame, framesPerSecond, roundedDurationInMilliseconds;
+
         switch (msg.type) {
 
         case 'ready':
 
             console.log('Ready, processing video');
+
+            millisecondsPerFrame 
+                        = durationInMilliseconds <= 10 * MILLISECONDS_IN_SECOND ? 40 
+                        : durationInMilliseconds <= 30 * MILLISECONDS_IN_SECOND ? 100 
+                        : 500;
+
+            framesPerSecond = MILLISECONDS_IN_SECOND / millisecondsPerFrame;
+
+            roundedDurationInMilliseconds = millisecondsPerFrame * Math.ceil(durationInMilliseconds / millisecondsPerFrame);
 
             worker.postMessage({
                 type: 'run',
@@ -67,16 +78,17 @@ function finaliseVideo (imageData, audioData, length, fileName, callback) {
                 arguments: [
                     '-loop', '1',
                     '-y',
-                    '-r', '1',
+                    '-r', framesPerSecond.toString(),
                     '-i', 'IMG.JPG',
                     '-i', 'AUDIO.WAV',
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',
+                    '-tune', 'stillimage',
                     '-rc-lookahead', '2',
                     '-c:a', 'aac',
                     '-b:a', '192k',
                     '-pix_fmt', 'yuv420p',
-                    '-t', length.toString() + 'ms',
+                    '-t', roundedDurationInMilliseconds.toString() + 'ms',
                     'out.mp4'
                 ]
             });

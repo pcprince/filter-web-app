@@ -4,10 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global Blob */
-
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readWavContents */
-/* global Slider */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
 /* global XMLHttpRequest */
@@ -22,10 +19,9 @@
 /* global getMinimumTriggerDurationAmp, getMinimumTriggerDurationGoertzel, getFilterSliderStep, setBandPass, setLowPassSliderValue, setHighPassSliderValue, roundToSliderStep, setFrequencyTriggerFilterFreq, getMinimumAmplitudeThresholdDuration, getAmplitudeThresholdValues, getFrequencyTriggerValues, setAmplitudeThresholdScaleIndex */
 /* global prevThresholdScaleIndex, resetElements, disableFilterUI, enableFilterUI */
 
-/* global enableSlider, disableSlider */
 /* global setCentreObserved, setPassFiltersObserved */
 
-/* global exportPNG, exportPDF, createPNGCanvas, exportAudio, createAudioArray, exportVideo */
+/* global exportPNG, exportJPG, exportPDF, createImageCanvas, exportAudio, createAudioArray, exportVideo */
 
 /* global enableSampleRateControl, disableSampleRateControl, updateSampleRateUI, getSampleRateSelection, addSampleRateUIListeners */
 
@@ -194,13 +190,9 @@ const playButton = document.getElementById('play-button');
 const playIcon = document.getElementById('play-icon');
 const stopIcon = document.getElementById('stop-icon');
 
-const playbackSpeedDiv = document.getElementById('playback-speed-div');
-const playbackSpeedSlider = new Slider('#playback-speed-slider', {
-    ticks_labels: ['x1/16', 'x1/8', 'x1/4', 'x1/2', 'x1', 'x2'],
-    ticks: [0, 1, 2, 3, 4, 5],
-    value: 4
-});
-const playbackRates = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0];
+const playbackSpeedSelect = document.getElementById('playback-speed-select');
+
+const volumeSelect = document.getElementById('volume-select');
 
 const playbackModeSelect = document.getElementById('playback-mode-select');
 const playbackModeOptionAll = document.getElementById('playback-mode-option-all');
@@ -237,8 +229,9 @@ const exportModalButton = document.getElementById('export-modal-button');
 const exportCloseButton = document.getElementById('export-close-button');
 
 const exportPNGButton = document.getElementById('export-png-button');
+const exportJPGButton = document.getElementById('export-jpg-button');
 const exportPDFButton = document.getElementById('export-pdf-button');
-const exportBothButton = document.getElementById('export-both-button');
+const exportAllButton = document.getElementById('export-all-button');
 
 // Export audio/video buttons
 
@@ -1459,7 +1452,8 @@ function reenableUI () {
     exportVideoButton.disabled = false;
 
     playButton.disabled = false;
-    enableSlider(playbackSpeedSlider, playbackSpeedDiv);
+    playbackSpeedSelect.disabled = false;
+    volumeSelect.disabled = false;
     playbackModeSelect.disabled = false;
 
     enableFilterUI();
@@ -1630,7 +1624,8 @@ function disableUI (startUp) {
     playbackModeOptionSkip.disabled = true;
 
     playButton.disabled = true;
-    disableSlider(playbackSpeedSlider, playbackSpeedDiv);
+    playbackSpeedSelect.disabled = true;
+    volumeSelect.disabled = true;
     playbackModeSelect.disabled = true;
 
     disableFilterUI();
@@ -3563,7 +3558,17 @@ exportButton.addEventListener('click', exportConfig);
  */
 function getPlaybackRate () {
 
-    return playbackRates[playbackSpeedSlider.getValue()];
+    return parseFloat(playbackSpeedSelect.value);
+
+}
+
+/**
+ * Get playback/export volume
+ * @returns Volume to play and export audio in video and audio output
+ */
+function getVolume () {
+
+    return parseFloat(volumeSelect.value);
 
 }
 
@@ -3814,7 +3819,8 @@ playButton.addEventListener('click', () => {
             exportAudioButton.disabled = true;
             exportVideoButton.disabled = true;
 
-            disableSlider(playbackSpeedSlider, playbackSpeedDiv);
+            playbackSpeedSelect.disabled = true;
+            volumeSelect.disabled = true;
             playbackModeSelect.disabled = true;
 
         }
@@ -3842,7 +3848,7 @@ playButton.addEventListener('click', () => {
 
         const filterIndex = getFilterRadioValue();
 
-        const samples = (filterIndex !== FILTER_NONE && playbackMode !== PLAYBACK_MODE_ALL) ? filteredSamples : downsampledUnfilteredSamples;
+        const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
 
         let playbackBufferLength = displayLength;
 
@@ -3910,11 +3916,11 @@ playButton.addEventListener('click', () => {
 
             if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
 
-                playAudio(samples, samplesAboveGoertzelThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, stopEvent);
+                playAudio(samples, samplesAboveGoertzelThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, getVolume(), stopEvent);
 
             } else {
 
-                playAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, stopEvent);
+                playAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, getVolume(), stopEvent);
 
             }
 
@@ -4011,13 +4017,23 @@ function createExportCanvas (exportFunction) {
 
     }
 
-    return exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileSpan.innerText, title);
+    const fileName = fileSpan.innerText.replace(/\.[^/.]+$/, '');
+
+    return exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileName, title);
 
 }
 
 exportPNGButton.addEventListener('click', () => {
 
     createExportCanvas(exportPNG);
+
+    exportCloseButton.click();
+
+});
+
+exportJPGButton.addEventListener('click', () => {
+
+    createExportCanvas(exportJPG);
 
     exportCloseButton.click();
 
@@ -4031,9 +4047,10 @@ exportPDFButton.addEventListener('click', () => {
 
 });
 
-exportBothButton.addEventListener('click', () => {
+exportAllButton.addEventListener('click', () => {
 
     createExportCanvas(exportPNG);
+    createExportCanvas(exportJPG);
     createExportCanvas(exportPDF);
 
     exportCloseButton.click();
@@ -4062,7 +4079,7 @@ function getAudioForExport () {
 
     const filterIndex = getFilterRadioValue();
 
-    const samples = (filterIndex !== FILTER_NONE && playbackMode !== PLAYBACK_MODE_ALL) ? filteredSamples : downsampledUnfilteredSamples;
+    const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
 
     let playbackBufferLength = displayLength;
 
@@ -4192,10 +4209,12 @@ exportVideoButton.addEventListener('click', () => {
 
     // Prepare audio data
 
-    const audioArray = createAudioArray(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader);
+    const audioArray = createAudioArray(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader, getVolume(), getPlaybackRate());
 
     const header = new Uint8Array(audioArray[0]);
     const audioSamples = new Uint8Array(audioArray[1].buffer);
+
+    // Build audio data object
 
     const audioFileArray = new Uint8Array(header.length + audioSamples.length);
     audioFileArray.set(header);
@@ -4203,16 +4222,15 @@ exportVideoButton.addEventListener('click', () => {
 
     // Prepare image data
 
-    const imageCanvas = createExportCanvas(createPNGCanvas);
+    const imageCanvas = createExportCanvas(createImageCanvas);
 
     // Get video length in ms
 
-    const videoLength = displayLength / sampleRate * 1000;
+    const videoLength = displayLength / sampleRate * 1000 / getPlaybackRate();
 
     // Prepare name for exported video
 
-    let fileName = fileSpan.innerText;
-    fileName = (fileName.toLowerCase().includes('.wav')) ? fileName : fileName + '.wav';
+    const fileName = fileSpan.innerText.replace(/\.[^/.]+$/, '');
 
     // Process audio and image into video file
 
