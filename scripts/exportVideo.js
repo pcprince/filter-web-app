@@ -44,7 +44,7 @@ function finaliseVideo (imageData, audioData, durationInMilliseconds, fileName, 
 
     const videoName = fileName + '_EXPORT.mp4';
 
-    const worker = new Worker('/scripts/external/ffmpeg-worker-mp4.js');
+    const worker = new Worker('./scripts/external/ffmpeg-worker-mp4.js');
 
     worker.onmessage = (e) => {
 
