@@ -385,7 +385,7 @@ function convertThreshold (rawSlider) {
 
     /* 16-bit */
 
-    const rawAmplitude = Math.round(32768 * Math.pow(10, rawLog / 20));
+    const rawAmplitude = Math.round((INT16_MAX + 1) * Math.pow(10, rawLog / 20));
 
     for (let i = 0; i < VALID_AMPLITUDE_VALUES.length; i++) {
 

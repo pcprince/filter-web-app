@@ -8,6 +8,15 @@ html, body {
   user-select: none;
 }
 
+.modal {
+  overflow-y: auto;
+}
+
+.modal-open {
+  overflow: auto;
+  padding-right: 0px !important;
+}
+
 .table>tbody>tr>td,
 .table>tbody>tr>th {
   border: none;
@@ -50,6 +59,18 @@ input::-webkit-inner-spin-button {
   position: absolute;
   top: 0;
   left: 45px;
+}
+
+.wrapper .slice-canvas {
+  position: absolute;
+  top: 0;
+  left: 50px;
+}
+
+.wrapper .slice-axis {
+  position: absolute;
+  top: 0;
+  left: 30px;
 }
 
 :root {

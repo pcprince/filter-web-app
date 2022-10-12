@@ -4,11 +4,15 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readWavContents */
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readWavContents, checkHeader */
+/* global loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler, formatTime */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
 /* global XMLHttpRequest */
 /* global applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
+/* global INT16_MAX, LENGTH_OF_WAV_HEADER */
+
+/* global addSVGText, addSVGLine, clearSVG */
 
 /* global prepareUI, sampleRateChange */
 /* global getPassFiltersObserved, getCentreObserved */
@@ -45,8 +49,26 @@ const fileSelectionTitleDiv = document.getElementById('file-selection-title-div'
 const fileButton = document.getElementById('file-button');
 const disabledFileButton = document.getElementById('disabled-file-button');
 const fileSpan = document.getElementById('file-span');
-const trimmedSpan = document.getElementById('trimmed-span');
+const fileInformationLink = document.getElementById('file-information-link');
+const resampledSpan = document.getElementById('resampled-span');
 const loadingSpan = document.getElementById('loading-span');
+let isExampleFile = true;
+
+// File information modal
+const artistSpan = document.getElementById('artist-span');
+const commentSpan = document.getElementById('comment-span');
+
+// Recording slice UI
+const sliceBorderCanvas = document.getElementById('slice-border-canvas');
+const sliceCheckbox = document.getElementById('slice-checkbox');
+const sliceCheckboxLabel = document.getElementById('slice-checkbox-label');
+const sliceCloseButton = document.getElementById('slice-close-button');
+const sliceReselectSpan = document.getElementById('slice-reselect-span');
+const sliceReselectLink = document.getElementById('slice-reselect-link');
+let showReselectLink = false;
+
+// File handler for file being sliced
+let previewFileHandler;
 
 // Example file variables
 
@@ -89,6 +111,10 @@ let offset = 0;
 
 let isDragging = false;
 let dragStartX = 0;
+
+// Is UI disabled?
+
+let uiDisabled = false;
 
 // Waveform y axis navigation buttons
 
@@ -146,7 +172,6 @@ const goertzelLabelSVG = document.getElementById('goertzel-label-svg');
 
 // File variables
 
-let currentHeader;
 let fileHandler;
 let unfilteredSamples;
 let filteredSamples;
@@ -157,7 +182,16 @@ let processedSpectrumFrames;
 let spectrumMin = 0;
 let spectrumMax = 0;
 let firstFile = true;
+
+let artist = '';
+let comment = '';
+
 let trimmedFile = false;
+let resampledFile = false;
+
+let originalDataSize = 0;
+let originalFileSize = 0;
+let originalSampleRate = 0;
 
 let downsampledUnfilteredSamples;
 
@@ -248,27 +282,57 @@ const exportVideoSpinner = document.getElementById('video-spinner');
  */
 function displaySpans (index) {
 
+    if (resampledFile) {
+
+        resampledSpan.textContent = 'File has been resampled from ' + originalSampleRate / 1000 + ' to ' + trueSampleRate / 1000 + ' kHz.';
+
+    } else {
+
+        resampledSpan.textContent = '';
+
+    }
+
     switch (index) {
 
     case 0:
         fileSpan.style.display = '';
-        trimmedSpan.style.display = trimmedFile ? '' : 'none';
+        resampledSpan.style.display = trimmedFile || resampledFile ? '' : 'none';
         loadingSpan.style.display = 'none';
         errorSpan.style.display = 'none';
+
+        if (isExampleFile) {
+
+            fileInformationLink.style.display = 'none';
+
+        } else {
+
+            artistSpan.innerText = artist;
+            commentSpan.innerText = comment;
+
+            if (artist !== '' || comment !== '') fileInformationLink.style.display = '';
+
+        }
+
+        sliceReselectSpan.style.display = showReselectLink ? '' : 'none';
+
         break;
 
     case 1:
         loadingSpan.style.display = '';
         fileSpan.style.display = 'none';
-        trimmedSpan.style.display = 'none';
+        fileInformationLink.style.display = 'none';
+        resampledSpan.style.display = 'none';
         errorSpan.style.display = 'none';
+        sliceReselectSpan.style.display = 'none';
         break;
 
     case 2:
         errorSpan.style.display = '';
         fileSpan.style.display = 'none';
+        fileInformationLink.style.display = 'none';
         loadingSpan.style.display = 'none';
-        trimmedSpan.style.display = 'none';
+        resampledSpan.style.display = 'none';
+        sliceReselectSpan.style.display = 'none';
         break;
 
     }
@@ -354,69 +418,6 @@ function samplesToPixels (samples) {
 
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/**
- * Draw text to an SVG holder
- * @param {Element} parent SVG element to be drawn to
- * @param {string} content Text to be written
- * @param {number} x x coordinate
- * @param {number} y y coordinate
- * @param {string} anchor What end of the text it should be anchored to. Possible values: start/middle/end
- * @param {string} baseline What end of the text it should be anchored to. Possible values: text-top/middle/text-bottom
- */
-function addSVGText (parent, content, x, y, anchor, baseline) {
-
-    const textElement = document.createElementNS(SVG_NS, 'text');
-
-    textElement.setAttributeNS(null, 'x', x);
-    textElement.setAttributeNS(null, 'y', y);
-    textElement.setAttributeNS(null, 'dominant-baseline', baseline);
-    textElement.setAttributeNS(null, 'text-anchor', anchor);
-    textElement.setAttributeNS(null, 'font-size', '10px');
-
-    textElement.textContent = content;
-
-    parent.appendChild(textElement);
-
-}
-
-/**
- * Draw line to an SVG holder
- * @param {Element} parent SVG element to be drawn to
- * @param {number} x1 X coordinate of line start
- * @param {number} y1 Y coordinate of line start
- * @param {number} x2 X coordinate of line end
- * @param {number} y2 Y coordinate of line end
- */
-function addSVGLine (parent, x1, y1, x2, y2) {
-
-    const lineElement = document.createElementNS(SVG_NS, 'line');
-
-    lineElement.setAttributeNS(null, 'x1', x1);
-    lineElement.setAttributeNS(null, 'y1', y1);
-    lineElement.setAttributeNS(null, 'x2', x2);
-    lineElement.setAttributeNS(null, 'y2', y2);
-    lineElement.setAttributeNS(null, 'stroke', 'black');
-
-    parent.appendChild(lineElement);
-
-}
-
-/**
- * Remove all SVG drawing elements from an SVG holder
- * @param {Element} parent SVG element containing labels to be cleared
- */
-function clearSVG (parent) {
-
-    while (parent.firstChild) {
-
-        parent.removeChild(parent.lastChild);
-
-    }
-
-}
-
 /**
  * Gets sample rate, returning a filler value if no samples have been loaded yet
  * @returns Sample rate
@@ -472,7 +473,7 @@ function getGoertzelZoomY () {
  */
 function drawBorders () {
 
-    const canvases = [spectrogramBorderCanvas, waveformBorderCanvas, goertzelBorderCanvas];
+    const canvases = [spectrogramBorderCanvas, waveformBorderCanvas, goertzelBorderCanvas, sliceBorderCanvas];
 
     for (let i = 0; i < canvases.length; i++) {
 
@@ -746,7 +747,7 @@ function drawAxisLabels () {
     ];
 
     const z = getZoomY();
-    const waveformMax = 32768 / z;
+    const waveformMax = (INT16_MAX + 1) / z;
     const waveformMaxPercentage = 100.0 / z;
 
     const waveformCanvasH = waveformLabelSVG.height.baseVal.value;
@@ -1150,7 +1151,7 @@ function getAmplitudeThresholdLineOffset () {
 
     } else if (thresholdScaleIndex === THRESHOLD_SCALE_16BIT) {
 
-        const amplitudeThresholdRatio = amplitudeThresholdValues.amplitude / 32768.0;
+        const amplitudeThresholdRatio = amplitudeThresholdValues.amplitude / (INT16_MAX + 1);
         offsetFromCentre = amplitudeThresholdRatio * centre * getZoomY();
 
     } else if (thresholdScaleIndex === THRESHOLD_SCALE_DECIBEL) {
@@ -1419,6 +1420,8 @@ function drawLoadingImage (svgCanvas) {
  */
 function reenableUI () {
 
+    uiDisabled = false;
+
     fileButton.disabled = false;
 
     for (let i = 0; i < exampleLinks.length; i++) {
@@ -1455,6 +1458,9 @@ function reenableUI () {
     playbackSpeedSelect.disabled = false;
     volumeSelect.disabled = false;
     playbackModeSelect.disabled = false;
+
+    sliceCheckbox.disabled = false;
+    sliceReselectLink.disabled = false;
 
     enableFilterUI();
 
@@ -1595,6 +1601,8 @@ function disableUI (startUp) {
 
     }
 
+    uiDisabled = true;
+
     disableSampleRateControl();
 
     resetButton.disabled = true;
@@ -1628,7 +1636,12 @@ function disableUI (startUp) {
     volumeSelect.disabled = true;
     playbackModeSelect.disabled = true;
 
+    sliceCheckbox.disabled = true;
+    sliceReselectLink.disabled = true;
+
     disableFilterUI();
+
+    sizeInformationPanel.classList.add('grey');
 
 }
 
@@ -1658,7 +1671,7 @@ function processContents (samples, isInitialRender, renderPlots) {
             spectrumMin = result.min;
             spectrumMax = result.max;
 
-            console.log('Setting colour map. Min: ' + spectrumMin + ' Max: ' + spectrumMax);
+            console.log('Setting colour map. Min: ' + spectrumMin.toFixed(2) + ' Max: ' + spectrumMax.toFixed(2));
 
         }
 
@@ -2216,7 +2229,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
         if (thresholdScaleIndex === THRESHOLD_SCALE_PERCENTAGE) {
 
-            threshold = 32768.0 * parseFloat(amplitudeThresholdValues.percentage) / 100.0;
+            threshold = (INT16_MAX + 1) * parseFloat(amplitudeThresholdValues.percentage) / 100.0;
 
         } else if (thresholdScaleIndex === THRESHOLD_SCALE_16BIT) {
 
@@ -2224,7 +2237,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
         } else if (thresholdScaleIndex === THRESHOLD_SCALE_DECIBEL) {
 
-            threshold = 32768.0 * Math.pow(10, amplitudeThresholdValues.decibels / 20);
+            threshold = (INT16_MAX + 1) * Math.pow(10, amplitudeThresholdValues.decibels / 20);
 
         }
 
@@ -2386,18 +2399,19 @@ function processReadResult (result, callback) {
 
     }
 
-    currentHeader = result.header;
-
-    trueSampleRate = result.header.wavFormat.samplesPerSecond;
+    trueSampleRate = result.sampleRate;
     trueSampleCount = result.samples.length;
+
     sampleRate = trueSampleRate;
     sampleCount = trueSampleCount;
 
-    const lengthSecs = sampleCount / sampleRate;
+    const duration = sampleCount / sampleRate;
 
     const loadedFileName = fileHandler ? fileHandler.name : 'Example file';
+
     console.log('------ ' + loadedFileName + ' ------');
-    console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + lengthSecs + ' seconds)');
+
+    console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + duration.toFixed(2) + ' seconds)');
 
     callback(result);
 
@@ -2415,6 +2429,8 @@ async function readFromFile (exampleFilePath, callback) {
 
     if (exampleFilePath) {
 
+        showReselectLink = false;
+
         if (exampleResultObjects[exampleFilePath] === undefined) {
 
             const req = new XMLHttpRequest();
@@ -2424,7 +2440,8 @@ async function readFromFile (exampleFilePath, callback) {
 
             req.onload = () => {
 
-                const arrayBuffer = req.response; // Note: not oReq.responseText
+                const arrayBuffer = req.response;
+
                 result = readWavContents(arrayBuffer);
 
                 processReadResult(result, callback);
@@ -2446,17 +2463,92 @@ async function readFromFile (exampleFilePath, callback) {
         if (!fileHandler) {
 
             console.error('No filehandler!');
-            return [];
+            showErrorDisplay('Failed to load file');
+            return;
 
         }
 
-        result = await readWav(fileHandler);
+        const checkResult = await checkHeader(fileHandler);
+        const header = checkResult.header;
 
-        processReadResult(result, callback);
+        const previewSampleRate = header.wavFormat.samplesPerSecond;
+        const previewFileLengthSamples = header.data.size / header.wavFormat.bytesPerCapture;
+        const previewFileLength = previewFileLengthSamples / previewSampleRate;
+
+        if (previewFileLength > 60 && !sliceCheckbox.checked) {
+
+            disableUI(false);
+
+            console.log('File is >60 seconds, loading preview');
+
+            // TODO: Add method to return to this UI and reselect
+
+            loadPreview(fileHandler, previewFileLength, previewSampleRate, () => {
+
+                previewFileHandler = fileHandler;
+
+                updateSelectionSpan(0, 60);
+
+                drawPreviewWaveform(() => {
+
+                    drawSliceSelection(0);
+
+                    showSliceModal();
+
+                });
+
+            });
+
+        } else {
+
+            showReselectLink = false;
+
+            result = await readWav(fileHandler);
+
+            processReadResult(result, callback);
+
+        }
 
     }
 
 }
+
+setSliceSelectButtonEventHandler((selection) => {
+
+    // TODO: Load just the selected chunk of the file
+
+    // TODO: Change fileSpan to previewed file name
+
+    sliceReselectLink.innerText = formatTime(selection);
+    showReselectLink = true;
+
+    hideSliceModal();
+
+    reenableUI();
+
+});
+
+sliceCloseButton.addEventListener('click', () => {
+
+    // Remove 'Loading...' from file span
+    displaySpans(0);
+
+    // Hide modal window
+    hideSliceModal();
+
+    reenableUI();
+
+});
+
+sliceReselectLink.addEventListener('click', () => {
+
+    disableUI(false);
+
+    displaySpans(1);
+
+    showSliceModal();
+
+});
 
 /**
  * Update what the maximum value for the zoom can be, based on the number of samples loaded
@@ -2474,9 +2566,19 @@ function updateMaxZoom () {
  */
 function formatFileSize (fileSize) {
 
-    fileSize = Math.round(fileSize / 1000);
+    if (fileSize < 1000) return fileSize + ' B';
 
-    return fileSize + ' kB';
+    fileSize /= 1000;
+
+    if (Math.round(fileSize) < 1000) return fileSize.toPrecision(3) + ' kB';
+
+    fileSize /= 1000;
+
+    if (Math.round(fileSize) < 1000) return fileSize.toPrecision(3) + ' MB';
+
+    fileSize /= 1000;
+
+    return fileSize.toPrecision(3) + ' GB';
 
 }
 
@@ -2485,26 +2587,36 @@ function formatFileSize (fileSize) {
  */
 function updateFileSizePanel () {
 
-    const totalSeconds = unfilteredSamples.length / getSampleRate();
-    const totalFileSize = getSampleRate() * 2 * totalSeconds;
+    sizeInformationPanel.classList.remove('grey');
 
-    const thresholdTypeIndex = getThresholdTypeIndex();
+    const fileSize = originalDataSize * getSampleRate() / originalSampleRate + LENGTH_OF_WAV_HEADER;
 
-    if (thresholdTypeIndex !== THRESHOLD_TYPE_NONE) {
+    const fileDescription = trueSampleRate !== getSampleRate() ? 'Downsampled' : resampledFile ? 'Resampled' : 'Original';
 
-        const thresholdedSeconds = thresholdedValueCount / getSampleRate();
+    const fileString = fileDescription + ' WAV file size: ' + formatFileSize(fileSize);
 
-        const thresholdedFileSize = getSampleRate() * 2 * (totalSeconds - thresholdedSeconds);
+    if (getThresholdTypeIndex() !== THRESHOLD_TYPE_NONE) {
 
-        const compressionRatio = (thresholdedFileSize > 0) ? totalFileSize / thresholdedFileSize : 0;
+        const compressionRatio = sampleCount / thresholdedValueCount;
 
-        sizeInformationPanel.innerHTML = 'Original WAV file size: ' + formatFileSize(totalFileSize) + '. Resulting T.WAV file size: ' + formatFileSize(thresholdedFileSize) + '.<br>';
+        const thresholdedFileSize = (fileSize - LENGTH_OF_WAV_HEADER) / compressionRatio + LENGTH_OF_WAV_HEADER;
 
-        sizeInformationPanel.innerHTML += 'Current threshold settings give a file compression ratio of ' + compressionRatio.toFixed(1) + '.';
+        sizeInformationPanel.innerHTML = fileString + '. Resulting T.WAV file size: ' + formatFileSize(thresholdedFileSize) + '.<br>';
+
+        if (thresholdedValueCount === 0) {
+
+            sizeInformationPanel.innerHTML += 'Current threshold settings will result in an empty file.';
+
+        } else {
+
+            sizeInformationPanel.innerHTML += 'Current threshold settings give a file compression ratio of ' + compressionRatio.toFixed(1) + '.';
+
+        }
 
     } else {
 
-        sizeInformationPanel.innerHTML = 'File size: ' + formatFileSize(totalFileSize) + '.<br>';
+        sizeInformationPanel.innerHTML = fileString + '.<br>';
+
         sizeInformationPanel.innerHTML += 'Enable triggering to estimate file size reduction.';
 
     }
@@ -2525,6 +2637,7 @@ async function loadFile (exampleFilePath, exampleName) {
         console.log('Loading example file');
 
         fileName = exampleName;
+        isExampleFile = true;
 
     } else {
 
@@ -2560,6 +2673,8 @@ async function loadFile (exampleFilePath, exampleName) {
         if (!fileHandler) {
 
             fileSpan.innerText = 'No WAV files selected.';
+            artistSpan.innerText = 'AudioMoth';
+            commentSpan.innerText = '-';
             return;
 
         }
@@ -2567,6 +2682,8 @@ async function loadFile (exampleFilePath, exampleName) {
         fileHandler = fileHandler[0];
 
         fileName = fileHandler.name;
+
+        isExampleFile = false;
 
     }
 
@@ -2590,15 +2707,31 @@ async function loadFile (exampleFilePath, exampleName) {
 
         if (!samples) {
 
+            displaySpans(0);
+
             return;
 
         }
 
         filteredSamples = new Array(sampleCount);
 
-        // If file has been trimmed, display warning
+        // If file has been trimmed or resampled, display warning
 
         trimmedFile = result.trimmed;
+
+        resampledFile = result.resampled;
+
+        originalDataSize = result.originalDataSize;
+
+        originalFileSize = result.originalFileSize;
+
+        originalSampleRate = result.originalSampleRate;
+
+        // Collect the header information
+
+        artist = result.artist;
+
+        comment = result.comment;
 
         // Reset threshold arrays
 
@@ -2819,9 +2952,9 @@ for (let i = 0; i < examplePaths.length; i++) {
  */
 function handleMouseDown (e) {
 
-    // If it's not a left click, ignore it
+    // If it's not a left click or if the UI is disabled, ignore it
 
-    if (e.button !== 0) {
+    if (e.button !== 0 || uiDisabled) {
 
         return;
 
@@ -2986,23 +3119,27 @@ document.addEventListener('mouseup', (e) => {
 
     // If it's not a left click, ignore it
 
-    if (e.button !== 0 || !isDragging) {
+    if (e.button !== 0) {
 
         return;
 
     }
 
-    const w = spectrogramDragCanvas.width;
+    if (isDragging) {
 
-    // Get end of zoom drag
+        const w = spectrogramDragCanvas.width;
 
-    const rect = spectrogramDragCanvas.getBoundingClientRect();
-    let dragEndX = Math.min(w, Math.max(0, e.clientX - rect.left));
+        // Get end of zoom drag
 
-    dragEndX = (dragEndX < 0) ? 0 : dragEndX;
-    dragEndX = (dragEndX > w) ? w : dragEndX;
+        const rect = spectrogramDragCanvas.getBoundingClientRect();
+        let dragEndX = Math.min(w, Math.max(0, e.clientX - rect.left));
 
-    dragZoom(dragEndX);
+        dragEndX = (dragEndX < 0) ? 0 : dragEndX;
+        dragEndX = (dragEndX > w) ? w : dragEndX;
+
+        dragZoom(dragEndX);
+
+    }
 
 });
 
@@ -3027,9 +3164,9 @@ document.addEventListener('mousemove', (e) => {
  */
 function handleDoubleClick (e) {
 
-    // If it's not a left click, ignore it
+    // If it's not a left click or if the UI is disabled, ignore it
 
-    if (e.button !== 0) {
+    if (e.button !== 0 || uiDisabled) {
 
         return;
 
@@ -4164,9 +4301,10 @@ exportAudioButton.addEventListener('click', () => {
     if (playbackBufferLength > 0) {
 
         let fileName = fileSpan.innerText;
+
         fileName = (fileName.toLowerCase().includes('.wav')) ? fileName : fileName + '.wav';
 
-        exportAudio(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader, fileName, handleExportAudioResult);
+        exportAudio(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, fileName, handleExportAudioResult);
 
     } else {
 
@@ -4209,9 +4347,10 @@ exportVideoButton.addEventListener('click', () => {
 
     // Prepare audio data
 
-    const audioArray = createAudioArray(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, currentHeader, getVolume(), getPlaybackRate());
+    const audioArray = createAudioArray(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, getVolume(), getPlaybackRate());
 
     const header = new Uint8Array(audioArray[0]);
+
     const audioSamples = new Uint8Array(audioArray[1].buffer);
 
     // Build audio data object
@@ -4308,6 +4447,8 @@ if (!isChrome) {
     fileSelectionTitleDiv.classList.add('grey');
     browserErrorSpan.style.display = '';
     fileSelectionTitleSpan.style.display = 'none';
+    sliceCheckbox.style.display = 'none';
+    sliceCheckboxLabel.style.display = 'none';
     disabledFileButton.style.display = '';
     fileButton.style.display = 'none';
 

@@ -5,7 +5,8 @@
  *****************************************************************************/
 
 /* global UINT16_LENGTH, UINT32_LENGTH, RIFF_ID_LENGTH, LENGTH_OF_WAV_HEADER */
-/* global PCM_FORMAT, NUMBER_OF_CHANNELS, NUMBER_OF_BITS_IN_SAMPLE, NUMBER_OF_BYTES_IN_SAMPLE */
+/* global PCM_WAV_FORMAT, EXTENSIBLE_WAV_FORMAT, NUMBER_OF_CHANNELS, NUMBER_OF_BITS_IN_SAMPLE, NUMBER_OF_BYTES_IN_SAMPLE, LENGTH_OF_WAV_FORMAT, VALID_RESAMPLE_RATES, VALID_AUDIOMOTH_SAMPLE_RATES */
+/* global resampleOutputLength, resample */
 
 /* WAV header component read functions */
 
@@ -80,7 +81,149 @@ function readChunk (state, id) {
 
 /* WAV header read and write functions */
 
-function readHeader (buffer, fileSize) {
+function readGeneralHeader (buffer, fileSize) {
+
+    const header = {};
+
+    const state = {buffer: buffer, index: 0};
+
+    try {
+
+        /* Read RIFF chunk */
+
+        header.riff = readChunk(state, 'RIFF');
+
+        if (header.riff.size + RIFF_ID_LENGTH + UINT32_LENGTH !== fileSize) {
+
+            console.log('WAVE READER: RIFF chunk size does not match file size.');
+
+        }
+
+        /* Read WAVE ID */
+
+        header.format = readID(state, 'WAVE');
+
+        /* Find the FMT chunk */
+
+        while (true) {
+
+            const id = readString(state, RIFF_ID_LENGTH);
+
+            const size = readUInt32LE(state);
+
+            if (id === 'fmt ') {
+
+                header.fmt = {id: 'fmt ', size: size};
+
+                break;
+
+            }
+
+            state.index += size;
+
+        }
+
+        /* Read FMT chunk */
+
+        header.wavFormat = {};
+        header.wavFormat.format = readUInt16LE(state);
+        header.wavFormat.numberOfChannels = readUInt16LE(state);
+        header.wavFormat.samplesPerSecond = readUInt32LE(state);
+        header.wavFormat.bytesPerSecond = readUInt32LE(state);
+        header.wavFormat.bytesPerCapture = readUInt16LE(state);
+        header.wavFormat.bitsPerSample = readUInt16LE(state);
+
+        const formatValid = header.wavFormat.format === PCM_WAV_FORMAT || header.wavFormat.format === EXTENSIBLE_WAV_FORMAT;
+
+        if (!formatValid || header.wavFormat.numberOfChannels !== NUMBER_OF_CHANNELS || header.wavFormat.bytesPerSecond !== NUMBER_OF_BYTES_IN_SAMPLE * header.wavFormat.samplesPerSecond || header.wavFormat.bytesPerCapture !== NUMBER_OF_BYTES_IN_SAMPLE || header.wavFormat.bitsPerSample !== NUMBER_OF_BITS_IN_SAMPLE) {
+
+            return {
+                success: false,
+                error: 'File format is not supported.'
+            };
+
+        }
+
+        let sampleRateAcceptable = false;
+
+        for (let i = 0; i < VALID_AUDIOMOTH_SAMPLE_RATES.length; i += 1) sampleRateAcceptable ||= (header.wavFormat.samplesPerSecond === VALID_AUDIOMOTH_SAMPLE_RATES[i]);
+
+        for (let i = 0; i < VALID_RESAMPLE_RATES.length; i += 1) sampleRateAcceptable ||= (header.wavFormat.samplesPerSecond === VALID_RESAMPLE_RATES[i]);
+
+        if (sampleRateAcceptable === false) {
+
+            return {
+                success: false,
+                error: 'Sample rate is not supported.'
+            };
+
+        }
+
+        if (header.wavFormat.format === EXTENSIBLE_WAV_FORMAT) state.index += header.fmt.size - LENGTH_OF_WAV_FORMAT;
+
+        /* Find the data chunk */
+
+        while (true) {
+
+            const id = readString(state, RIFF_ID_LENGTH);
+
+            if (id === 'INFO') continue;
+
+            const size = readUInt32LE(state);
+
+            if (id === 'ICMT') {
+
+                header.icmt = {id: id, size: size};
+
+                header.icmt.comment = readString(state, size);
+
+            } else if (id === 'IART') {
+
+                header.iart = {id: id, size: size};
+
+                header.iart.artist = readString(state, size);
+
+            } else if (id === 'data') {
+
+                header.data = {id: id, size: size};
+
+                header.size = state.index;
+
+                if (header.data.size + header.size > fileSize) {
+
+                    console.log('WAVE READER: DATA chunk size exceeds file size.');
+
+                    header.data.size = NUMBER_OF_BYTES_IN_SAMPLE * Math.floor((fileSize - header.size) / NUMBER_OF_BYTES_IN_SAMPLE);
+
+                }
+
+                return {
+                    success: true,
+                    header: header
+                };
+
+            } else if (id !== 'LIST') {
+
+                state.index += size;
+
+            }
+
+        }
+
+    } catch (e) {
+
+        /* An error has occurred */
+
+        return {
+            success: false,
+            error: e.message
+        };
+
+    }
+
+}
+
+function readAudioMothHeader (buffer, fileSize) {
 
     const header = {};
 
@@ -117,11 +260,24 @@ function readHeader (buffer, fileSize) {
         header.wavFormat.bytesPerCapture = readUInt16LE(state);
         header.wavFormat.bitsPerSample = readUInt16LE(state);
 
-        if (header.wavFormat.format !== PCM_FORMAT || header.wavFormat.numberOfChannels !== NUMBER_OF_CHANNELS || header.wavFormat.bytesPerSecond !== NUMBER_OF_BYTES_IN_SAMPLE * header.wavFormat.samplesPerSecond || header.wavFormat.bytesPerCapture !== NUMBER_OF_BYTES_IN_SAMPLE || header.wavFormat.bitsPerSample !== NUMBER_OF_BITS_IN_SAMPLE) {
+        if (header.wavFormat.format !== PCM_WAV_FORMAT || header.wavFormat.numberOfChannels !== NUMBER_OF_CHANNELS || header.wavFormat.bytesPerSecond !== NUMBER_OF_BYTES_IN_SAMPLE * header.wavFormat.samplesPerSecond || header.wavFormat.bytesPerCapture !== NUMBER_OF_BYTES_IN_SAMPLE || header.wavFormat.bitsPerSample !== NUMBER_OF_BITS_IN_SAMPLE) {
 
             return {
                 success: false,
                 error: 'Unexpected WAVE format.'
+            };
+
+        }
+
+        let sampleRateAcceptable = false;
+
+        for (let i = 0; i < VALID_AUDIOMOTH_SAMPLE_RATES.length; i += 1) sampleRateAcceptable ||= (header.wavFormat.samplesPerSecond === VALID_AUDIOMOTH_SAMPLE_RATES[i]);
+
+        if (sampleRateAcceptable === false) {
+
+            return {
+                success: false,
+                error: 'Sample rate is not acceptable.'
             };
 
         }
@@ -177,14 +333,13 @@ function readHeader (buffer, fileSize) {
         /* Success */
 
         return {
-            header: header,
             success: true,
-            error: null
+            header: header
         };
 
     } catch (e) {
 
-        /* Header has exceed file buffer length */
+        /* An error has occurred */
 
         return {
             success: false,
@@ -203,91 +358,101 @@ function readWavContents (contents) {
 
         return {
             success: false,
-            error: 'Input file has zero size.',
-            header: null,
-            samples: null
-        };
-
-    }
-
-    /* Read the header */
-
-    let headerBuffer;
-
-    try {
-
-        headerBuffer = contents.slice(0, LENGTH_OF_WAV_HEADER);
-
-    } catch (e) {
-
-        return {
-            success: false,
-            error: 'Could not read the input WAV header.',
-            header: null,
-            samples: null
+            error: 'Input file has zero size.'
         };
 
     }
 
     /* Check the header */
 
-    const result = readHeader(headerBuffer, fileSize);
+    const result = readGeneralHeader(contents, fileSize);
 
     if (result.success === false) {
 
         return {
             success: false,
-            error: result.error,
-            header: null,
-            samples: null
+            error: result.error
         };
 
     }
 
     const header = result.header;
 
-    const maxSamples = header.wavFormat.samplesPerSecond * 60;
+    /* Check for samples */
 
-    let samples;
+    let sampleCount = Math.floor(header.data.size / NUMBER_OF_BYTES_IN_SAMPLE);
 
-    let trimmed = false;
-
-    const sampleCount = (contents.byteLength - LENGTH_OF_WAV_HEADER) / 2;
-
-    if (sampleCount > maxSamples) {
-
-        console.log('Trimming to initial 60 seconds of recording');
-
-        trimmed = true;
-
-        samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER, maxSamples);
-
-    } else if (sampleCount <= 0) {
+    if (sampleCount === 0) {
 
         return {
             success: false,
-            error: 'Input file has no audio samples.',
-            header: null,
-            samples: null
+            error: 'Input file has no audio samples.'
         };
 
-    } else {
+    }
 
-        samples = new Int16Array(contents, LENGTH_OF_WAV_HEADER);
+    /* Check if resampling is necessary */
+
+    const sampleRate = header.wavFormat.samplesPerSecond;
+
+    let resampled = false;
+
+    for (let i = 0; i < VALID_RESAMPLE_RATES.length; i += 1) resampled ||= (sampleRate === VALID_RESAMPLE_RATES[i]);
+
+    /* Check if trimming is necessary */
+
+    const MAXIMUM_FILE_DURATION = 60;
+
+    const maximumSampleCount = sampleRate * MAXIMUM_FILE_DURATION;
+
+    const trimmed = (sampleCount > maximumSampleCount);
+
+    /* Read the samples */
+
+    if (trimmed) sampleCount = maximumSampleCount;
+
+    const samples = new Int16Array(contents, header.size, sampleCount);
+
+    let resampleRate;
+
+    let resampledSamples;
+
+    if (resampled) {
+
+        for (let i = 0; i < VALID_AUDIOMOTH_SAMPLE_RATES.length; i += 1) {
+
+            resampleRate = VALID_AUDIOMOTH_SAMPLE_RATES[i];
+
+            if (resampleRate > sampleRate) break;
+
+        }
+
+        const resampledSampleCount = resampleOutputLength(sampleCount, sampleRate, resampleRate);
+
+        resampledSamples = new Int16Array(resampledSampleCount);
+
+        resample(samples, sampleRate, resampledSamples, resampleRate);
 
     }
 
     return {
         success: true,
-        error: null,
-        header: header,
-        samples: samples,
+        samples: resampled ? resampledSamples : samples,
+        sampleRate: resampled ? resampleRate : sampleRate,
+        resampled: resampled,
+        comment: header.icmt ? header.icmt.comment : '',
+        artist: header.iart ? header.iart.artist : '',
+        originalDataSize: header.data.size,
+        originalFileSize: contents.byteLength,
+        originalSampleRate: sampleRate,
         trimmed: trimmed
     };
 
 }
 
 async function readWav (fileHandler) {
+
+    // TODO: Create alternate way to read a wav which reads the header and then just a chosen period
 
     /* Open input file */
 
@@ -303,13 +468,24 @@ async function readWav (fileHandler) {
 
         return {
             success: false,
-            error: 'Could not read input file.',
-            header: null,
-            samples: null
+            error: 'Could not read input file.'
         };
 
     }
 
     return readWavContents(contents);
+
+}
+
+async function checkHeader (fileHandler) {
+
+    const file = await fileHandler.getFile();
+    const fileSize = file.size;
+
+    const blob = file.slice(0, LENGTH_OF_WAV_HEADER);
+
+    const buffer = await blob.arrayBuffer();
+
+    return readGeneralHeader(buffer, fileSize);
 
 }
