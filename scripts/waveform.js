@@ -4,6 +4,8 @@
  * September 2021
  *****************************************************************************/
 
+/* global INT16_MAX */
+
 // Drawing canvas
 
 const wavCanvas = document.getElementById('waveform-canvas');
@@ -62,7 +64,7 @@ function renderRawWaveform (canvas, pointData, startTime, callback) {
  */
 function renderWaveform (canvas, data, startTime, callback) {
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', {willReadFrequently: true});
 
     const WAV_PIXEL_WIDTH = canvas.width;
     const WAV_PIXEL_HEIGHT = canvas.height;

@@ -5,14 +5,23 @@
  *****************************************************************************/
 
 /* global bootstrap */
-/* global LENGTH_OF_WAV_HEADER */
+/* global LENGTH_OF_WAV_HEADER, DISPLAYED_TIME_AMOUNTS */
 /* global renderWaveform */
-/* global addSVGText, addSVGLine, clearSVG */
+/* global addSVGText, addSVGLine, clearSVG, addSVGRect */
+/* global formatAxisUnits, formatTimeLabel */
 
 const sliceModal = new bootstrap.Modal(document.getElementById('slice-modal'), {
     backdrop: 'static',
     keyboard: false
 });
+
+const sliceLoadingContent = document.getElementById('slice-loading-content');
+const sliceContent = document.getElementById('slice-content');
+
+const sliceLoadingCancelButton = document.getElementById('slice-loading-cancel-button');
+
+const sliceLoadingSVG = document.getElementById('slice-loading-SVG');
+const sliceLoadingFillSVG = document.getElementById('slice-loading-fill-SVG');
 
 const sliceModalLabel = document.getElementById('slice-modal-label');
 const sliceCanvas = document.getElementById('slice-canvas');
@@ -26,8 +35,8 @@ const sliceTimeAxisLabelSVG = document.getElementById('slice-time-axis-label-svg
 const sliceSelectionLeftButton = document.getElementById('slice-selection-left-button');
 const sliceSelectionRightButton = document.getElementById('slice-selection-right-button');
 
-const sliceNavigateLeftButton = document.getElementById('slice-navigate-left-button');
-const sliceNavigateRightButton = document.getElementById('slice-navigate-right-button');
+const slicePageLeftButton = document.getElementById('slice-page-left-button');
+const slicePageRightButton = document.getElementById('slice-page-right-button');
 const slicePageSpan = document.getElementById('slice-page-span');
 
 const sliceSelectButton = document.getElementById('slice-select-button');
@@ -35,8 +44,6 @@ const sliceSelectButton = document.getElementById('slice-select-button');
 // Function called when a slice is selected, either by clicking the select button or by double clicking the canvas
 
 let sliceSelectEventHandler;
-
-// TODO: Add x axis labels
 
 // Length and sample rate of previewed file in seconds
 
@@ -58,6 +65,30 @@ let sliceSelection = 0;
 
 let pageSelections;
 
+// Whether or not the loading process has been cancelled
+
+let previewCancelled = false;
+
+/**
+ * Show loading bar UI
+ */
+function showSliceLoadingUI () {
+
+    sliceLoadingContent.style.display = '';
+    sliceContent.style.display = 'none';
+
+}
+
+/**
+ * Hide loading bar UI and display preview in modal
+ */
+function hideSliceLoadingUI () {
+
+    sliceLoadingContent.style.display = 'none';
+    sliceContent.style.display = '';
+
+}
+
 /**
  * Display modal
  */
@@ -77,30 +108,11 @@ function hideSliceModal () {
 }
 
 /**
- * Converts time in seconds into string of format HH:MM:SS
- * @param {int} time Amount of time in seconds
- * @returns Formatted string
- */
-function formatTime (time) {
-
-    const hours = Math.floor(time / 3600);
-    time -= hours * 3600;
-
-    const mins = Math.floor(time / 60);
-    time -= mins * 60;
-
-    const secs = Math.floor(time);
-
-    return String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-
-}
-
-/**
  * Update text in selection span
  */
 function updateSelectionSpan (start, end) {
 
-    selectionSpan.innerText = formatTime(start) + ' - ' + formatTime(end);
+    selectionSpan.innerText = formatTimeLabel(start, previewLength) + ' - ' + formatTimeLabel(end, previewLength);
 
 }
 
@@ -119,57 +131,22 @@ function drawPreviewAxis (callback) {
 
     let label = pageOffset;
 
-    const displayedTimeAmounts = [
-        {
-            amount: 3600,
-            labelIncrement: 900
-        },
-        {
-            amount: 1800,
-            labelIncrement: 300
-        },
-        {
-            amount: 900,
-            labelIncrement: 180
-        },
-        {
-            amount: 300,
-            labelIncrement: 60
-        },
-        {
-            amount: 60,
-            labelIncrement: 15
-        },
-        {
-            amount: 30,
-            labelIncrement: 5
-        },
-        {
-            amount: 10,
-            labelIncrement: 1
-        }
-    ];
-
-    let xLabelIncrementSecs = displayedTimeAmounts[0].labelIncrement;
+    let xLabelIncrementSecs = DISPLAYED_TIME_AMOUNTS[0].labelIncrement;
 
     const pageLength = (currentPage === pageCount - 1) ? finalPageLength : HOUR_SECONDS;
     const pageLengthSamples = pageLength * previewSampleRate;
 
-    console.log('pageLength', pageLength);
+    for (let i = 0; i < DISPLAYED_TIME_AMOUNTS.length; i++) {
 
-    for (let i = 0; i < displayedTimeAmounts.length; i++) {
+        xLabelIncrementSecs = DISPLAYED_TIME_AMOUNTS[i].labelIncrement;
 
-        xLabelIncrementSecs = displayedTimeAmounts[i].labelIncrement;
-
-        if (pageLength >= displayedTimeAmounts[i].amount) {
+        if (pageLength >= DISPLAYED_TIME_AMOUNTS[i].amount) {
 
             break;
 
         }
 
     }
-
-    console.log('xLabelIncrementSecs', xLabelIncrementSecs);
 
     const xLabelIncrementSamples = xLabelIncrementSecs * previewSampleRate;
 
@@ -207,7 +184,7 @@ function drawPreviewAxis (callback) {
 
         }
 
-        x = (x === 0) ? x + 1 : x;
+        x = (x === 0) ? x + 0.5 : x;
         x = (x === sliceCanvas.width) ? x - 0.5 : x;
 
         // Shift along to align with edge of canvas (axis has a buffer zone to allow text to overflow slightly without being cut off)
@@ -215,11 +192,9 @@ function drawPreviewAxis (callback) {
 
         addSVGLine(sliceTimeAxisSVG, x, 0, x, xMarkerLength);
 
-        const labelText = formatTime(label / previewSampleRate);
+        const labelText = formatTimeLabel(label / previewSampleRate, previewLength);
 
-        console.log(x, labelText);
-
-        addSVGText(sliceTimeAxisSVG, labelText, x, 10, textAnchor, 'middle');
+        addSVGText(sliceTimeAxisSVG, labelText, x, 12, textAnchor, 'middle');
 
         label += xLabelIncrementSamples;
 
@@ -229,7 +204,11 @@ function drawPreviewAxis (callback) {
 
     clearSVG(sliceTimeAxisLabelSVG);
 
-    addSVGText(sliceTimeAxisLabelSVG, 'Time (hh:mm:ss)', sliceTimeAxisLabelSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+    // Draw axis heading
+
+    const format = formatAxisUnits(previewLength * previewSampleRate, pageLength * previewSampleRate, previewSampleRate);
+
+    addSVGText(sliceTimeAxisLabelSVG, 'Time (' + format + ')', sliceTimeAxisLabelSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
 
     callback();
 
@@ -260,7 +239,7 @@ function drawPreviewWaveform (callback) {
 
 /**
  * Change current page number to value given
- * @param {int} newPage Page number to be set to
+ * @param {number} newPage Page number to be set to
  */
 function updatePreviewPage (newPage) {
 
@@ -268,21 +247,53 @@ function updatePreviewPage (newPage) {
 
     updateSliceSelection(pageSelections[currentPage]);
 
-    sliceNavigateLeftButton.disabled = (currentPage === 0);
-    sliceNavigateRightButton.disabled = (currentPage === waveformPages.length - 1);
+    slicePageLeftButton.disabled = (currentPage === 0);
+    slicePageRightButton.disabled = (currentPage === waveformPages.length - 1);
 
     slicePageSpan.innerHTML = 'Page ' + (currentPage + 1) + ' of ' + pageCount;
+
+}
+
+function drawSliceLoadingBar (completion) {
+
+    const w = sliceLoadingSVG.width.baseVal.value;
+    const h = sliceLoadingSVG.height.baseVal.value;
+
+    const loadingBarXBuffer = 30.5;
+    const loadingBarH = 40;
+
+    const loadingBarW = w - (2 * loadingBarXBuffer);
+    const completionW = completion * loadingBarW;
+
+    const barY = Math.floor((h - loadingBarH) / 2) + 0.5;
+
+    if (completion === 0) {
+
+        clearSVG(sliceLoadingSVG);
+        addSVGRect(sliceLoadingSVG, loadingBarXBuffer, barY, loadingBarW, loadingBarH, 'black', 1, false);
+
+    }
+
+    clearSVG(sliceLoadingFillSVG);
+
+    // Draw percentage completion
+
+    addSVGRect(sliceLoadingFillSVG, loadingBarXBuffer, barY, completionW, loadingBarH, '#007BFF', 1, true, '#007BFF');
 
 }
 
 /**
  * Read file in chunks to calculate a series of min and max values which can be used to draw a waveform
  * @param {FileSystemFileHandle} fileHandler Object which handles file access
- * @param {int} lengthSeconds Length of file in seconds
- * @param {int} previewSampleRate File's sample rate
+ * @param {number} lengthSeconds Length of file in seconds
+ * @param {number} previewSampleRate File's sample rate
  * @param {function} callback Function to be called after completion
  */
-async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback) {
+async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, cancelCallback) {
+
+    previewCancelled = false;
+
+    drawSliceLoadingBar(0);
 
     sliceModalLabel.innerText = fileHandler.name;
 
@@ -361,6 +372,13 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback) {
 
     while (processedSampleCount < fileSize) {
 
+        if (previewCancelled) {
+
+            cancelCallback();
+            return;
+
+        }
+
         const start = processedSampleCount;
         const end = Math.min(processedSampleCount + currentChunkSizeBytes, fileSize);
 
@@ -409,6 +427,9 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback) {
 
         }
 
+        const completion = processedSampleCount / fileSize;
+        drawSliceLoadingBar(completion);
+
     }
 
     callback();
@@ -444,7 +465,7 @@ function getSecondWidth () {
 
 /**
  * Draw a translucent rectangle over selected slice
- * @param {int} x x co-ordinate on sliceCanvas
+ * @param {number} x x co-ordinate on sliceCanvas
  */
 function drawSliceSelection (x) {
 
@@ -460,28 +481,47 @@ function drawSliceSelection (x) {
 }
 
 /**
+ * @returns The position of the final selectable period in seconds
+ */
+function getFinalPeriod () {
+
+    const sixtyWidth = getSecondWidth() * 60;
+
+    let finalPeriod;
+
+    if (sliceSelectionCanvas.width % sixtyWidth === 0) {
+
+        finalPeriod = previewLength - 60;
+
+    } else {
+
+        if (previewLength % 60 <= 30) {
+
+            finalPeriod = previewLength - (previewLength % 60) - 30;
+
+        } else {
+
+            finalPeriod = previewLength - (previewLength % 60);
+
+        }
+
+    }
+
+    return finalPeriod;
+
+}
+
+/**
  * Apply limits, update stored selection value, and draw selection area
- * @param {int} seconds Selected time
+ * @param {number} seconds Selected time
  */
 function updateSliceSelection (seconds) {
 
     seconds = Math.round(seconds / 30) * 30;
 
-    const thirtyWidth = getSecondWidth() * 30;
-
     // Calculate what the last selectable section is
 
-    let finalPeriod;
-
-    if (sliceSelectionCanvas.width % thirtyWidth === 0) {
-
-        finalPeriod = previewLength - 30;
-
-    } else {
-
-        finalPeriod = previewLength - (previewLength % 30);
-
-    }
+    const finalPeriod = getFinalPeriod();
 
     // Lock selection to limits of file if on last page
 
@@ -504,27 +544,19 @@ function updateSliceSelection (seconds) {
     const start = seconds;
     let end = start + 60;
 
-    if (currentPage === pageCount - 1) {
-
-        end = (end > previewLength) ? previewLength : end;
-
-    } else {
-
-        end = (end > HOUR_SECONDS) ? HOUR_SECONDS : end;
-
-    }
+    end = (end > previewLength) ? previewLength : end;
 
     updateSelectionSpan(start, end);
 
-    sliceSelectionLeftButton.disabled = (sliceSelection === 0);
-    sliceSelectionRightButton.disabled = (sliceSelection === finalPeriod);
+    sliceSelectionLeftButton.disabled = (sliceSelection === 0 || pageSeconds === -30);
+    sliceSelectionRightButton.disabled = (sliceSelection === finalPeriod || pageSeconds === HOUR_SECONDS - 30);
 
     pageSelections[currentPage] = seconds;
 
 }
 
 /**
- * @param {int} x x co-ordinate on sliceCanvas
+ * @param {number} x x co-ordinate on sliceCanvas
  * @returns What time in the file x represents
  */
 function convertPreviewPixelsToSeconds (x) {
@@ -582,23 +614,13 @@ sliceSelectionCanvas.addEventListener('mousemove', (e) => {
 
     // Calculate what the last selectable section is
 
-    let finalPeriod;
-
-    if (sliceHoverCanvas.width % thirtyWidth === 0) {
-
-        finalPeriod = sliceHoverCanvas.width - (thirtyWidth * 2);
-
-    } else {
-
-        finalPeriod = sliceHoverCanvas.width - (sliceHoverCanvas.width % thirtyWidth);
-
-    }
+    const finalPeriodX = getFinalPeriod() * getSecondWidth();
 
     // Lock selection to length of file
 
     if (currentPage === pageCount - 1) {
 
-        x = (x > finalPeriod) ? finalPeriod : x;
+        x = (x > finalPeriodX) ? finalPeriodX : x;
 
     }
 
@@ -622,7 +644,7 @@ sliceSelectionCanvas.addEventListener('mousemove', (e) => {
 /**
  * Add functionality to a button which runs a function every delay ms while it is held
  * @param {Element} button Button to apply functionality to
- * @param {int} delay Amount of time between each firing of the action
+ * @param {number} delay Amount of time between each firing of the action
  * @param {function} action Function to be run every delay ms
  */
 function holdButton (button, delay, action) {
@@ -659,17 +681,29 @@ function holdButton (button, delay, action) {
 
 holdButton(sliceSelectionLeftButton, 300, () => {
 
-    updateSliceSelection(sliceSelection - 30);
+    // Add 30 seconds to check if middle overlaps start of page
+
+    if (sliceSelection - 30 + 30 >= currentPage * HOUR_SECONDS) {
+
+        updateSliceSelection(sliceSelection - 30);
+
+    }
 
 });
 
 holdButton(sliceSelectionRightButton, 300, () => {
 
-    updateSliceSelection(sliceSelection + 30);
+    // Selection is recorded from start of 60 second period, so add 30 seconds to check if middle overlaps end of page
+
+    if (sliceSelection + 30 + 30 <= (currentPage + 1) * HOUR_SECONDS) {
+
+        updateSliceSelection(sliceSelection + 30);
+
+    }
 
 });
 
-sliceNavigateLeftButton.addEventListener('click', () => {
+slicePageLeftButton.addEventListener('click', () => {
 
     updatePreviewPage(currentPage - 1);
 
@@ -677,7 +711,7 @@ sliceNavigateLeftButton.addEventListener('click', () => {
 
 });
 
-sliceNavigateRightButton.addEventListener('click', () => {
+slicePageRightButton.addEventListener('click', () => {
 
     updatePreviewPage(currentPage + 1);
 
@@ -702,11 +736,21 @@ function usePreviewSelection () {
 
     if (sliceSelectEventHandler) {
 
-        sliceSelectEventHandler(sliceSelection);
+        // Send back start of selected period and length
+
+        const length = sliceSelection + 60 > previewLength ? previewLength - sliceSelection : 60;
+
+        sliceSelectEventHandler(sliceSelection, length);
 
     }
 
 }
+
+sliceLoadingCancelButton.addEventListener('click', () => {
+
+    previewCancelled = true;
+
+});
 
 sliceSelectButton.addEventListener('click', usePreviewSelection);
 sliceSelectionCanvas.addEventListener('dblclick', usePreviewSelection);

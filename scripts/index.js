@@ -4,15 +4,18 @@
  * June 2021
  *****************************************************************************/
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readWavContents, checkHeader */
-/* global loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler, formatTime */
+// TODO: Use regex in expander.js to extract time of recording and enable starting time from then
+
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readExampleWav, checkHeader */
+/* global showSliceLoadingUI, hideSliceLoadingUI, loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
 /* global XMLHttpRequest */
 /* global applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
 /* global INT16_MAX, LENGTH_OF_WAV_HEADER */
+/* global formatAxisUnits, getIncrementAndPrecision, formatTimeLabel */
 
-/* global addSVGText, addSVGLine, clearSVG */
+/* global addSVGText, addSVGLine, clearSVG, addSVGRect */
 
 /* global prepareUI, sampleRateChange */
 /* global getPassFiltersObserved, getCentreObserved */
@@ -59,16 +62,13 @@ const artistSpan = document.getElementById('artist-span');
 const commentSpan = document.getElementById('comment-span');
 
 // Recording slice UI
-const sliceBorderCanvas = document.getElementById('slice-border-canvas');
-const sliceCheckbox = document.getElementById('slice-checkbox');
-const sliceCheckboxLabel = document.getElementById('slice-checkbox-label');
+const sliceLoadingBorderSVG = document.getElementById('slice-loading-border-svg');
+const sliceBorderSVG = document.getElementById('slice-border-svg');
 const sliceCloseButton = document.getElementById('slice-close-button');
 const sliceReselectSpan = document.getElementById('slice-reselect-span');
 const sliceReselectLink = document.getElementById('slice-reselect-link');
 let showReselectLink = false;
-
-// File handler for file being sliced
-let previewFileHandler;
+let sliceSelectionCallback;
 
 // Example file variables
 
@@ -142,7 +142,7 @@ const spectrogramGoertzelLineSVG = document.getElementById('spectrogram-goertzel
 const spectrogramThresholdCanvas = document.getElementById('spectrogram-threshold-canvas'); // Canvas layer where amplitude thresholded periods are drawn
 const spectrogramCanvas = document.getElementById('spectrogram-canvas'); // Canvas layer where spectrogram is drawn
 const spectrogramLoadingSVG = document.getElementById('spectrogram-loading-svg');
-const spectrogramBorderCanvas = document.getElementById('spectrogram-border-canvas');
+const spectrogramBorderSVG = document.getElementById('spectrogram-border-svg');
 
 const waveformHolder = document.getElementById('waveform-holder');
 const waveformPlaybackCanvas = document.getElementById('waveform-playback-canvas'); // Canvas layer where playback progress
@@ -151,7 +151,7 @@ const waveformThresholdCanvas = document.getElementById('waveform-threshold-canv
 const waveformThresholdLineSVG = document.getElementById('waveform-threshold-line-svg'); // SVG layer where amplitude threshold value lines are drawn
 const waveformCanvas = document.getElementById('waveform-canvas'); // Canvas layer where waveform is drawn
 const waveformLoadingSVG = document.getElementById('waveform-loading-svg');
-const waveformBorderCanvas = document.getElementById('waveform-border-canvas');
+const waveformBorderSVG = document.getElementById('waveform-border-svg');
 
 const goertzelCanvasHolder = document.getElementById('goertzel-canvas-holder');
 const goertzelPlaybackCanvas = document.getElementById('goertzel-playback-canvas'); // Canvas layer where playback progress
@@ -159,7 +159,7 @@ const goertzelDragCanvas = document.getElementById('goertzel-drag-canvas'); // C
 const goertzelThresholdCanvas = document.getElementById('goertzel-threshold-canvas'); // Canvas layer where Goertzel thresholded periods are drawn
 const goertzelThresholdLineSVG = document.getElementById('goertzel-threshold-line-svg'); // SVG layer where Goertzel thresholded periods are drawn
 const goertzelCanvas = document.getElementById('goertzel-canvas'); // Canvas layer where Goertzel response is drawn
-const goertzelBorderCanvas = document.getElementById('goertzel-border-canvas');
+const goertzelBorderSVG = document.getElementById('goertzel-border-svg');
 
 const timeLabelSVG = document.getElementById('time-axis-label-svg');
 const timeAxisHeadingSVG = document.getElementById('time-axis-heading-svg');
@@ -186,14 +186,21 @@ let firstFile = true;
 let artist = '';
 let comment = '';
 
-let trimmedFile = false;
 let resampledFile = false;
 
 let originalDataSize = 0;
-let originalFileSize = 0;
 let originalSampleRate = 0;
 
 let downsampledUnfilteredSamples;
+
+// If a slice is selected, the amount all x labels should be offset by
+
+let timeLabelOffset = 0;
+
+// If file is sliced, the original size of the file in samples
+
+let previewFileLengthSamples;
+let originalFileLength = 0;
 
 // Drawing/processing flag
 
@@ -274,11 +281,15 @@ const exportVideoButton = document.getElementById('export-video-button');
 const exportVideoIcon = document.getElementById('video-icon');
 const exportVideoSpinner = document.getElementById('video-spinner');
 
+// Instruction UI
+
+const instructionsContent = document.getElementById('instructions-content');
+
 /**
- * 0 - Default (display trimmed message if appropriate)
+ * 0 - Default
  * 1 - Loading
  * 2 - Error
- * @param {int} index Which span to show
+ * @param {number} index Which span to show
  */
 function displaySpans (index) {
 
@@ -296,7 +307,7 @@ function displaySpans (index) {
 
     case 0:
         fileSpan.style.display = '';
-        resampledSpan.style.display = trimmedFile || resampledFile ? '' : 'none';
+        resampledSpan.style.display = resampledFile ? '' : 'none';
         loadingSpan.style.display = 'none';
         errorSpan.style.display = 'none';
 
@@ -473,14 +484,14 @@ function getGoertzelZoomY () {
  */
 function drawBorders () {
 
-    const canvases = [spectrogramBorderCanvas, waveformBorderCanvas, goertzelBorderCanvas, sliceBorderCanvas];
+    const canvases = [spectrogramBorderSVG, waveformBorderSVG, goertzelBorderSVG, sliceLoadingBorderSVG, sliceBorderSVG];
 
     for (let i = 0; i < canvases.length; i++) {
 
-        const ctx = canvases[i].getContext('2d');
+        const w = canvases[i].width.baseVal.value;
+        const h = canvases[i].height.baseVal.value;
 
-        ctx.strokeStyle = 'black';
-        ctx.strokeRect(0, 0, canvases[i].width, canvases[i].height);
+        addSVGRect(canvases[i], 0, 0, w, h, 'black', 2, false);
 
     }
 
@@ -507,97 +518,24 @@ function drawAxisLabels () {
 
     let label = 0;
 
-    const displayedTimeAmounts = [
-        {
-            amount: 30,
-            labelIncrement: 5,
-            precision: 0
-        },
-        {
-            amount: 10,
-            labelIncrement: 2,
-            precision: 0
-        },
-        {
-            amount: 5,
-            labelIncrement: 1,
-            precision: 0
-        },
-        {
-            amount: 2,
-            labelIncrement: 0.5,
-            precision: 1
-        },
-        {
-            amount: 1,
-            labelIncrement: 0.2,
-            precision: 1
-        },
-        {
-            amount: 0.5,
-            labelIncrement: 0.1,
-            precision: 1
-        },
-        {
-            amount: 0.2,
-            labelIncrement: 0.05,
-            precision: 2
-        },
-        {
-            amount: 0.1,
-            labelIncrement: 0.02,
-            precision: 2
-        },
-        {
-            amount: 0.05,
-            labelIncrement: 0.01,
-            precision: 2
-        },
-        {
-            amount: 0.02,
-            labelIncrement: 0.005,
-            precision: 3
-        },
-        {
-            amount: 0.01,
-            labelIncrement: 0.002,
-            precision: 3
-        },
-        {
-            amount: 0.005,
-            labelIncrement: 0.001,
-            precision: 3
-        }
-    ];
+    // Get the label increment amount and label decimal precision
 
-    let xLabelIncrementSecs = displayedTimeAmounts[0].labelIncrement;
-    let xLabelDecimalPlaces = displayedTimeAmounts[0].precision;
-
-    for (let i = 0; i < displayedTimeAmounts.length; i++) {
-
-        const displayedTimeSamples = displayedTimeAmounts[i].amount * currentSampleRate;
-
-        xLabelIncrementSecs = displayedTimeAmounts[i].labelIncrement;
-        xLabelDecimalPlaces = displayedTimeAmounts[i].precision;
-
-        if (displayLength > displayedTimeSamples) {
-
-            break;
-
-        }
-
-    }
+    const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+    const xLabelIncrementSecs = incrementPrecision.xLabelIncrementSecs;
+    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
 
     const xLabelIncrementSamples = xLabelIncrementSecs * currentSampleRate;
 
     // So the centre of the text can be the label location, there's a small amount of padding around the label canvas
     const xLabelPadding = spectrogramLabelSVG.width.baseVal.value;
 
+    const currentDisplayTime = Math.max(displayLength, originalFileLength) / currentSampleRate;
+
     while (label <= currentSampleCount) {
 
         // Convert the time to a pixel value, then take into account the label width and the padding to position correctly
 
-        let x = samplesToPixels(label) - samplesToPixels(offset);
+        const x = samplesToPixels(label) - samplesToPixels(offset);
 
         if (x < 0) {
 
@@ -612,15 +550,36 @@ function drawAxisLabels () {
 
         }
 
-        x = (x === 0) ? x + 1 : x;
-        x = (x === waveformCanvas.width) ? x - 0.5 : x;
+        let labelX = x;
+        let tickX = x + xLabelPadding;
 
-        x += xLabelPadding;
+        // If the label format includes milliseconds and hours, the offset at the ends must be bigger
 
-        const labelText = (label / currentSampleRate).toFixed(xLabelDecimalPlaces);
+        let xLabelEdgeOffset = 2;
 
-        addSVGText(timeLabelSVG, labelText, x, 10, 'middle', 'middle');
-        addSVGLine(timeLabelSVG, x, 0, x, xMarkerLength);
+        xLabelEdgeOffset = (currentDisplayTime > 3600) ? xLabelEdgeOffset + 3 : xLabelEdgeOffset;
+        xLabelEdgeOffset = (xLabelDecimalPlaces >= 2) ? xLabelEdgeOffset + 4 : xLabelEdgeOffset;
+        xLabelEdgeOffset = (xLabelDecimalPlaces >= 3) ? xLabelEdgeOffset + 4 : xLabelEdgeOffset;
+
+        labelX = (labelX === 0) ? labelX + xLabelEdgeOffset : labelX;
+        labelX = (labelX === waveformCanvas.width) ? labelX - xLabelEdgeOffset : labelX;
+
+        labelX += xLabelPadding;
+
+        // Ticks must be offset to 0.5
+
+        tickX = (tickX === xLabelPadding) ? tickX + 0.5 : tickX;
+        tickX = (tickX >= waveformCanvas.width) ? tickX - 0.5 : tickX;
+
+        let labelValue = label / currentSampleRate;
+        labelValue += timeLabelOffset;
+
+        const labelText = formatTimeLabel(labelValue, currentDisplayTime, xLabelDecimalPlaces);
+
+        tickX = Math.floor(tickX) + 0.5;
+
+        addSVGText(timeLabelSVG, labelText, labelX, 12, 'middle', 'middle');
+        addSVGLine(timeLabelSVG, tickX, 0, tickX, xMarkerLength);
 
         label += xLabelIncrementSamples;
 
@@ -670,7 +629,8 @@ function drawAxisLabels () {
         } else {
 
             addSVGText(spectrogramLabelSVG, labelText, specLabelX, y, 'end', 'middle');
-            addSVGLine(spectrogramLabelSVG, specMarkerX, y, spectrogramLabelSVG.width.baseVal.value, y);
+            const endLabelY = Math.floor(y) + 0.5;
+            addSVGLine(spectrogramLabelSVG, specMarkerX, endLabelY, spectrogramLabelSVG.width.baseVal.value, endLabelY);
 
         }
 
@@ -873,10 +833,21 @@ function drawAxisLabels () {
 
         addSVGText(waveformLabelSVG, waveformLabelTexts[i], wavLabelX, labelY, 'end', baseline);
 
-        // Nudge markers slightly onto canvas so they're not cut off
+        // Nudge markers slightly onto canvas so they're not cut off and align with 0.5
 
-        markerY = (markerY === 0) ? markerY + 0.5 : markerY;
-        markerY = (markerY === waveformCanvasH) ? markerY - 0.5 : markerY;
+        if (markerY === 0) {
+
+            markerY = markerY + 0.5;
+
+        } else if (markerY === waveformCanvasH) {
+
+            markerY = markerY - 0.5;
+
+        } else {
+
+            markerY = Math.floor(markerY) + 0.5;
+
+        }
 
         addSVGLine(waveformLabelSVG, wavMarkerX, markerY, waveformLabelSVG.width.baseVal.value, markerY);
 
@@ -1017,7 +988,11 @@ function drawAxisHeadings () {
 
     clearSVG(timeAxisHeadingSVG);
 
-    addSVGText(timeAxisHeadingSVG, 'Time (seconds)', timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+    const currentSampleRate = getSampleRate();
+
+    const format = formatAxisUnits(originalFileLength, displayLength, currentSampleRate);
+
+    addSVGText(timeAxisHeadingSVG, 'Time (' + format + ')', timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
 
 }
 
@@ -1459,7 +1434,6 @@ function reenableUI () {
     volumeSelect.disabled = false;
     playbackModeSelect.disabled = false;
 
-    sliceCheckbox.disabled = false;
     sliceReselectLink.disabled = false;
 
     enableFilterUI();
@@ -1469,6 +1443,8 @@ function reenableUI () {
         displaySpans(0);
 
     }
+
+    hideSliceModal();
 
 }
 
@@ -1512,6 +1488,7 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
         }
 
         drawAxisLabels();
+        drawAxisHeadings();
 
         drawing = false;
 
@@ -1636,7 +1613,6 @@ function disableUI (startUp) {
     volumeSelect.disabled = true;
     playbackModeSelect.disabled = true;
 
-    sliceCheckbox.disabled = true;
     sliceReselectLink.disabled = true;
 
     disableFilterUI();
@@ -2018,6 +1994,7 @@ function zoomInGoertzelY () {
             drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
                 drawAxisLabels();
+                drawAxisHeadings();
                 drawGoertzelThresholdedPeriods();
                 drawGoertzelFilter();
                 drawGoertzelThresholdLine();
@@ -2059,6 +2036,7 @@ function zoomOutGoertzelY () {
             drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
                 drawAxisLabels();
+                drawAxisHeadings();
                 drawGoertzelThresholdedPeriods();
                 drawGoertzelFilter();
                 drawGoertzelThresholdLine();
@@ -2096,6 +2074,7 @@ function resetGoertzelZoom () {
         drawGoertzelPlot(goertzelValues, windowLength, offset, displayLength, getGoertzelZoomY(), () => {
 
             drawAxisLabels();
+            drawAxisHeadings();
             drawGoertzelThresholdedPeriods();
             drawGoertzelFilter();
             drawGoertzelThresholdLine();
@@ -2386,8 +2365,7 @@ function processReadResult (result, callback) {
 
         if (result.error === 'Could not read input file.' || result.error === 'File is too large. Use the Split function in the AudioMoth Configuration App to split your recording into 60 second sections.') {
 
-            errorMessage += '<br>';
-            errorMessage += 'For more information, <u><a href="#faqs" style="color: white;">click here</a></u>.';
+            errorMessage += ' For more information, <u><a href="#faqs" style="color: white;">click here</a></u>.';
 
         }
 
@@ -2398,6 +2376,8 @@ function processReadResult (result, callback) {
         return;
 
     }
+
+    originalFileLength = previewFileLengthSamples;
 
     trueSampleRate = result.sampleRate;
     trueSampleCount = result.samples.length;
@@ -2418,10 +2398,28 @@ function processReadResult (result, callback) {
 }
 
 /**
+ * Close preview UI and re-enable everything
+ */
+function cancelPreview () {
+
+    // Remove 'Loading...' from file span
+    displaySpans(0);
+
+    // Hide modal window
+    hideSliceModal();
+
+    reenableUI();
+
+}
+
+/**
  * Read the contents of the file given by the current filehandler
  * @returns Samples read from file
  */
 async function readFromFile (exampleFilePath, callback) {
+
+    timeLabelOffset = 0;
+    previewFileLengthSamples = 0;
 
     console.log('Reading samples');
 
@@ -2442,7 +2440,7 @@ async function readFromFile (exampleFilePath, callback) {
 
                 const arrayBuffer = req.response;
 
-                result = readWavContents(arrayBuffer);
+                result = readExampleWav(arrayBuffer);
 
                 processReadResult(result, callback);
 
@@ -2463,29 +2461,39 @@ async function readFromFile (exampleFilePath, callback) {
         if (!fileHandler) {
 
             console.error('No filehandler!');
-            showErrorDisplay('Failed to load file');
+            showErrorDisplay('Failed to load file.');
             return;
 
         }
 
         const checkResult = await checkHeader(fileHandler);
+
+        if (!checkResult.success) {
+
+            console.error('WAV file format is not supported!');
+            showErrorDisplay('This WAV file format is not supported.');
+            return;
+
+        }
+
         const header = checkResult.header;
 
         const previewSampleRate = header.wavFormat.samplesPerSecond;
-        const previewFileLengthSamples = header.data.size / header.wavFormat.bytesPerCapture;
+        previewFileLengthSamples = header.data.size / header.wavFormat.bytesPerCapture;
         const previewFileLength = previewFileLengthSamples / previewSampleRate;
 
-        if (previewFileLength > 60 && !sliceCheckbox.checked) {
+        if (previewFileLength > 60) {
 
             disableUI(false);
 
             console.log('File is >60 seconds, loading preview');
 
-            // TODO: Add method to return to this UI and reselect
+            sliceSelectionCallback = callback;
+
+            showSliceLoadingUI();
+            showSliceModal();
 
             loadPreview(fileHandler, previewFileLength, previewSampleRate, () => {
-
-                previewFileHandler = fileHandler;
 
                 updateSelectionSpan(0, 60);
 
@@ -2493,11 +2501,11 @@ async function readFromFile (exampleFilePath, callback) {
 
                     drawSliceSelection(0);
 
-                    showSliceModal();
+                    hideSliceLoadingUI();
 
                 });
 
-            });
+            }, cancelPreview);
 
         } else {
 
@@ -2513,32 +2521,42 @@ async function readFromFile (exampleFilePath, callback) {
 
 }
 
-setSliceSelectButtonEventHandler((selection) => {
+setSliceSelectButtonEventHandler(async (selection, length) => {
 
-    // TODO: Load just the selected chunk of the file
+    timeLabelOffset = selection;
 
-    // TODO: Change fileSpan to previewed file name
-
-    sliceReselectLink.innerText = formatTime(selection);
-    showReselectLink = true;
+    let readResult;
 
     hideSliceModal();
 
-    reenableUI();
+    // If a slice length doesn't equal 60, don't provide a length and slice() will automaticall select until the end of the file
+
+    if (length !== 60) {
+
+        readResult = await readWav(fileHandler, selection);
+
+    } else {
+
+        readResult = await readWav(fileHandler, selection, length);
+
+    }
+
+    processReadResult(readResult, (processedResult) => {
+
+        const currentSampleRate = getSampleRate();
+        const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
+        const maxDisplayTime = (Math.max(currentSampleCount, originalFileLength) / currentSampleRate) + timeLabelOffset;
+
+        sliceReselectLink.innerText = formatTimeLabel(selection, maxDisplayTime) + ' - ' + formatTimeLabel(selection + length, maxDisplayTime);
+        showReselectLink = true;
+
+        sliceSelectionCallback(processedResult);
+
+    });
 
 });
 
-sliceCloseButton.addEventListener('click', () => {
-
-    // Remove 'Loading...' from file span
-    displaySpans(0);
-
-    // Hide modal window
-    hideSliceModal();
-
-    reenableUI();
-
-});
+sliceCloseButton.addEventListener('click', cancelPreview);
 
 sliceReselectLink.addEventListener('click', () => {
 
@@ -2715,15 +2733,11 @@ async function loadFile (exampleFilePath, exampleName) {
 
         filteredSamples = new Array(sampleCount);
 
-        // If file has been trimmed or resampled, display warning
-
-        trimmedFile = result.trimmed;
+        // If file has been resampled, display warning
 
         resampledFile = result.resampled;
 
         originalDataSize = result.originalDataSize;
-
-        originalFileSize = result.originalFileSize;
 
         originalSampleRate = result.originalSampleRate;
 
@@ -3090,11 +3104,22 @@ function dragZoom (dragEndX) {
 
         }
 
-        newOffset = (newOffset < 0) ? 0 : newOffset;
+        // If drag selection is imperceptively close to an edge, just round it to the edge
+
+        const DRAG_ZOOM_BUFFER = 10;
+
+        newOffset = (newOffset < DRAG_ZOOM_BUFFER) ? 0 : newOffset;
+
+        if (sampleCount - (newOffset + newDisplayLength) < DRAG_ZOOM_BUFFER) {
+
+            newOffset = sampleCount - newDisplayLength;
+
+        }
 
         // Set new zoom/offset values
 
         displayLength = newDisplayLength;
+
         offset = newOffset;
 
         removeEndGap();
@@ -3132,10 +3157,9 @@ document.addEventListener('mouseup', (e) => {
         // Get end of zoom drag
 
         const rect = spectrogramDragCanvas.getBoundingClientRect();
-        let dragEndX = Math.min(w, Math.max(0, e.clientX - rect.left));
 
-        dragEndX = (dragEndX < 0) ? 0 : dragEndX;
-        dragEndX = (dragEndX > w) ? w : dragEndX;
+        let dragEndX = e.clientX - rect.left;
+        dragEndX = Math.min(w, Math.max(0, dragEndX));
 
         dragZoom(dragEndX);
 
@@ -3259,6 +3283,7 @@ amplitudeThresholdScaleSelect.addEventListener('change', function () {
     }
 
     drawAxisLabels();
+    drawAxisHeadings();
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
@@ -4156,7 +4181,29 @@ function createExportCanvas (exportFunction) {
 
     const fileName = fileSpan.innerText.replace(/\.[^/.]+$/, '');
 
-    return exportFunction(canvas0array, canvas1array, timeLabelSVG, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileName, title);
+    // Create x axis title by working out what format the labels will be in
+
+    const currentSampleRate = getSampleRate();
+    const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
+    const maxDisplayTime = (currentSampleCount / currentSampleRate) + timeLabelOffset;
+
+    let format = (maxDisplayTime >= 3600) ? 'HH:' : '';
+    format += (maxDisplayTime >= 60) ? 'MM:' : '';
+    format += 'SS';
+
+    const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
+
+    if (xLabelDecimalPlaces > 0) {
+
+        format += '.';
+        format += 'm'.repeat(xLabelDecimalPlaces);
+
+    }
+
+    const xAxisTitle = 'Time (' + format + ')';
+
+    return exportFunction(canvas0array, canvas1array, timeLabelSVG, xAxisTitle, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileName, title);
 
 }
 
@@ -4447,8 +4494,6 @@ if (!isChrome) {
     fileSelectionTitleDiv.classList.add('grey');
     browserErrorSpan.style.display = '';
     fileSelectionTitleSpan.style.display = 'none';
-    sliceCheckbox.style.display = 'none';
-    sliceCheckboxLabel.style.display = 'none';
     disabledFileButton.style.display = '';
     fileButton.style.display = 'none';
 
@@ -4467,5 +4512,16 @@ if (urlParams.get('dev')) {
 } else {
 
     loadExampleFiles();
+
+}
+
+if (urlParams.get('app')) {
+
+    console.log('APP MODE - Hiding instructions');
+    instructionsContent.style.display = 'none';
+
+} else {
+
+    instructionsContent.style.display = '';
 
 }

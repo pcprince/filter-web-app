@@ -8,7 +8,20 @@
 
 window.jsPDF = window.jspdf.jsPDF;
 
-const w = 824;
+const xAxisLabelH = 10;
+const yAxisLabelW = 15;
+const xAxisMarkerH = 25;
+const yAxisMarkerW = 40;
+
+const edgeSpacingW = 15;
+const edgeSpacingH = 15;
+
+const topSpacing = 30 + edgeSpacingH;
+
+const xAxisH = xAxisMarkerH + xAxisLabelH;
+const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacingW;
+
+const w = 840;
 const h = Math.ceil(w / 4 * 3);
 
 /**
@@ -16,33 +29,21 @@ const h = Math.ceil(w / 4 * 3);
  * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
  * @param {canvas[]} canvas1array Ordered array of canvas layers for bottom plot
  * @param {canvas} xAxisSVG SVG canvas containing x axis labels
+ * @param {string} xAxisTitle String describing the x axis units
  * @param {canvas} yAxis0SVG SVG canvas containing y axis labels of top plot
  * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
  * @param {string} yAxisTitle0 Title of top plot's y axis
  * @param {string} yAxisTitle1 Title of bottom plot's y axis
- * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
- * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
+ * @param {number[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {number[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
  * @param {string} title Title to be drawn at the top of the file(s)
  */
-function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
+function exportPDF (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     console.log('Exporting to PDF');
 
     // Calculate size of overall canvas
-
-    const xAxisLabelH = 10;
-    const yAxisLabelW = 15;
-    const xAxisMarkerH = 25;
-    const yAxisMarkerW = 40;
-
-    const edgeSpacingW = 8;
-    const edgeSpacingH = 15;
-
-    const topSpacing = 30 + edgeSpacingH;
-
-    const xAxisH = xAxisMarkerH + xAxisLabelH;
-    const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacingW;
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
@@ -100,7 +101,6 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
         let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
         const labelText = xLabels[i].innerHTML;
 
-        x = (i === 0) ? x - 1 : x;
         x = (i === xLines.length - 1) ? x + 0.5 : x;
 
         pdfDoc.line(x, yOffset0, x, yOffset0 + 5);
@@ -184,7 +184,7 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
 
     // Add titles
 
-    pdfDoc.text('Time (secs)', yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH, {align: 'center', baseline: 'top'});
+    pdfDoc.text(xAxisTitle, yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH, {align: 'center', baseline: 'top'});
 
     // jsPDF breaks if you try to centre align rotated text, so you have to hard code an offset
     const textOffsetY = (yAxisTitle0 === 'Amplitude') ? 20 : 50;
@@ -205,31 +205,19 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
  * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
  * @param {canvas[]} canvas1array Ordered array of canvas layers for bottom plot
  * @param {canvas} xAxisSVG SVG canvas containing x axis labels
+ * @param {string} xAxisTitle String describing the x axis units
  * @param {canvas} yAxis0SVG SVG canvas containing y axis labels of top plot
  * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
  * @param {string} yAxisTitle0 Title of top plot's y axis
  * @param {string} yAxisTitle1 Title of bottom plot's y axis
- * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
- * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
+ * @param {number[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {number[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
  * @param {string} title Title to be drawn at the top of the file(s)
  */
-function createImageCanvas (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
+function createImageCanvas (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     // Calculate size of overall canvas
-
-    const xAxisLabelH = 10;
-    const yAxisLabelW = 15;
-    const xAxisMarkerH = 25;
-    const yAxisMarkerW = 40;
-
-    const edgeSpacingW = 8;
-    const edgeSpacingH = 15;
-
-    const topSpacing = 30 + edgeSpacingH;
-
-    const xAxisH = xAxisMarkerH + xAxisLabelH;
-    const yAxisW = yAxisMarkerW + yAxisLabelW + edgeSpacingW;
 
     const canvas0 = canvas0array[0];
     const canvas1 = canvas1array[0];
@@ -294,7 +282,6 @@ function createImageCanvas (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAx
 
         let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
         x = x - (x % 1) + 0.5;
-        x = (i === 0) ? x - 1 : x;
 
         const labelText = xLabels[i].innerHTML;
 
@@ -407,7 +394,7 @@ function createImageCanvas (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAx
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
-    ctx.fillText('Time (secs)', yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH);
+    ctx.fillText(xAxisTitle, yAxisW + (canvas0.width / 2), topSpacing + canvas0.height + plotSpacing + canvas1.height + xAxisMarkerH);
 
     ctx.save();
     ctx.translate(edgeSpacingW, topSpacing + (canvas0.height / 2));
@@ -433,20 +420,21 @@ function createImageCanvas (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAx
  * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
  * @param {canvas[]} canvas1array Ordered array of canvas layers for bottom plot
  * @param {canvas} xAxisSVG SVG canvas containing x axis labels
+ * @param {string} xAxisTitle String describing the x axis units
  * @param {canvas} yAxis0SVG SVG canvas containing y axis labels of top plot
  * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
  * @param {string} yAxisTitle0 Title of top plot's y axis
  * @param {string} yAxisTitle1 Title of bottom plot's y axis
- * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
- * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
+ * @param {number[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {number[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
  * @param {string} title Title to be drawn at the top of the file(s)
  */
-function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
+function exportPNG (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     console.log('Exporting to PNG');
 
-    const imageCanvas = createImageCanvas(canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title);
+    const imageCanvas = createImageCanvas(canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title);
 
     // Save image
 
@@ -463,20 +451,21 @@ function exportPNG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, 
  * @param {canvas[]} canvas0array Ordered array of canvas layers for top plot
  * @param {canvas[]} canvas1array Ordered array of canvas layers for bottom plot
  * @param {canvas} xAxisSVG SVG canvas containing x axis labels
+ * @param {string} xAxisTitle String describing the x axis units
  * @param {canvas} yAxis0SVG SVG canvas containing y axis labels of top plot
  * @param {canvas} yAxis1SVG SVG canvas containing y axis labels of bottom plot
  * @param {string} yAxisTitle0 Title of top plot's y axis
  * @param {string} yAxisTitle1 Title of bottom plot's y axis
- * @param {int[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
- * @param {int[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
+ * @param {number[]} linesY0 Y co-ordinates of threshold lines on plot 0 (-1 = don't draw)
+ * @param {number[]} linesY1 Y co-ordinates of threshold lines on plot 1 (-1 = don't draw)
  * @param {string} fileName Name of file being drawn
  * @param {string} title Title to be drawn at the top of the file(s)
  */
-function exportJPG (canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
+function exportJPG (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title) {
 
     console.log('Exporting to JPG');
 
-    const imageCanvas = createImageCanvas(canvas0array, canvas1array, xAxisSVG, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title);
+    const imageCanvas = createImageCanvas(canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG, yAxis1SVG, yAxisTitle0, yAxisTitle1, linesY0, linesY1, fileName, title);
 
     // Save image
 

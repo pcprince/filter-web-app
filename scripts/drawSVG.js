@@ -29,6 +29,8 @@ function addSVGText (parent, content, x, y, anchor, baseline) {
 
     parent.appendChild(textElement);
 
+    return textElement;
+
 }
 
 /**
@@ -50,6 +52,49 @@ function addSVGLine (parent, x1, y1, x2, y2) {
     lineElement.setAttributeNS(null, 'stroke', 'black');
 
     parent.appendChild(lineElement);
+
+    return lineElement;
+
+}
+
+/**
+ * Draw rectangle to an SVG holder
+ * @param {Element} parent SVG element to be drawn to
+ * @param {number} x X co-ordinate of top left of rectangle
+ * @param {number} y Y co-ordinate of top left of rectangle
+ * @param {number} w Width
+ * @param {number} h Height
+ * @param {string} strokeCol Colour of lines
+ * @param {number} strokeWidth Width of lines
+ * @param {boolean} isFilled Should rectangle be filled?
+ * @param {string} fillCol Colour to be filled with
+ */
+function addSVGRect (parent, x, y, w, h, strokeCol, strokeWidth, isFilled, fillCol) {
+
+    const rectElement = document.createElementNS(SVG_NS, 'rect');
+
+    rectElement.setAttributeNS(null, 'x', x);
+    rectElement.setAttributeNS(null, 'y', y);
+    rectElement.setAttributeNS(null, 'width', w);
+    rectElement.setAttributeNS(null, 'height', h);
+    rectElement.setAttributeNS(null, 'stroke', strokeCol);
+    rectElement.setAttributeNS(null, 'stroke-width', strokeWidth);
+    rectElement.style.fill = isFilled ? fillCol : 'none';
+
+    parent.appendChild(rectElement);
+
+    return rectElement;
+
+}
+
+/**
+ * Remove an element from an SVG
+ * @param {Element} parent SVG element being worked on
+ * @param {Element} child Element of parent to be removed
+ */
+function removeSVGElement (parent, child) {
+
+    parent.removeChild(child);
 
 }
 
