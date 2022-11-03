@@ -662,7 +662,7 @@
                     <div class="wrapper" style="width: 793px;">
                         <div class="row">
 
-                            <div class="col-12">
+                            <div class="col-11">
 
                                 <button class="btn btn-success nav-button" id="play-button" disabled style="margin-left: 0px;">
                                     <img id="play-icon" class="button-icon" src="./assets/play.svg" alt="Bootstrap">
@@ -713,10 +713,37 @@
 
                             </div>
 
+                            <div class="col-1">
+                                <button class="btn btn-secondary nav-button" id="settings-modal-button">
+                                    <img id="gear-icon" class="button-icon" src="./assets/gear.svg" alt="Bootstrap">
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
                 <div class="col control-width control-margin" style="padding-left: 0px;"></div>
+            </div>
+
+            <div class="modal fade" id="settings-modal" tabindex="-1" role="dialog" aria-labelledby="settingsModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                        <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="checkbox" id="settings-file-time-checkbox" style="vertical-align: middle;">
+                            <label for="settings-file-time-checkbox">Display real time on x axis</label>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="settings-apply-button" type="button" class="btn btn-success">Apply</button>
+                            <button id="settings-cancel-button" type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="modal fade" id="export-modal" tabindex="-1" role="dialog" aria-labelledby="exportModalLabel" aria-hidden="true">
@@ -736,7 +763,6 @@
                             <button id="export-jpg-button" type="button" class="btn btn-success">JPG</button>
                             <button id="export-pdf-button" type="button" class="btn btn-success">PDF</button>
                             <button id="export-all-button" type="button" class="btn btn-primary">All</button>
-                            <button id="export-close-button" type="button" class="btn btn-secondary" data-dismiss="modal" style="display: none;">Close</button>
                         </div>
                     </div>
                 </div>

@@ -4,15 +4,14 @@
  * June 2021
  *****************************************************************************/
 
-// TODO: Use regex in expander.js to extract time of recording and enable starting time from then
+/* global XMLHttpRequest, bootstrap */
+/* global INT16_MAX, LENGTH_OF_WAV_HEADER, DATE_REGEX */
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readExampleWav, checkHeader */
 /* global showSliceLoadingUI, hideSliceLoadingUI, loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
-/* global XMLHttpRequest */
 /* global applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
-/* global INT16_MAX, LENGTH_OF_WAV_HEADER */
 /* global formatAxisUnits, getIncrementAndPrecision, formatTimeLabel */
 
 /* global addSVGText, addSVGLine, clearSVG, addSVGRect */
@@ -69,6 +68,13 @@ const sliceReselectSpan = document.getElementById('slice-reselect-span');
 const sliceReselectLink = document.getElementById('slice-reselect-link');
 let showReselectLink = false;
 let sliceSelectionCallback;
+
+// Settings UI
+
+const settingsModalButton = document.getElementById('settings-modal-button');
+const settingsApplyButton = document.getElementById('settings-apply-button');
+const settingsModal = new bootstrap.Modal(document.getElementById('settings-modal'));
+const settingsFileTimeCheckbox = document.getElementById('settings-file-time-checkbox');
 
 // Example file variables
 
@@ -201,6 +207,12 @@ let timeLabelOffset = 0;
 
 let previewFileLengthSamples;
 let originalFileLength = 0;
+
+// Timestamp when file was recorded
+
+let fileTimestamp = -1;
+let fileTimezone = 'UTC';
+let useFileTime = false;
 
 // Drawing/processing flag
 
@@ -529,7 +541,14 @@ function drawAxisLabels () {
     // So the centre of the text can be the label location, there's a small amount of padding around the label canvas
     const xLabelPadding = spectrogramLabelSVG.width.baseVal.value;
 
-    const currentDisplayTime = Math.max(displayLength, originalFileLength) / currentSampleRate;
+    let currentDisplayTime = Math.max(displayLength, originalFileLength) / currentSampleRate;
+    currentDisplayTime += timeLabelOffset;
+
+    if (useFileTime && fileTimestamp > 0) {
+
+        currentDisplayTime += fileTimestamp;
+
+    }
 
     while (label <= currentSampleCount) {
 
@@ -574,7 +593,13 @@ function drawAxisLabels () {
         let labelValue = label / currentSampleRate;
         labelValue += timeLabelOffset;
 
-        const labelText = formatTimeLabel(labelValue, currentDisplayTime, xLabelDecimalPlaces);
+        if (useFileTime && fileTimestamp > 0) {
+
+            labelValue += fileTimestamp;
+
+        }
+
+        const labelText = formatTimeLabel(labelValue, currentDisplayTime, xLabelDecimalPlaces, useFileTime && fileTimestamp > 0);
 
         tickX = Math.floor(tickX) + 0.5;
 
@@ -990,9 +1015,34 @@ function drawAxisHeadings () {
 
     const currentSampleRate = getSampleRate();
 
-    const format = formatAxisUnits(originalFileLength, displayLength, currentSampleRate);
+    let format, headingText;
 
-    addSVGText(timeAxisHeadingSVG, 'Time (' + format + ')', timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+    // If the file time is being used, always display as HH:MM:SS, then add relevant milliseconds
+
+    if (useFileTime && fileTimestamp > 0) {
+
+        format = 'HH:MM:SS';
+
+        const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+        const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
+
+        if (xLabelDecimalPlaces > 0) {
+
+            format += '.';
+            format += 's'.repeat(xLabelDecimalPlaces);
+
+        }
+
+        headingText = 'Time of Day (' + format + ' ' + fileTimezone + ')';
+
+    } else {
+
+        format = formatAxisUnits(originalFileLength, displayLength, currentSampleRate);
+        headingText = 'Time (' + format + ')';
+
+    }
+
+    addSVGText(timeAxisHeadingSVG, headingText, timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
 
 }
 
@@ -1436,6 +1486,8 @@ function reenableUI () {
 
     sliceReselectLink.disabled = false;
 
+    settingsModalButton.disabled = false;
+
     enableFilterUI();
 
     if (errorSpan.style.display === 'none') {
@@ -1618,6 +1670,8 @@ function disableUI (startUp) {
     disableFilterUI();
 
     sizeInformationPanel.classList.add('grey');
+
+    settingsModalButton.disabled = true;
 
 }
 
@@ -2377,6 +2431,17 @@ function processReadResult (result, callback) {
 
     }
 
+    fileTimestamp = -1;
+
+    if (result.comment !== '') {
+
+        const regex = DATE_REGEX.exec(result.comment);
+        fileTimestamp = (parseInt(regex[1]) * 3600) + (parseInt(regex[2]) * 60) + parseInt(regex[3]);
+
+        fileTimezone = regex[7] === undefined ? 'UTC' : 'UTC' + regex[7];
+
+    }
+
     originalFileLength = previewFileLengthSamples;
 
     trueSampleRate = result.sampleRate;
@@ -2547,7 +2612,7 @@ setSliceSelectButtonEventHandler(async (selection, length) => {
         const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
         const maxDisplayTime = (Math.max(currentSampleCount, originalFileLength) / currentSampleRate) + timeLabelOffset;
 
-        sliceReselectLink.innerText = formatTimeLabel(selection, maxDisplayTime) + ' - ' + formatTimeLabel(selection + length, maxDisplayTime);
+        sliceReselectLink.innerText = formatTimeLabel(selection, maxDisplayTime, 0, false) + ' - ' + formatTimeLabel(selection + length, maxDisplayTime, 0, false);
         showReselectLink = true;
 
         sliceSelectionCallback(processedResult);
@@ -3985,6 +4050,8 @@ playButton.addEventListener('click', () => {
             volumeSelect.disabled = true;
             playbackModeSelect.disabled = true;
 
+            settingsModalButton.disabled = true;
+
         }
 
         // Otherwise, disable UI then play
@@ -4442,6 +4509,26 @@ exportVideoButton.addEventListener('click', () => {
         reenableUI();
 
     });
+
+});
+
+// Settings events
+
+settingsModalButton.addEventListener('click', () => {
+
+    settingsFileTimeCheckbox.checked = useFileTime;
+    settingsModal.show();
+
+});
+
+settingsApplyButton.addEventListener('click', () => {
+
+    useFileTime = settingsFileTimeCheckbox.checked;
+
+    drawAxisLabels();
+    drawAxisHeadings();
+
+    settingsModal.hide();
 
 });
 

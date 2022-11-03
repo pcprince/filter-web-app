@@ -4,6 +4,10 @@
  * June 2022
  *****************************************************************************/
 
+/* Regex used to extract timestamp from header comment */
+
+const DATE_REGEX = /^Recorded at (\d\d):(\d\d):(\d\d) (\d\d)\/(\d\d)\/(\d\d\d\d) \(UTC((\+|\-)\d+)?\)/;
+
 /* Downsample constants */
 
 const INT16_MIN = -32768;

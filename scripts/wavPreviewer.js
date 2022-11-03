@@ -112,7 +112,7 @@ function hideSliceModal () {
  */
 function updateSelectionSpan (start, end) {
 
-    selectionSpan.innerText = formatTimeLabel(start, previewLength) + ' - ' + formatTimeLabel(end, previewLength);
+    selectionSpan.innerText = formatTimeLabel(start, previewLength, 0, false) + ' - ' + formatTimeLabel(end, previewLength, 0, false);
 
 }
 
@@ -192,7 +192,7 @@ function drawPreviewAxis (callback) {
 
         addSVGLine(sliceTimeAxisSVG, x, 0, x, xMarkerLength);
 
-        const labelText = formatTimeLabel(label / previewSampleRate, previewLength);
+        const labelText = formatTimeLabel(label / previewSampleRate, previewLength, 0, false);
 
         addSVGText(sliceTimeAxisSVG, labelText, x, 12, textAnchor, 'middle');
 

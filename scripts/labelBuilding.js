@@ -83,9 +83,10 @@ function formatAxisUnits (overallLength, displayedLength, currentSampleRate) {
  * @param {number} time Time on label in seconds
  * @param {number} maxTime Overall time being displayed
  * @param {number} decimalPlaces Number of decimal places to display
+ * @param {boolean} displayAll Whether to display all units
  * @returns Formatted string
  */
-function formatTimeLabel (time, maxTime, decimalPlaces) {
+function formatTimeLabel (time, maxTime, decimalPlaces, displayAll) {
 
     if (!decimalPlaces) {
 
@@ -107,8 +108,8 @@ function formatTimeLabel (time, maxTime, decimalPlaces) {
     const secs = time.toFixed(decimalPlaces);
 
     let formattedString = '';
-    formattedString = (maxTime >= 3600) ? String(hours).padStart(2, '0') + ':' : '';
-    formattedString += (maxTime >= 60) ? String(mins).padStart(2, '0') + ':' : '';
+    formattedString = (maxTime >= 3600 || displayAll) ? String(hours).padStart(2, '0') + ':' : '';
+    formattedString += (maxTime >= 60 || displayAll) ? String(mins).padStart(2, '0') + ':' : '';
     formattedString += String(secs).padStart(secsPadding, '0');
 
     return formattedString;
