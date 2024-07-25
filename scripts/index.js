@@ -4,21 +4,23 @@
  * June 2021
  *****************************************************************************/
 
+/* global VERSION */
 /* global XMLHttpRequest, bootstrap */
-/* global INT16_MAX, LENGTH_OF_WAV_HEADER, DATE_REGEX */
+/* global INT16_MAX, LENGTH_OF_WAV_HEADER, DATE_REGEX, TIMESTAMP_REGEX, SECONDS_IN_DAY */
+/* global STATIC_COLOUR_MIN, STATIC_COLOUR_MAX */
 
 /* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readExampleWav, checkHeader */
-/* global showSliceLoadingUI, hideSliceLoadingUI, loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler */
+/* global showSliceLoadingUI, hideSliceLoadingUI, loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler, setSliceCancelButtonListener, saveCurrentSlicePosition, usePreviewSelection, moveSliceSelectionLeft, moveSliceSelectionRight */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
 /* global applyGoertzelFilter, drawGoertzelPlot, applyGoertzelThreshold, GOERTZEL_THRESHOLD_BUFFER_LENGTH, generateHammingValues */
 /* global formatAxisUnits, getIncrementAndPrecision, formatTimeLabel */
 
-/* global addSVGText, addSVGLine, clearSVG, addSVGRect */
+/* global addSVGText, addSVGLine, clearSVG, addSVGRect, checkSVGLabelCutOff */
 
 /* global prepareUI, sampleRateChange */
 /* global getPassFiltersObserved, getCentreObserved */
-/* global getFilterRadioValue, updateThresholdTypeUI, updateThresholdUI, updateFilterLabel, getFilterType */
+/* global getFilterRadioValue, updateThresholdTypeUI, updateThresholdUI, updateFilterLabel */
 /* global getThresholdTypeIndex, THRESHOLD_TYPE_NONE, THRESHOLD_TYPE_AMPLITUDE, THRESHOLD_TYPE_GOERTZEL, getFrequencyTriggerFilterFreq, getFrequencyTriggerWindowLength, updateFilterUI, getFrequencyTrigger */
 /* global thresholdScaleIndex, THRESHOLD_SCALE_PERCENTAGE, THRESHOLD_SCALE_16BIT, THRESHOLD_SCALE_DECIBEL */
 /* global thresholdTypeLabel, thresholdTypeRadioButtons, lowPassFilterSlider, highPassFilterSlider, bandPassFilterSlider, amplitudeThresholdSlider, amplitudeThresholdDurationRadioButtons, goertzelFilterCentreSlider, goertzelFilterWindowRadioButtons, goertzelDurationRadioButtons, goertzelThresholdSlider */
@@ -31,7 +33,11 @@
 
 /* global enableSampleRateControl, disableSampleRateControl, updateSampleRateUI, getSampleRateSelection, addSampleRateUIListeners */
 
-/* global downsample */
+/* global downsample, resampleOutputLength */
+
+// Launch page as app without instructions
+
+const launchAppLink = document.getElementById('launch-app-link');
 
 // Use these values to fill in the axis labels before samples have been loaded
 
@@ -43,6 +49,8 @@ const FILLER_SAMPLE_COUNT = FILLER_SAMPLE_RATE * 60;
 const errorSpan = document.getElementById('error-span');
 const fileSelectionTitleSpan = document.getElementById('file-selection-title-span');
 const browserErrorSpan = document.getElementById('browser-error-span');
+const browserErrorSpanApp = document.getElementById('browser-error-span-app');
+const appExampleLink = document.getElementById('app-example-link');
 const ERROR_DISPLAY_TIME = 3000;
 
 // File selection elements
@@ -63,7 +71,6 @@ const commentSpan = document.getElementById('comment-span');
 // Recording slice UI
 const sliceLoadingBorderSVG = document.getElementById('slice-loading-border-svg');
 const sliceBorderSVG = document.getElementById('slice-border-svg');
-const sliceCloseButton = document.getElementById('slice-close-button');
 const sliceReselectSpan = document.getElementById('slice-reselect-span');
 const sliceReselectLink = document.getElementById('slice-reselect-link');
 let showReselectLink = false;
@@ -75,6 +82,11 @@ const settingsModalButton = document.getElementById('settings-modal-button');
 const settingsApplyButton = document.getElementById('settings-apply-button');
 const settingsModal = new bootstrap.Modal(document.getElementById('settings-modal'));
 const settingsFileTimeCheckbox = document.getElementById('settings-file-time-checkbox');
+const settingsFileTimeLabel = document.getElementById('settings-file-time-label');
+const settingsDynamicColoursCheckbox = document.getElementById('settings-dynamic-colours-checkbox');
+const settingsVideoLineCheckbox = document.getElementById('settings-video-line-checkbox');
+const settingsVideoFixedFPSCheckbox = document.getElementById('settings-video-fixed-fps-checkbox');
+const settingsMonochromeSelect = document.getElementById('settings-monochrome-select');
 
 // Example file variables
 
@@ -92,6 +104,14 @@ const zoomOutButton = document.getElementById('zoom-out-button');
 
 const panLeftButton = document.getElementById('pan-left-button');
 const panRightButton = document.getElementById('pan-right-button');
+const panLeftIcon = document.getElementById('pan-left-icon');
+const panRightIcon = document.getElementById('pan-right-icon');
+const panDoubleLeftIcon = document.getElementById('pan-double-left-icon');
+const panDoubleRightIcon = document.getElementById('pan-double-right-icon');
+
+// Time constant
+
+const SECONDS_IN_A_MINUTE = 60;
 
 // Minimum amount of time which can be viewed on the plot
 
@@ -176,6 +196,21 @@ const spectrogramLabelSVG = document.getElementById('spectrogram-label-svg');
 const waveformLabelSVG = document.getElementById('waveform-label-svg');
 const goertzelLabelSVG = document.getElementById('goertzel-label-svg');
 
+// Heading used on the X axis ("Time (x)")
+
+let xAxisHeading = 'Time (S)';
+
+// Whether or not to dynamically generate a colour scheme for spectrograms
+
+let useDynamicColours = false;
+
+// Whether or not to use a monochrome colour palette
+
+const COLOUR_MAP_DEFAULT = 0;
+const COLOUR_MAP_MONOCHROME = 1;
+const COLOUR_MAP_INVERSE_MONOCHROME = 2;
+let colourMapIndex = COLOUR_MAP_DEFAULT;
+
 // File variables
 
 let fileHandler;
@@ -185,8 +220,8 @@ let sampleCount = 0;
 let trueSampleCount = 0;
 let sampleRate, trueSampleRate;
 let processedSpectrumFrames;
-let spectrumMin = 0;
-let spectrumMax = 0;
+let spectrumMin = Number.MAX_SAFE_INTEGER;
+let spectrumMax = Number.MIN_SAFE_INTEGER;
 let firstFile = true;
 
 let artist = '';
@@ -203,16 +238,27 @@ let downsampledUnfilteredSamples;
 
 let timeLabelOffset = 0;
 
+// When navigating between slices of a larger file, transformations and downsampled sample rate need to be remembered
+
+let prePanOffset = 0;
+let prePanDisplayLength = 0;
+let prePanSampleRate = 0;
+
 // If file is sliced, the original size of the file in samples
 
-let previewFileLengthSamples;
+let overallFileLengthSamples;
 let originalFileLength = 0;
 
 // Timestamp when file was recorded
 
 let fileTimestamp = -1;
-let fileTimezone = 'UTC';
+let fileTimezone = '';
 let useFileTime = false;
+
+// Video export options
+
+let videoLineEnabled = true;
+let fixedFpsEnabled = false;
 
 // Drawing/processing flag
 
@@ -297,6 +343,29 @@ const exportVideoSpinner = document.getElementById('video-spinner');
 
 const instructionsContent = document.getElementById('instructions-content');
 
+// When preview UI opens, if it's a new file then the sample rate should change when a slice is selected, otherwise it should stay the same
+
+let isNewFile = false;
+
+/**
+ * @returns Boolean check if currently loaded file is a T.WAV AudioMoth file
+ */
+function isTWAV () {
+
+    return fileSpan.innerText.includes('T.WAV');
+
+}
+
+function getFilterType () {
+
+    const triggerType = getThresholdTypeIndex();
+
+    // Frequency filter not available when triggering on frequency
+
+    return triggerType !== THRESHOLD_TYPE_GOERTZEL ? getFilterRadioValue() : FILTER_NONE;
+
+}
+
 /**
  * 0 - Default
  * 1 - Loading
@@ -322,6 +391,7 @@ function displaySpans (index) {
         resampledSpan.style.display = resampledFile ? '' : 'none';
         loadingSpan.style.display = 'none';
         errorSpan.style.display = 'none';
+        fileButton.disabled = false;
 
         if (isExampleFile) {
 
@@ -333,6 +403,9 @@ function displaySpans (index) {
             commentSpan.innerText = comment;
 
             if (artist !== '' || comment !== '') fileInformationLink.style.display = '';
+
+            artistSpan.style.display = (artist === '') ? 'none' : '';
+            commentSpan.style.display = (comment === '') ? 'none' : '';
 
         }
 
@@ -356,6 +429,7 @@ function displaySpans (index) {
         loadingSpan.style.display = 'none';
         resampledSpan.style.display = 'none';
         sliceReselectSpan.style.display = 'none';
+        fileButton.disabled = false;
         break;
 
     }
@@ -526,13 +600,32 @@ function drawAxisLabels () {
     // If no file has been loaded, use a filler sample count/rate
 
     const currentSampleRate = getSampleRate();
-    const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
+
+    let currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
+    currentSampleCount = Math.max(currentSampleCount, originalFileLength);
 
     let label = 0;
 
     // Get the label increment amount and label decimal precision
 
-    const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+    let incrementPrecision;
+
+    const msOffset = fileTimestamp - Math.floor(fileTimestamp);
+
+    // If file time is enabled, you may need to take into account milliseconds when positioning labels
+    if (useFileTime && fileTimestamp > 0 && !isTWAV() && msOffset > 0) {
+
+        // The initial label is likely to be pushed off the edge, so set the increment and precision based on the reduced display length
+        incrementPrecision = getIncrementAndPrecision(displayLength - msOffset, currentSampleRate);
+
+        label -= msOffset * currentSampleRate;
+
+    } else {
+
+        incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+
+    }
+
     const xLabelIncrementSecs = incrementPrecision.xLabelIncrementSecs;
     const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
 
@@ -544,11 +637,33 @@ function drawAxisLabels () {
     let currentDisplayTime = Math.max(displayLength, originalFileLength) / currentSampleRate;
     currentDisplayTime += timeLabelOffset;
 
-    if (useFileTime && fileTimestamp > 0) {
+    if (useFileTime && fileTimestamp > 0 && !isTWAV()) {
 
         currentDisplayTime += fileTimestamp;
 
     }
+
+    currentDisplayTime = (currentDisplayTime + (offset / currentSampleRate)) % SECONDS_IN_DAY;
+
+    let overallLength = isExampleFile ? currentSampleCount : overallFileLengthSamples;
+
+    if (resampledFile) {
+
+        overallLength = resampleOutputLength(overallFileLengthSamples, originalSampleRate, sampleRate);
+
+    }
+
+    const overallLengthSeconds = overallLength / currentSampleRate;
+
+    // Work out the true range being displayed
+
+    const startSeconds = (offset / currentSampleRate) + timeLabelOffset;
+    const endSeconds = startSeconds + (displayLength / currentSampleRate);
+
+    const startSecondsFormatted = formatTimeLabel(startSeconds, overallLengthSeconds, xLabelDecimalPlaces, useFileTime && fileTimestamp > 0 && !isTWAV());
+    const endSecondsFormatted = formatTimeLabel(endSeconds, overallLengthSeconds, xLabelDecimalPlaces, useFileTime && fileTimestamp > 0 && !isTWAV());
+
+    console.log('Displaying:', startSecondsFormatted, '-', endSecondsFormatted);
 
     while (label <= currentSampleCount) {
 
@@ -585,26 +700,28 @@ function drawAxisLabels () {
 
         labelX += xLabelPadding;
 
-        // Ticks must be offset to 0.5
-
-        tickX = (tickX === xLabelPadding) ? tickX + 0.5 : tickX;
-        tickX = (tickX >= waveformCanvas.width) ? tickX - 0.5 : tickX;
-
         let labelValue = label / currentSampleRate;
         labelValue += timeLabelOffset;
 
-        if (useFileTime && fileTimestamp > 0) {
+        if (useFileTime && fileTimestamp > 0 && !isTWAV()) {
 
             labelValue += fileTimestamp;
 
         }
 
-        const labelText = formatTimeLabel(labelValue, currentDisplayTime, xLabelDecimalPlaces, useFileTime && fileTimestamp > 0);
+        labelValue = labelValue % SECONDS_IN_DAY;
 
+        const labelText = formatTimeLabel(labelValue, overallLengthSeconds, xLabelDecimalPlaces, useFileTime && fileTimestamp > 0 && !isTWAV());
+
+        // Ticks must be offset to 0.5, end tick must align with end of plot
+
+        tickX = (tickX >= waveformCanvas.width) ? tickX - 0.5 : tickX;
         tickX = Math.floor(tickX) + 0.5;
 
-        addSVGText(timeLabelSVG, labelText, labelX, 12, 'middle', 'middle');
+        const labelTextElem = addSVGText(timeLabelSVG, labelText, labelX, 12, 'middle', 'middle');
         addSVGLine(timeLabelSVG, tickX, 0, tickX, xMarkerLength);
+
+        checkSVGLabelCutOff(labelTextElem);
 
         label += xLabelIncrementSamples;
 
@@ -979,7 +1096,7 @@ function drawAxisLabels () {
 
             baseline = 'text-bottom';
 
-        } else if (i === goertzelLabelTexts.length - 1) {
+        } else if (Math.round(labelY) === 0) {
 
             baseline = 'hanging';
 
@@ -1015,16 +1132,16 @@ function drawAxisHeadings () {
 
     const currentSampleRate = getSampleRate();
 
-    let format, headingText;
+    let format;
 
-    // If the file time is being used, always display as HH:MM:SS, then add relevant milliseconds
+    const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
+    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
 
-    if (useFileTime && fileTimestamp > 0) {
+    // If the file time is being used, always display as hh:mm:ss, then add relevant milliseconds
 
-        format = 'HH:MM:SS';
+    if (useFileTime && fileTimestamp > 0 && !isTWAV()) {
 
-        const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
-        const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
+        format = 'hh:mm:ss';
 
         if (xLabelDecimalPlaces > 0) {
 
@@ -1033,16 +1150,23 @@ function drawAxisHeadings () {
 
         }
 
-        headingText = 'Time of Day (' + format + ' ' + fileTimezone + ')';
+        xAxisHeading = 'Time of Day (' + format;
+        xAxisHeading += fileTimezone !== '' ? ' ' + fileTimezone : '';
+        xAxisHeading += ')';
 
     } else {
 
-        format = formatAxisUnits(originalFileLength, displayLength, currentSampleRate);
-        headingText = 'Time (' + format + ')';
+        let currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
+        currentSampleCount = Math.max(currentSampleCount, originalFileLength);
+        const overallLengthSeconds = currentSampleCount / currentSampleRate;
+
+        format = formatAxisUnits(overallLengthSeconds, xLabelDecimalPlaces);
+
+        xAxisHeading = 'Time (' + format + ')';
 
     }
 
-    addSVGText(timeAxisHeadingSVG, headingText, timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+    addSVGText(timeAxisHeadingSVG, xAxisHeading, timeAxisHeadingSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
 
 }
 
@@ -1117,30 +1241,118 @@ function updatePanUI () {
 
     }
 
-    if (offset <= 0) {
+    let darkenPanLeft = false;
+    let darkenPanRight = false;
 
-        panLeftButton.disabled = true;
+    let overallLength = overallFileLengthSamples;
 
-    } else {
+    if (resampledFile || sampleRate !== trueSampleRate) {
 
-        panLeftButton.disabled = false;
+        overallLength = resampleOutputLength(overallFileLengthSamples, originalSampleRate, sampleRate);
 
     }
 
-    let sampleEnd = Math.floor(offset + displayLength);
+    // If it's a sliced longer file, work out which panning buttons are appropriate differently
 
-    // Gap at the end of the plot in samples
-    const gapLength = sampleEnd - sampleCount;
+    if (overallLength === sampleCount || isExampleFile) {
 
-    sampleEnd = sampleEnd > sampleCount ? sampleCount : sampleEnd;
+        if (offset <= 0) {
 
-    if (gapLength >= 0) {
+            panLeftButton.disabled = true;
 
-        panRightButton.disabled = true;
+        } else {
+
+            panLeftButton.disabled = false;
+
+        }
+
+        const sampleEnd = Math.floor(offset + displayLength);
+
+        // Gap at the end of the plot in samples
+        const gapLength = sampleEnd - sampleCount;
+
+        if (gapLength >= 0) {
+
+            panRightButton.disabled = true;
+
+        } else {
+
+            panRightButton.disabled = false;
+
+        }
 
     } else {
 
-        panRightButton.disabled = false;
+        const timeLabelOffsetSamples = timeLabelOffset * sampleRate;
+
+        if (offset + timeLabelOffsetSamples <= 0) {
+
+            panLeftButton.disabled = true;
+
+        } else {
+
+            panLeftButton.disabled = false;
+
+            // If the next pan click would move to the next chunk, darken the button slightly
+
+            darkenPanLeft = offset === 0 && timeLabelOffsetSamples > 0;
+
+        }
+
+        const sampleEnd = Math.floor(offset + displayLength + timeLabelOffsetSamples);
+
+        // Gap at the end of the file in samples
+        const gapLength = sampleEnd - overallLength;
+
+        if (gapLength >= 0) {
+
+            panRightButton.disabled = true;
+
+        } else {
+
+            panRightButton.disabled = false;
+
+            // If the next pan click would move to the next chunk, darken the button slightly
+
+            darkenPanRight = offset + displayLength === sampleCount;
+
+        }
+
+    }
+
+    if (darkenPanLeft) {
+
+        panLeftButton.classList.remove('button-secondary');
+        panLeftButton.classList.add('button-secondary-dark');
+
+        panLeftIcon.style.display = 'none';
+        panDoubleLeftIcon.style.display = '';
+
+    } else {
+
+        panLeftButton.classList.remove('button-secondary-dark');
+        panLeftButton.classList.add('button-secondary');
+
+        panLeftIcon.style.display = '';
+        panDoubleLeftIcon.style.display = 'none';
+
+    }
+
+    if (darkenPanRight) {
+
+        panRightButton.classList.remove('button-secondary');
+        panRightButton.classList.add('button-secondary-dark');
+
+        panRightIcon.style.display = 'none';
+        panDoubleRightIcon.style.display = '';
+
+    } else {
+
+        panRightButton.classList.remove('button-secondary-dark');
+        panRightButton.classList.add('button-secondary');
+
+        panRightIcon.style.display = '';
+        panDoubleRightIcon.style.display = 'none';
 
     }
 
@@ -1508,7 +1720,7 @@ function reenableUI () {
  */
 function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) {
 
-    console.log('Drawing waveform');
+    // console.log('Drawing waveform');
 
     resetCanvas(waveformCanvas);
 
@@ -1518,7 +1730,7 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
 
     const zoomLevel = (thresholdScaleIndex === THRESHOLD_SCALE_DECIBEL) ? getDecibelZoomY() : getZoomY();
 
-    drawWaveform(samples, offset, displayLength, zoomLevel, (waveformCompletionTime) => {
+    drawWaveform(samples, offset, displayLength, zoomLevel, colourMapIndex, (waveformCompletionTime) => {
 
         if (isInitialRender) {
 
@@ -1543,9 +1755,6 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
         drawAxisHeadings();
 
         drawing = false;
-
-        disabledFileButton.style.display = isChrome ? 'none' : '';
-        fileButton.style.display = isChrome ? '' : 'none';
 
         fileButton.disabled = false;
         if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
@@ -1600,7 +1809,7 @@ function estimateRenderTime () {
  */
 function drawPlots (samples, isInitialRender) {
 
-    drawSpectrogram(processedSpectrumFrames, spectrumMin, spectrumMax, async (completionTime) => {
+    drawSpectrogram(processedSpectrumFrames, useDynamicColours ? spectrumMin : STATIC_COLOUR_MIN, useDynamicColours ? spectrumMax : STATIC_COLOUR_MAX, colourMapIndex, async (completionTime) => {
 
         resetCanvas(spectrogramThresholdCanvas);
         spectrogramLoadingSVG.style.display = 'none';
@@ -1688,20 +1897,26 @@ function processContents (samples, isInitialRender, renderPlots) {
 
     setTimeout(() => {
 
-        console.log('Calculating spectrogram frames');
+        // console.log('Calculating spectrogram frames');
 
-        // Process spectrogram frames
+        // If the resulting frames aren't for rendering or the colour map hasn't been calculated yet, use all the samples
 
-        const result = calculateSpectrogramFrames(samples, sampleCount, renderPlots ? offset : 0, renderPlots ? displayLength : sampleCount);
+        let useAllSamples = !renderPlots || (spectrumMin === 0.0 && spectrumMax === 0.0);
+
+        // If you're loading an offset part of a file, there's no need to process all samples
+
+        useAllSamples &= offset === 0;
+
+        const result = calculateSpectrogramFrames(samples, sampleCount, useAllSamples ? 0 : offset, useAllSamples ? sampleCount : displayLength);
 
         processedSpectrumFrames = result.frames;
 
-        if (spectrumMin === 0.0 && spectrumMax === 0.0) {
+        if ((spectrumMin === 0.0 && spectrumMax === 0.0) || useDynamicColours) {
 
             spectrumMin = result.min;
             spectrumMax = result.max;
 
-            console.log('Setting colour map. Min: ' + spectrumMin.toFixed(2) + ' Max: ' + spectrumMax.toFixed(2));
+            console.log('Calculated colour map. Min: ' + spectrumMin.toFixed(2) + ' Max: ' + spectrumMax.toFixed(2));
 
         }
 
@@ -1727,7 +1942,6 @@ function resetXTransformations () {
     const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
     displayLength = currentSampleCount;
     offset = 0;
-    updateNavigationUI();
 
 }
 
@@ -1744,6 +1958,9 @@ function resetTransformations () {
 
 /**
  * Shift plot along if zooming out at current location would create a gap at the end of the plot
+ * Also, if a displayed period can't be displayed in a single slice, push it into a valid slice
+ * For example, 0:55 - 1:25 won't fit in the slice 0:30 - 1:30 or 1:00 - 2:00. So it has to be nudged back inside a valid slice
+ * These periods which can't fit into a single slice will always be longer than 30 seconds as they must cross two 30 second barriers simultaneously
  */
 function removeEndGap () {
 
@@ -1751,7 +1968,7 @@ function removeEndGap () {
 
     const gapLength = sampleEnd - sampleCount;
 
-    if (gapLength > 0) {
+    if (gapLength > 0 && displayLength < 30 * sampleRate) {
 
         offset -= gapLength;
 
@@ -1768,17 +1985,47 @@ function panRight () {
 
         const offsetIncrement = Math.floor(displayLength / 2);
 
-        offset = offset + offsetIncrement;
+        const newOffset = offset + offsetIncrement;
 
-        removeEndGap();
+        if (offset + displayLength < sampleCount) {
 
-        setTimeout(() => {
+            offset = newOffset;
 
-            updatePlots(false, true, false, false, false);
+            removeEndGap();
 
-        }, 0);
+            setTimeout(() => {
 
-        updatePanUI();
+                updatePlots(false, true, false, false, false);
+
+            }, 0);
+
+            updatePanUI();
+
+        } else {
+
+            // If moving between chunks is likely to cause a bit of lag, disable the UI
+
+            if (sampleRate >= 96000) {
+
+                disableUI();
+
+            }
+
+            // Each slice is 30 seconds, so moving one to the right shifts everything to the right 30 seconds
+            // In order to make sure the offset is in the right place, subtract 30 seconds from the newOffset
+
+            prePanOffset = newOffset - (30 * sampleRate);
+            prePanDisplayLength = displayLength;
+
+            prePanSampleRate = sampleRate;
+
+            spectrumMin = Number.MAX_SAFE_INTEGER;
+            spectrumMax = Number.MIN_SAFE_INTEGER;
+
+            moveSliceSelectionRight();
+            usePreviewSelection(true);
+
+        }
 
     }
 
@@ -1795,7 +2042,42 @@ function panLeft () {
 
         const newOffset = offset - offsetIncrement;
 
-        offset = Math.max(newOffset, 0);
+        if (newOffset < 0) {
+
+            if (offset > 0 || overallFileLengthSamples === sampleCount || isExampleFile) {
+
+                offset = 0;
+
+            } else {
+
+                // If moving between chunks is likely to cause a bit of lag, disable the UI
+
+                if (sampleRate >= 96000) {
+
+                    disableUI();
+
+                }
+
+                // Each slice is 30 seconds, so moving one to the left shifts everything to the left 30 seconds
+                // In order to make sure the offset is in the right place, add the (negative) newOffset to 30 seconds
+
+                prePanOffset = newOffset + (30 * sampleRate);
+                prePanDisplayLength = displayLength;
+
+                prePanSampleRate = sampleRate;
+
+                moveSliceSelectionLeft();
+                usePreviewSelection(true);
+
+                return;
+
+            }
+
+        } else {
+
+            offset = newOffset;
+
+        }
 
         setTimeout(() => {
 
@@ -1872,6 +2154,7 @@ function zoomOut () {
         } else {
 
             resetXTransformations();
+            updateNavigationUI();
 
         }
 
@@ -1932,7 +2215,7 @@ function zoomInWaveformY () {
 
             disableUI(false);
 
-            const filterIndex = getFilterRadioValue();
+            const filterIndex = getFilterType();
 
             // Redraw just the waveform plot
 
@@ -1969,7 +2252,7 @@ function zoomOutWaveformY () {
 
             disableUI(false);
 
-            const filterIndex = getFilterRadioValue();
+            const filterIndex = getFilterType();
 
             // Redraw just the waveform plot
 
@@ -2002,7 +2285,7 @@ function resetWaveformZoom () {
 
         disableUI(false);
 
-        const filterIndex = getFilterRadioValue();
+        const filterIndex = getFilterType();
 
         // Redraw just the waveform plot
 
@@ -2210,7 +2493,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
-    const filterIndex = getFilterRadioValue();
+    const filterIndex = getFilterType();
     const isFiltering = filterIndex !== FILTER_NONE;
 
     // Apply low/band/high pass filter
@@ -2242,7 +2525,17 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
             bandPassFilterValue1 = Math.max(...bandPassFilterSlider.getValue());
             console.log('Applying band-pass filter between', bandPassFilterValue0, 'and', bandPassFilterValue1, 'Hz');
 
-            applyBandPassFilter(downsampledUnfilteredSamples, sampleCount, filteredSamples, getSampleRate(), bandPassFilterValue0, bandPassFilterValue1);
+            if (bandPassFilterValue1 < sampleRate / 2) {
+
+                applyBandPassFilter(downsampledUnfilteredSamples, sampleCount, filteredSamples, getSampleRate(), bandPassFilterValue0, bandPassFilterValue1);
+
+            } else {
+
+                console.log('Applying high-pass filter as band-pass top value = Nyquist');
+
+                applyHighPassFilter(downsampledUnfilteredSamples, sampleCount, filteredSamples, getSampleRate(), bandPassFilterValue0);
+
+            }
 
             break;
 
@@ -2323,7 +2616,7 @@ function getRenderSamples (reapplyFilter, updateThresholdedSampleArray, recalcul
  * @param {boolean} resetColourMap Whether or not to reset the stored max and min values used to calculate the colour map
  * @param {boolean} updateSpectrogram Whether or not to recalculate the spectrogram frames. Needs to be done when the contents of the samples or navigation changes
  * @param {boolean} updateThresholdedSampleArray Whether or not to recalculate the boolean array of thresholded samples.
- * @param {boolean} reapplyFilter Whether or not to reappply a frequency filter
+ * @param {boolean} reapplyFilter Whether or not to reapply a frequency filter
  * @param {boolean} recalculateGoertzelValues Whether or not the Goertzel filter used for frequency thresholding needs to be recalculated
  */
 async function updatePlots (resetColourMap, updateSpectrogram, updateThresholdedSampleArray, reapplyFilter, recalculateGoertzelValues) {
@@ -2344,15 +2637,16 @@ async function updatePlots (resetColourMap, updateSpectrogram, updateThresholded
 
     if (resetColourMap) {
 
-        console.log('Resetting colour map');
-        spectrumMin = 0.0;
-        spectrumMax = 0.0;
+        // console.log('Resetting colour map');
+
+        spectrumMin = Number.MAX_SAFE_INTEGER;
+        spectrumMax = Number.MIN_SAFE_INTEGER;
 
     }
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
-    const filterIndex = getFilterRadioValue();
+    const filterIndex = getFilterType();
 
     if (filterIndex === FILTER_NONE && thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
@@ -2407,23 +2701,16 @@ function showErrorDisplay (message) {
 /**
  * Process the result of loading a file
  * @param {object} result wavReader.js result object
+ * @param {number} updateSampleRate Whether or not to update the sample rate from the result object
  * @param {function} callback Function called after completion
  */
-function processReadResult (result, callback) {
+function processReadResult (result, updateSampleRate, callback) {
 
     if (!result.success) {
 
         console.error('Failed to read file');
 
-        let errorMessage = result.error;
-
-        if (result.error === 'Could not read input file.' || result.error === 'File is too large. Use the Split function in the AudioMoth Configuration App to split your recording into 60 second sections.') {
-
-            errorMessage += ' For more information, <u><a href="#faqs" style="color: white;">click here</a></u>.';
-
-        }
-
-        showErrorDisplay(errorMessage);
+        showErrorDisplay(result.error);
 
         reenableUI();
 
@@ -2432,31 +2719,82 @@ function processReadResult (result, callback) {
     }
 
     fileTimestamp = -1;
-
-    if (result.comment !== '') {
-
-        const regex = DATE_REGEX.exec(result.comment);
-        fileTimestamp = (parseInt(regex[1]) * 3600) + (parseInt(regex[2]) * 60) + parseInt(regex[3]);
-
-        fileTimezone = regex[7] === undefined ? 'UTC' : 'UTC' + regex[7];
-
-    }
-
-    originalFileLength = previewFileLengthSamples;
-
-    trueSampleRate = result.sampleRate;
-    trueSampleCount = result.samples.length;
-
-    sampleRate = trueSampleRate;
-    sampleCount = trueSampleCount;
-
-    const duration = sampleCount / sampleRate;
+    fileTimezone = '';
 
     const loadedFileName = fileHandler ? fileHandler.name : 'Example file';
 
+    /**
+     * Check for comment header
+     * If it includes a timestamp, use that
+     * If it includes a timezone, use that too
+     * If there is no header, check the file name for a timestamp
+     * Regex must search for the timestamp somewhere in the name to allow for prefixes
+     * If the file name is used, don't include the timezone on the labels
+     */
+
+    if (result.comment !== '') {
+
+        console.log('Reading comment header for timestamp');
+
+        const dateRegexResult = DATE_REGEX.exec(result.comment);
+
+        if (dateRegexResult) {
+
+            console.log('Found timestamp');
+
+            fileTimestamp = (parseInt(dateRegexResult[1]) * 3600) + (parseInt(dateRegexResult[2]) * 60) + parseInt(dateRegexResult[3]);
+            fileTimestamp += dateRegexResult[4] === undefined ? 0 : parseFloat(dateRegexResult[4]);
+
+            fileTimezone = dateRegexResult[8] === undefined ? 'UTC' : 'UTC' + dateRegexResult[8];
+
+        }
+
+    }
+
+    // If no timestamp was found in the header, check the file name
+
+    if (fileTimestamp === -1) {
+
+        // console.log('Checking file name for timestamp');
+
+        const timestampRegexResult = TIMESTAMP_REGEX.exec(loadedFileName);
+
+        if (timestampRegexResult) {
+
+            console.log('Found timestamp');
+
+            fileTimestamp = (parseInt(timestampRegexResult[2]) * 3600) + (parseInt(timestampRegexResult[3]) * 60) + parseInt(timestampRegexResult[4]);
+            fileTimestamp += timestampRegexResult[6] === undefined ? 0 : (parseFloat(timestampRegexResult[6]) / 1000);
+
+            fileTimezone = '';
+
+        }
+
+    }
+
+    if (fileTimestamp !== -1) {
+
+        console.log('Loaded file with timestamp:', fileTimestamp, ' ', fileTimezone);
+
+    }
+
+    originalFileLength = overallFileLengthSamples;
+
+    if (updateSampleRate) {
+
+        trueSampleRate = result.sampleRate;
+        sampleRate = trueSampleRate;
+
+    }
+
+    trueSampleCount = result.samples.length;
+    sampleCount = trueSampleCount;
+
+    const duration = sampleCount / trueSampleRate;
+
     console.log('------ ' + loadedFileName + ' ------');
 
-    console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + sampleRate + ' Hz (' + duration.toFixed(2) + ' seconds)');
+    console.log('Loaded ' + sampleCount + ' samples at a sample rate of ' + trueSampleRate + ' Hz (' + duration.toFixed(2) + ' seconds)');
 
     callback(result);
 
@@ -2466,6 +2804,8 @@ function processReadResult (result, callback) {
  * Close preview UI and re-enable everything
  */
 function cancelPreview () {
+
+    isNewFile = false;
 
     // Remove 'Loading...' from file span
     displaySpans(0);
@@ -2484,9 +2824,9 @@ function cancelPreview () {
 async function readFromFile (exampleFilePath, callback) {
 
     timeLabelOffset = 0;
-    previewFileLengthSamples = 0;
+    overallFileLengthSamples = 0;
 
-    console.log('Reading samples');
+    // console.log('Reading samples');
 
     let result;
 
@@ -2507,7 +2847,7 @@ async function readFromFile (exampleFilePath, callback) {
 
                 result = readExampleWav(arrayBuffer);
 
-                processReadResult(result, callback);
+                processReadResult(result, true, callback);
 
             };
 
@@ -2517,7 +2857,7 @@ async function readFromFile (exampleFilePath, callback) {
 
             result = exampleResultObjects[exampleFilePath];
 
-            processReadResult(result, callback);
+            processReadResult(result, true, callback);
 
         }
 
@@ -2535,30 +2875,30 @@ async function readFromFile (exampleFilePath, callback) {
 
         if (!checkResult.success) {
 
-            console.error('WAV file format is not supported!');
-            showErrorDisplay('This WAV file format is not supported.');
+            console.error(checkResult.error);
+            showErrorDisplay(checkResult.error);
             return;
 
         }
 
         const header = checkResult.header;
 
-        const previewSampleRate = header.wavFormat.samplesPerSecond;
-        previewFileLengthSamples = header.data.size / header.wavFormat.bytesPerCapture;
-        const previewFileLength = previewFileLengthSamples / previewSampleRate;
+        overallFileLengthSamples = header.data.size / header.wavFormat.bytesPerCapture;
 
-        if (previewFileLength > 60) {
+        if (overallFileLengthSamples > SECONDS_IN_A_MINUTE * header.wavFormat.samplesPerSecond) {
 
             disableUI(false);
 
-            console.log('File is >60 seconds, loading preview');
+            console.log('File is greater than 60 seconds long. Loading preview.');
 
             sliceSelectionCallback = callback;
 
             showSliceLoadingUI();
             showSliceModal();
 
-            loadPreview(fileHandler, previewFileLength, previewSampleRate, () => {
+            loadPreview(fileHandler, header, () => {
+
+                isNewFile = true;
 
                 updateSelectionSpan(0, 60);
 
@@ -2568,17 +2908,21 @@ async function readFromFile (exampleFilePath, callback) {
 
                     hideSliceLoadingUI();
 
+                    saveCurrentSlicePosition();
+
                 });
 
             }, cancelPreview);
 
         } else {
 
+            isNewFile = true;
+
             showReselectLink = false;
 
             result = await readWav(fileHandler);
 
-            processReadResult(result, callback);
+            processReadResult(result, true, callback);
 
         }
 
@@ -2586,7 +2930,7 @@ async function readFromFile (exampleFilePath, callback) {
 
 }
 
-setSliceSelectButtonEventHandler(async (selection, length) => {
+setSliceSelectButtonEventHandler(async (selection, length, setTransformations) => {
 
     timeLabelOffset = selection;
 
@@ -2594,7 +2938,7 @@ setSliceSelectButtonEventHandler(async (selection, length) => {
 
     hideSliceModal();
 
-    // If a slice length doesn't equal 60, don't provide a length and slice() will automaticall select until the end of the file
+    // If a slice length doesn't equal 60, don't provide a length and slice() will automatically select until the end of the file
 
     if (length !== 60) {
 
@@ -2606,22 +2950,24 @@ setSliceSelectButtonEventHandler(async (selection, length) => {
 
     }
 
-    processReadResult(readResult, (processedResult) => {
+    processReadResult(readResult, isNewFile, (processedResult) => {
 
-        const currentSampleRate = getSampleRate();
+        const currentSampleRate = trueSampleRate;
         const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
         const maxDisplayTime = (Math.max(currentSampleCount, originalFileLength) / currentSampleRate) + timeLabelOffset;
 
         sliceReselectLink.innerText = formatTimeLabel(selection, maxDisplayTime, 0, false) + ' - ' + formatTimeLabel(selection + length, maxDisplayTime, 0, false);
         showReselectLink = true;
 
-        sliceSelectionCallback(processedResult);
+        sliceSelectionCallback(processedResult, setTransformations);
+
+        isNewFile = false;
 
     });
 
 });
 
-sliceCloseButton.addEventListener('click', cancelPreview);
+setSliceCancelButtonListener(cancelPreview);
 
 sliceReselectLink.addEventListener('click', () => {
 
@@ -2630,6 +2976,8 @@ sliceReselectLink.addEventListener('click', () => {
     displaySpans(1);
 
     showSliceModal();
+
+    saveCurrentSlicePosition();
 
 });
 
@@ -2782,7 +3130,7 @@ async function loadFile (exampleFilePath, exampleName) {
 
     // Read samples
 
-    await readFromFile(exampleFilePath, (result) => {
+    await readFromFile(exampleFilePath, (result, setTransformations) => {
 
         const samples = result.samples;
 
@@ -2797,8 +3145,6 @@ async function loadFile (exampleFilePath, exampleName) {
         }
 
         filteredSamples = new Array(sampleCount);
-
-        // If file has been resampled, display warning
 
         resampledFile = result.resampled;
 
@@ -2819,9 +3165,32 @@ async function loadFile (exampleFilePath, exampleName) {
 
         goertzelValues = [];
 
-        // Reset UI
+        // Reset transformations or, if panning to a new slice, set the transformations to precalculated values
 
-        resetTransformations();
+        if (setTransformations) {
+
+            offset = prePanOffset;
+            displayLength = (offset + displayLength > sampleCount) ? sampleCount - offset : prePanDisplayLength;
+
+            sampleRate = prePanSampleRate;
+
+        } else {
+
+            const downsampledDisplayLength = displayLength;
+
+            resetTransformations();
+
+            // If the sample rate was changed in another slice, don't reset the displayLength
+
+            if (sampleRate !== trueSampleRate) {
+
+                displayLength = downsampledDisplayLength;
+
+            }
+
+        }
+
+        updateNavigationUI();
 
         clearSVG(waveformThresholdLineSVG);
 
@@ -2846,6 +3215,8 @@ async function loadFile (exampleFilePath, exampleName) {
 
         }
 
+        sampleCount = downsampleResult.length;
+
         // Update file name display
 
         fileSpan.innerText = fileName;
@@ -2856,9 +3227,10 @@ async function loadFile (exampleFilePath, exampleName) {
 
         // Reset values used to calculate colour map
 
-        console.log('Resetting colour map');
-        spectrumMin = 0.0;
-        spectrumMax = 0.0;
+        // console.log('Resetting colour map');
+
+        spectrumMin = Number.MAX_SAFE_INTEGER;
+        spectrumMax = Number.MIN_SAFE_INTEGER;
 
         // Update filter range, resetting values if it's the first file loaded or the sliders have been observed
 
@@ -2868,7 +3240,12 @@ async function loadFile (exampleFilePath, exampleName) {
         const centreObserved = getCentreObserved();
 
         sampleRateChange(resetSliders || !passFiltersObserved, resetSliders || !centreObserved, getSampleRate());
-        updateSampleRateUI(getTrueSampleRate());
+
+        if (!setTransformations && isNewFile) {
+
+            updateSampleRateUI(getTrueSampleRate());
+
+        }
 
         if (resetSliders) {
 
@@ -2923,7 +3300,7 @@ async function loadFile (exampleFilePath, exampleName) {
 
         const thresholdTypeIndex = getThresholdTypeIndex();
 
-        const filterIndex = getFilterRadioValue();
+        const filterIndex = getFilterType();
 
         // Flag that the first file has now been loaded
 
@@ -2931,13 +3308,15 @@ async function loadFile (exampleFilePath, exampleName) {
 
         if (filterIndex === FILTER_NONE && thresholdTypeIndex === THRESHOLD_TYPE_NONE) {
 
-            processContents(unfilteredSamples, true, true);
+            // unfilteredSamples and downsampledUnfilteredSamples only differ if downsampling has occurred, so use downsampledUnfilteredSamples
+
+            processContents(downsampledUnfilteredSamples, true, true);
 
         } else {
 
             // Calculate spectrogram frames of unfiltered samples to create initial colour map
 
-            processContents(unfilteredSamples, true, false);
+            processContents(downsampledUnfilteredSamples, true, false);
 
             // Get filtered/thresholded samples
 
@@ -2955,18 +3334,8 @@ async function loadFile (exampleFilePath, exampleName) {
 
 /**
  * Load samples from all example files then render the first file
- * @param {boolean} devMode If testing locally, don't load example files as it will fail
  */
-async function loadExampleFiles (devMode) {
-
-    if (devMode) {
-
-        disabledFileButton.style.display = 'none';
-        fileButton.style.display = '';
-
-        return;
-
-    }
+async function loadExampleFiles () {
 
     console.log('Loading example files');
 
@@ -2985,6 +3354,7 @@ async function loadExampleFiles (devMode) {
 
             if (i === exampleNames.length - 1) {
 
+                isNewFile = true;
                 loadFile(examplePaths[0], exampleNames[0]);
 
             }
@@ -3017,6 +3387,7 @@ for (let i = 0; i < examplePaths.length; i++) {
 
         if (!drawing && !playing) {
 
+            isNewFile = true;
             loadFile(examplePaths[i], exampleNames[i]);
 
         }
@@ -3024,6 +3395,17 @@ for (let i = 0; i < examplePaths.length; i++) {
     });
 
 }
+
+appExampleLink.addEventListener('click', () => {
+
+    if (!drawing && !playing) {
+
+        isNewFile = true;
+        loadFile(examplePaths[0], exampleNames[0]);
+
+    }
+
+});
 
 /**
  * Handle start of a zoom drag event
@@ -3329,7 +3711,7 @@ amplitudeThresholdScaleSelect.addEventListener('change', function () {
 
     setAmplitudeThresholdScaleIndex(parseInt(amplitudeThresholdScaleSelect.value));
 
-    const filterIndex = getFilterRadioValue();
+    const filterIndex = getFilterType();
 
     // If mode is changed to or from decibel, the scale of the waveform plot has changed slightly, so redraw
 
@@ -3553,6 +3935,7 @@ function reset () {
         updatePlots(true, true, true, true, true);
 
         resetXTransformations();
+        updateNavigationUI();
 
     }
 
@@ -3596,9 +3979,10 @@ addSampleRateUIListeners(() => {
 
     // Reset colour map here, rather than as part of updatePlots() so the max and min don't use the possibly filtered values
 
-    console.log('Resetting colour map');
-    spectrumMin = 0.0;
-    spectrumMax = 0.0;
+    // console.log('Resetting colour map');
+
+    spectrumMin = Number.MAX_SAFE_INTEGER;
+    spectrumMax = Number.MIN_SAFE_INTEGER;
 
     processContents(downsampledUnfilteredSamples, false, false);
 
@@ -3624,6 +4008,7 @@ highPassFilterSlider.on('change', updateFilterLabel);
 function resetNavigation () {
 
     resetXTransformations();
+    updateNavigationUI();
     updatePlots(false, true, false, false, false);
 
 }
@@ -3662,7 +4047,7 @@ function exportConfig () {
 
     }
 
-    const filterIndex = getFilterRadioValue();
+    const filterIndex = getFilterType();
     let filterValue0 = 0;
     let filterValue1 = 0;
 
@@ -3736,7 +4121,8 @@ function exportConfig () {
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
-    const filterType = getFilterType();
+    const filterTypes = ['low', 'band', 'high', 'none'];
+    const filterType = filterTypes[getFilterRadioValue()];
 
     const passFiltersEnabled = thresholdTypeIndex !== THRESHOLD_TYPE_GOERTZEL && filterType !== 'none';
 
@@ -3987,6 +4373,90 @@ function stopEvent () {
 
 }
 
+/* Build an array of X axis locations which map to playback progress */
+
+function fillSkipArray () {
+
+    const thresholdTypeIndex = getThresholdTypeIndex();
+
+    // Create x coordinate map
+
+    skippingXCoords = new Array(displayLength).fill(0);
+
+    const waveformW = waveformPlaybackCanvas.width;
+
+    let n = 0;
+
+    const displayedTime = displayLength / getSampleRate();
+
+    // Create mapping from sample index to x coordinate
+
+    const start = Math.floor(offset / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
+    const end = Math.floor((offset + displayLength - 1) / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
+
+    for (let i = start; i <= end; i++) {
+
+        const sampleIndex = i * AMPLITUDE_THRESHOLD_BUFFER_LENGTH;
+
+        const sampleAboveThreshold = (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold[i] : samplesAboveThreshold[i];
+
+        if (sampleAboveThreshold) {
+
+            // Add an x coordinate for each sample within the period above the threshold
+
+            for (let j = 0; j < AMPLITUDE_THRESHOLD_BUFFER_LENGTH; j++) {
+
+                const periodSample = sampleIndex + j - offset;
+
+                if (periodSample >= 0 && periodSample < displayLength) {
+
+                    let xCoord = periodSample / getSampleRate() / displayedTime;
+                    xCoord *= waveformW;
+
+                    skippingXCoords[n] = xCoord;
+                    n++;
+
+                }
+
+            }
+
+        }
+
+    }
+
+    // Reduce length to just unthresholded samples on screen
+
+    skippingXCoords.length = n;
+    return n;
+
+}
+
+/* Convert an array of values to a percentage array of length outputSize */
+
+function convertSkipArray (inputArray, maxValue, outputSize) {
+
+    if (!Array.isArray(inputArray) || inputArray.length === 0 || outputSize === 0) {
+
+        return [];
+
+    }
+
+    const resultArray = new Array(outputSize);
+    const step = inputArray.length / outputSize;
+
+    for (let i = 0; i < outputSize; i++) {
+
+        const index = Math.floor(i * step);
+        resultArray[i] = inputArray[index];
+
+    }
+
+    const scaledArray = resultArray.map((value) => ((value / maxValue) * 100).toFixed(3));
+
+    return scaledArray;
+
+}
+
 /**
  * Play audio button
  */
@@ -4075,7 +4545,7 @@ playButton.addEventListener('click', () => {
 
         // Get currently displayed samples to play
 
-        const filterIndex = getFilterRadioValue();
+        const filterIndex = getFilterType();
 
         const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
 
@@ -4087,55 +4557,7 @@ playButton.addEventListener('click', () => {
 
         if (playbackMode === PLAYBACK_MODE_SKIP) {
 
-            // Create x coordinate map
-
-            skippingXCoords = new Array(displayLength).fill(0);
-
-            const waveformW = waveformPlaybackCanvas.width;
-
-            let n = 0;
-
-            const displayedTime = displayLength / getSampleRate();
-
-            // Create mapping from sample index to x coordinate
-
-            const start = Math.floor(offset / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
-            const end = Math.floor((offset + displayLength - 1) / AMPLITUDE_THRESHOLD_BUFFER_LENGTH);
-
-            for (let i = start; i <= end; i++) {
-
-                const sampleIndex = i * AMPLITUDE_THRESHOLD_BUFFER_LENGTH;
-
-                const sampleAboveThreshold = (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold[i] : samplesAboveThreshold[i];
-
-                if (sampleAboveThreshold) {
-
-                    // Add an x coordinate for each sample within the period above the threshold
-
-                    for (let j = 0; j < AMPLITUDE_THRESHOLD_BUFFER_LENGTH; j++) {
-
-                        const periodSample = sampleIndex + j - offset;
-
-                        if (periodSample >= 0 && periodSample < displayLength) {
-
-                            let xCoord = periodSample / getSampleRate() / displayedTime;
-                            xCoord *= waveformW;
-
-                            skippingXCoords[n] = xCoord;
-                            n++;
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-            // Reduce length to just unthresholded samples on screen
-
-            skippingXCoords.length = n;
-            playbackBufferLength = n;
+            playbackBufferLength = fillSkipArray();
 
         }
 
@@ -4248,29 +4670,7 @@ function createExportCanvas (exportFunction) {
 
     const fileName = fileSpan.innerText.replace(/\.[^/.]+$/, '');
 
-    // Create x axis title by working out what format the labels will be in
-
-    const currentSampleRate = getSampleRate();
-    const currentSampleCount = (sampleCount !== 0) ? sampleCount : FILLER_SAMPLE_COUNT;
-    const maxDisplayTime = (currentSampleCount / currentSampleRate) + timeLabelOffset;
-
-    let format = (maxDisplayTime >= 3600) ? 'HH:' : '';
-    format += (maxDisplayTime >= 60) ? 'MM:' : '';
-    format += 'SS';
-
-    const incrementPrecision = getIncrementAndPrecision(displayLength, currentSampleRate);
-    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
-
-    if (xLabelDecimalPlaces > 0) {
-
-        format += '.';
-        format += 'm'.repeat(xLabelDecimalPlaces);
-
-    }
-
-    const xAxisTitle = 'Time (' + format + ')';
-
-    return exportFunction(canvas0array, canvas1array, timeLabelSVG, xAxisTitle, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileName, title);
+    return exportFunction(canvas0array, canvas1array, timeLabelSVG, xAxisHeading, yAxis0svg, yAxis1svg, plot0yAxis, plot1yAxis, linesY0, linesY1, fileName, title);
 
 }
 
@@ -4328,7 +4728,7 @@ function getAudioForExport () {
 
     // Get currently displayed samples to play
 
-    const filterIndex = getFilterRadioValue();
+    const filterIndex = getFilterType();
 
     const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
 
@@ -4477,17 +4877,44 @@ exportVideoButton.addEventListener('click', () => {
 
     const imageCanvas = createExportCanvas(createImageCanvas);
 
-    // Get video length in ms
-
-    const videoLength = displayLength / sampleRate * 1000 / getPlaybackRate();
-
     // Prepare name for exported video
 
     const fileName = fileSpan.innerText.replace(/\.[^/.]+$/, '');
 
+    // Calculate video length in samples
+
+    let videoLengthSamples = displayLength;
+
+    if (playbackMode === PLAYBACK_MODE_SKIP) {
+
+        // If in skip mode, length of video is just the length of the unskipped period(s)
+
+        videoLengthSamples = fillSkipArray();
+
+    }
+
+    // Calculate video length in milliseconds
+
+    const videoLength = videoLengthSamples / sampleRate * 1000 / getPlaybackRate();
+
+    // Create array of skipping x co-ordinates if needed
+
+    let skipString = '-';
+
+    if (playbackMode === PLAYBACK_MODE_SKIP && videoLineEnabled) {
+
+        console.log('Creating skip array argument for ffmpeg.js');
+
+        const percentageSkipArrayLength = 500;
+        const percentageSkipArray = convertSkipArray(skippingXCoords, spectrogramPlaybackCanvas.width, percentageSkipArrayLength);
+
+        skipString = percentageSkipArray.join('|');
+
+    }
+
     // Process audio and image into video file
 
-    exportVideo(imageCanvas, audioFileArray, videoLength, fileName, (succeeded) => {
+    exportVideo(imageCanvas, audioFileArray, videoLength, fileName, videoLineEnabled, fixedFpsEnabled, skipString, (succeeded) => {
 
         exportVideoIcon.style.display = '';
         exportVideoSpinner.style.display = 'none';
@@ -4517,98 +4944,222 @@ exportVideoButton.addEventListener('click', () => {
 settingsModalButton.addEventListener('click', () => {
 
     settingsFileTimeCheckbox.checked = useFileTime;
+    settingsDynamicColoursCheckbox.checked = useDynamicColours;
+    settingsVideoLineCheckbox.checked = videoLineEnabled;
+    settingsVideoFixedFPSCheckbox.checked = fixedFpsEnabled;
+
+    // Warn user that setting will do nothing to current file
+
+    settingsFileTimeLabel.innerText = 'Display real time on x axis';
+
+    if (fileTimestamp <= 0 || isTWAV()) {
+
+        settingsFileTimeLabel.innerText += ' (timestamp not available for current file)';
+
+    }
+
     settingsModal.show();
 
 });
 
 settingsApplyButton.addEventListener('click', () => {
 
-    useFileTime = settingsFileTimeCheckbox.checked;
+    const changedUseFileTime = useFileTime !== settingsFileTimeCheckbox.checked;
+    const changedUseDynamicColours = useDynamicColours !== settingsDynamicColoursCheckbox.checked;
+    const changedColourMap = colourMapIndex !== parseInt(settingsMonochromeSelect.value);
 
-    drawAxisLabels();
-    drawAxisHeadings();
+    useFileTime = settingsFileTimeCheckbox.checked;
+    useDynamicColours = settingsDynamicColoursCheckbox.checked;
+    videoLineEnabled = settingsVideoLineCheckbox.checked;
+    fixedFpsEnabled = settingsVideoFixedFPSCheckbox.checked;
+    colourMapIndex = parseInt(settingsMonochromeSelect.value);
+
+    // If setting has been changed, update the relevant UI
+
+    if (changedUseFileTime) {
+
+        drawAxisLabels();
+        drawAxisHeadings();
+
+    }
+
+    if (changedUseDynamicColours || changedColourMap) {
+
+        setTimeout(() => {
+
+            updatePlots(false, true, false, false, false);
+
+        }, 0);
+
+    }
 
     settingsModal.hide();
 
 });
 
-// Start zoom and offset level on default values
+// Each new window needs a unique name so multiple windows can be opened
 
-resetTransformations();
+let popupCount = 0;
 
-// Add filler axis labels
+launchAppLink.addEventListener('click', () => {
 
-drawAxisLabels();
-drawAxisHeadings();
-drawBorders();
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
 
-// Prepare threshold UI
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-updateThresholdTypePlaybackUI();
-updateThresholdUI();
+    const windowHeight = isSafari ? 816 : 790;
 
-// Prepare filter UI
-// First 2 arguments only used in Config app
+    const features = 'directories=no,menubar=no,status=no,titlebar=no,toolbar=no,width=1420,height=' + windowHeight;
 
-prepareUI(null, null, () => {
+    if (urlParams.get('dev')) {
 
-    // If a Goertzel value has been changed, don't rescale the values to defaults as sample rate changes
-    const passFiltersObserved = getPassFiltersObserved();
-    const centreObserved = getCentreObserved();
-    sampleRateChange(!passFiltersObserved, !centreObserved, getSampleRate());
-    handleFilterChange();
+        window.open('http://localhost:8000/?app=true', 'window' + popupCount++, features);
+
+    } else {
+
+        window.open('https://play.openacousticdevices.info/?app=true', 'window' + popupCount++, features);
+
+    }
 
 });
 
-updateFilterUI();
-updateFilterLabel();
+function loadPage () {
 
-// Disable controls until file is loaded
+    // Start zoom and offset level on default values
 
-disableUI(true);
+    resetTransformations();
+    updateNavigationUI();
 
-// Draw loading SVG texts
+    // Add filler axis labels
 
-drawLoadingImage(waveformLoadingSVG);
-drawLoadingImage(spectrogramLoadingSVG);
+    drawAxisLabels();
+    drawAxisHeadings();
+    drawBorders();
 
-// Display error if current browser is not Chrome
+    // Prepare threshold UI
 
-const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    updateThresholdTypePlaybackUI();
+    updateThresholdUI();
 
-if (!isChrome) {
+    // Prepare filter UI
+    // First 2 arguments only used in Config app
 
-    fileSelectionTitleDiv.classList.add('grey');
-    browserErrorSpan.style.display = '';
-    fileSelectionTitleSpan.style.display = 'none';
-    disabledFileButton.style.display = '';
-    fileButton.style.display = 'none';
+    prepareUI(null, null, () => {
 
-}
+        // If a Goertzel value has been changed, don't rescale the values to defaults as sample rate changes
+        const passFiltersObserved = getPassFiltersObserved();
+        const centreObserved = getCentreObserved();
+        sampleRateChange(!passFiltersObserved, !centreObserved, getSampleRate());
+        handleFilterChange();
 
-// Check for dev mode
+    });
 
-const queryString = window.location.search;
-const urlParams = new URLSearchParams(queryString);
+    updateFilterUI();
+    updateFilterLabel();
 
-if (urlParams.get('dev')) {
+    // Disable controls until file is loaded
 
-    console.log('DEV MODE - Files will not be loaded automatically.');
-    loadExampleFiles(true);
+    disableUI(true);
 
-} else {
+    // Draw loading SVG texts
 
-    loadExampleFiles();
+    drawLoadingImage(waveformLoadingSVG);
+    drawLoadingImage(spectrogramLoadingSVG);
 
-}
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
 
-if (urlParams.get('app')) {
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 
-    console.log('APP MODE - Hiding instructions');
-    instructionsContent.style.display = 'none';
+    disabledFileButton.style.display = isChrome ? 'none' : '';
+    fileButton.style.display = isChrome ? '' : 'none';
 
-} else {
+    if (!isChrome) {
+
+        fileSelectionTitleDiv.classList.add('grey');
+        fileSelectionTitleSpan.style.display = 'none';
+
+        if (urlParams.get('app')) {
+
+            browserErrorSpanApp.style.display = '';
+
+        } else {
+
+            browserErrorSpan.style.display = '';
+
+        }
+
+    }
+
+    // Check for dev mode
 
     instructionsContent.style.display = '';
 
+    if (urlParams.get('dev')) {
+
+        loadingSpan.style.display = 'none';
+        spectrogramLoadingSVG.style.display = 'none';
+        waveformLoadingSVG.style.display = 'none';
+
+        fileButton.disabled = false;
+
+    } else if (urlParams.get('app')) {
+
+        console.log('APP MODE - Hiding instructions and link to app mode');
+        instructionsContent.style.display = 'none';
+        launchAppLink.style.display = 'none';
+
+        loadingSpan.style.display = 'none';
+        spectrogramLoadingSVG.style.display = 'none';
+        waveformLoadingSVG.style.display = 'none';
+
+        fileButton.disabled = false;
+
+    } else {
+
+        loadExampleFiles();
+
+    }
+
 }
+
+window.addEventListener('load', () => {
+
+    // Register service worker
+
+    if (!('serviceWorker' in navigator)) {
+
+        console.log('Service workers not supported');
+
+        loadPage();
+
+    } else {
+
+        // Ensure service worker is updated
+
+        navigator.serviceWorker.register('./worker.js?v=' + VERSION).then(
+            () => {
+
+                console.log('Service worker registered');
+
+            },
+            (err) => {
+
+                console.error('Service worker registration failed', err);
+
+            }
+
+        );
+
+        navigator.serviceWorker.ready.then(() => {
+
+            console.log('Ready');
+
+            loadPage();
+
+        });
+
+    }
+
+});

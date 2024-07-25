@@ -4,7 +4,7 @@
  * June 2021
  *****************************************************************************/
 
-/* global UINT16_LENGTH, UINT32_LENGTH, RIFF_ID_LENGTH, LENGTH_OF_WAV_HEADER */
+/* global UINT16_LENGTH, UINT32_LENGTH, RIFF_ID_LENGTH, LENGTH_OF_WAV_HEADER, MAXIMUM_LENGTH_OF_WAV_HEADER */
 /* global PCM_WAV_FORMAT, EXTENSIBLE_WAV_FORMAT, NUMBER_OF_CHANNELS, NUMBER_OF_BITS_IN_SAMPLE, NUMBER_OF_BYTES_IN_SAMPLE, LENGTH_OF_WAV_FORMAT, VALID_RESAMPLE_RATES, VALID_AUDIOMOTH_SAMPLE_RATES */
 /* global resampleOutputLength, resample */
 
@@ -21,7 +21,8 @@ function readString (state, length) {
     const utf8decoder = new TextDecoder();
 
     const bufferSplit = state.buffer.slice(state.index, state.index + length);
-    const intBuffer = new Uint16Array(bufferSplit);
+
+    const intBuffer = new Uint8Array(bufferSplit);
     const result = utf8decoder.decode(intBuffer).replace(/\0/g, '');
 
     state.index += length;
@@ -83,6 +84,15 @@ function readChunk (state, id) {
 
 /* WAV header read and write functions */
 
+function showWAVFormat (wavFormat) {
+
+    console.log('Number of channel:', wavFormat.numberOfChannels);
+    console.log('Bytes per second:', wavFormat.bytesPerSecond);
+    console.log('Bytes per capture:', wavFormat.bytesPerCapture);
+    console.log('Bits per sample:', wavFormat.bitsPerSample);
+
+}
+
 function readGeneralHeader (buffer, fileSize) {
 
     const header = {};
@@ -135,9 +145,39 @@ function readGeneralHeader (buffer, fileSize) {
         header.wavFormat.bytesPerCapture = readUInt16LE(state);
         header.wavFormat.bitsPerSample = readUInt16LE(state);
 
+        /* Check if file is mono */
+
+        if (header.wavFormat.numberOfChannels !== NUMBER_OF_CHANNELS) {
+
+            showWAVFormat(header.wavFormat);
+
+            return {
+                success: false,
+                error: 'Invalid number of channels. Mix file down to mono to use.'
+            };
+
+        }
+
+        /* Check if file is 16-bit */
+
+        if (header.wavFormat.bitsPerSample !== NUMBER_OF_BITS_IN_SAMPLE) {
+
+            showWAVFormat(header.wavFormat);
+
+            return {
+                success: false,
+                error: 'Invalid bits per sample. Resample to 16-bit to use.'
+            };
+
+        }
+
+        /* Check other aspects of file format */
+
         const formatValid = header.wavFormat.format === PCM_WAV_FORMAT || header.wavFormat.format === EXTENSIBLE_WAV_FORMAT;
 
-        if (!formatValid || header.wavFormat.numberOfChannels !== NUMBER_OF_CHANNELS || header.wavFormat.bytesPerSecond !== NUMBER_OF_BYTES_IN_SAMPLE * header.wavFormat.samplesPerSecond || header.wavFormat.bytesPerCapture !== NUMBER_OF_BYTES_IN_SAMPLE || header.wavFormat.bitsPerSample !== NUMBER_OF_BITS_IN_SAMPLE) {
+        if (!formatValid || header.wavFormat.bytesPerSecond !== NUMBER_OF_BYTES_IN_SAMPLE * header.wavFormat.samplesPerSecond || header.wavFormat.bytesPerCapture !== NUMBER_OF_BYTES_IN_SAMPLE) {
+
+            showWAVFormat(header.wavFormat);
 
             return {
                 success: false,
@@ -154,6 +194,8 @@ function readGeneralHeader (buffer, fileSize) {
 
         if (sampleRateAcceptable === false) {
 
+            showWAVFormat(header.wavFormat);
+
             return {
                 success: false,
                 error: 'Sample rate is not supported.'
@@ -161,7 +203,7 @@ function readGeneralHeader (buffer, fileSize) {
 
         }
 
-        if (header.wavFormat.format === EXTENSIBLE_WAV_FORMAT) state.index += header.fmt.size - LENGTH_OF_WAV_FORMAT;
+        state.index += header.fmt.size - LENGTH_OF_WAV_FORMAT;
 
         /* Find the data chunk */
 
@@ -199,6 +241,12 @@ function readGeneralHeader (buffer, fileSize) {
 
                 }
 
+                if (header.data.size + header.size < fileSize) {
+
+                    console.log('WAVE READER: DATA chunk is followed by additional header information.');
+
+                }
+
                 return {
                     success: true,
                     header: header
@@ -210,15 +258,19 @@ function readGeneralHeader (buffer, fileSize) {
 
             }
 
+            state.index += size & 0x01 ? 1 : 0;
+
         }
 
     } catch (e) {
 
         /* An error has occurred */
 
+        console.error(e.message);
+
         return {
             success: false,
-            error: e.message
+            error: 'An error occurred whilst reading the WAV file.'
         };
 
     }
@@ -488,7 +540,7 @@ async function readWav (fileHandler, start, length) {
 
     /* Check header */
 
-    const headerBlob = file.slice(0, LENGTH_OF_WAV_HEADER);
+    const headerBlob = file.slice(0, MAXIMUM_LENGTH_OF_WAV_HEADER);
 
     const buffer = await headerBlob.arrayBuffer();
 
@@ -505,13 +557,19 @@ async function readWav (fileHandler, start, length) {
 
     const header = headerResult.header;
 
+    const headerLength = header.size;
+
+    /* Check different sizes */
+
+    const dataLength = header.data.size;
+
     const sampleRate = header.wavFormat.samplesPerSecond;
 
     /* Slice out relevant part of file */
 
     start = (start === undefined) ? 0 : start;
 
-    const recordingLength = ((fileSize - LENGTH_OF_WAV_HEADER) / UINT16_LENGTH / sampleRate) - start;
+    const recordingLength = dataLength / UINT16_LENGTH / sampleRate - start;
 
     if (recordingLength > MAXIMUM_FILE_DURATION) {
 
@@ -519,10 +577,10 @@ async function readWav (fileHandler, start, length) {
 
     }
 
-    const startBytes = LENGTH_OF_WAV_HEADER + (start * sampleRate * UINT16_LENGTH);
+    const startBytes = headerLength + (start * sampleRate * UINT16_LENGTH);
     const lengthBytes = length * sampleRate * UINT16_LENGTH;
 
-    const fileSlice = length ? file.slice(startBytes, startBytes + lengthBytes) : file.slice(startBytes);
+    const fileSlice = length ? file.slice(startBytes, startBytes + lengthBytes) : file.slice(startBytes, headerLength + dataLength);
     const contents = await fileSlice.arrayBuffer();
 
     const samples = new Int16Array(contents);
@@ -536,7 +594,7 @@ async function checkHeader (fileHandler) {
     const file = await fileHandler.getFile();
     const fileSize = file.size;
 
-    const blob = file.slice(0, LENGTH_OF_WAV_HEADER);
+    const blob = file.slice(0, MAXIMUM_LENGTH_OF_WAV_HEADER);
 
     const buffer = await blob.arrayBuffer();
 

@@ -7,8 +7,8 @@
 /* global bootstrap */
 /* global LENGTH_OF_WAV_HEADER, DISPLAYED_TIME_AMOUNTS */
 /* global renderWaveform */
-/* global addSVGText, addSVGLine, clearSVG, addSVGRect */
-/* global formatAxisUnits, formatTimeLabel */
+/* global addSVGText, addSVGLine, clearSVG, addSVGRect, checkSVGLabelCutOff */
+/* global formatAxisUnits, formatTimeLabel, getIncrementAndPrecision */
 
 const sliceModal = new bootstrap.Modal(document.getElementById('slice-modal'), {
     backdrop: 'static',
@@ -40,6 +40,7 @@ const slicePageRightButton = document.getElementById('slice-page-right-button');
 const slicePageSpan = document.getElementById('slice-page-span');
 
 const sliceSelectButton = document.getElementById('slice-select-button');
+const sliceCancelButton = document.getElementById('slice-close-button');
 
 // Function called when a slice is selected, either by clicking the select button or by double clicking the canvas
 
@@ -54,16 +55,19 @@ let previewLength, previewSampleRate;
 let waveformPages;
 let currentPage = 0;
 let pageCount = 1;
+let savedPage = 0;
 
 const HOUR_SECONDS = 3600;
 
 // Start of selected period in seconds
 
 let sliceSelection = 0;
+let savedSliceSelection = 0;
 
 // Selected positions for each page
 
 let pageSelections;
+let pageStarts;
 
 // Whether or not the loading process has been cancelled
 
@@ -206,9 +210,13 @@ function drawPreviewAxis (callback) {
 
     // Draw axis heading
 
-    const format = formatAxisUnits(previewLength * previewSampleRate, pageLength * previewSampleRate, previewSampleRate);
+    const incrementPrecision = getIncrementAndPrecision(pageLength * previewSampleRate, previewSampleRate);
+    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
+    const format = formatAxisUnits(previewLength, xLabelDecimalPlaces);
 
-    addSVGText(sliceTimeAxisLabelSVG, 'Time (' + format + ')', sliceTimeAxisLabelSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+    const labelTextElem = addSVGText(sliceTimeAxisLabelSVG, 'Time (' + format + ')', sliceTimeAxisLabelSVG.width.baseVal.value / 2, 10, 'middle', 'middle');
+
+    checkSVGLabelCutOff(labelTextElem);
 
     callback();
 
@@ -231,7 +239,7 @@ function drawPreviewWaveform (callback) {
 
     drawPreviewAxis(() => {
 
-        renderWaveform(sliceCanvas, waveformValues, startTime, callback);
+        renderWaveform(sliceCanvas, waveformValues, 0, startTime, callback);
 
     });
 
@@ -244,8 +252,6 @@ function drawPreviewWaveform (callback) {
 function updatePreviewPage (newPage) {
 
     currentPage = newPage;
-
-    updateSliceSelection(pageSelections[currentPage]);
 
     slicePageLeftButton.disabled = (currentPage === 0);
     slicePageRightButton.disabled = (currentPage === waveformPages.length - 1);
@@ -285,11 +291,10 @@ function drawSliceLoadingBar (completion) {
 /**
  * Read file in chunks to calculate a series of min and max values which can be used to draw a waveform
  * @param {FileSystemFileHandle} fileHandler Object which handles file access
- * @param {number} lengthSeconds Length of file in seconds
- * @param {number} previewSampleRate File's sample rate
+ * @param {Header} header Object describing the WAV file header
  * @param {function} callback Function to be called after completion
  */
-async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, cancelCallback) {
+async function loadPreview (fileHandler, header, callback, cancelCallback) {
 
     previewCancelled = false;
 
@@ -311,18 +316,17 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
     multiplier *= -1;
 
-    previewLength = lengthSeconds;
-    previewSampleRate = pSampleRate;
+    previewSampleRate = header.wavFormat.samplesPerSecond;
+
+    previewLength = header.data.size / header.wavFormat.bytesPerCapture / previewSampleRate;
 
     const file = await fileHandler.getFile();
 
-    const fileSize = file.size;
-
     /**
-     * Divide lengthSeconds by 1 hour to get page count
+     * Divide previewLength by 1 hour to get page count
      * If pageCount > 1, enable navigation buttons
      * Keep track of what page is being drawn
-     * lengthSeconds % 1 hour to get length of final page. If 0, final page = 1 hour
+     * previewLength % 1 hour to get length of final page. If 0, final page = 1 hour
      * Calculate finalPageChunkSize using finalPageLength
      * chunkSize is a constant, assuming normal page size is 1 hour
      * currentChunkSize = either chunkSize or finalPageChunkSize, depending on if currentPage === pageCount - 1 (final page)
@@ -331,13 +335,13 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
     // Max page length is 1 hour, split file into pages
 
-    pageCount = Math.ceil(lengthSeconds / HOUR_SECONDS);
+    pageCount = Math.ceil(previewLength / HOUR_SECONDS);
 
     // Calculate how long the last page will be
 
-    let finalPageLength = lengthSeconds % HOUR_SECONDS;
+    let finalPageLength = previewLength % HOUR_SECONDS;
 
-    // If lengthSeconds is divisible by 1 hour, then the last page will be a full length page
+    // If previewLength is divisible by 1 hour, then the last page will be a full length page
 
     finalPageLength = (finalPageLength === 0) ? HOUR_SECONDS : finalPageLength;
 
@@ -349,10 +353,12 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
     waveformPages = new Array(pageCount);
 
     pageSelections = new Array(pageCount);
+    pageStarts = new Array(pageCount);
 
     for (let i = 0; i < pageCount; i++) {
 
         pageSelections[i] = i * HOUR_SECONDS;
+        pageStarts[i] = i * HOUR_SECONDS;
 
     }
 
@@ -360,7 +366,7 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
     // Start reading after header
 
-    let processedSampleCount = LENGTH_OF_WAV_HEADER;
+    let processedSampleIndex = header.size;
 
     let page = 0;
     let currentChunkSize = (page === pageCount - 1) ? finalPageChunkSize : chunkSize;
@@ -370,7 +376,7 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
     let index = 0;
 
-    while (processedSampleCount < fileSize) {
+    while (processedSampleIndex < header.size + header.data.size) {
 
         if (previewCancelled) {
 
@@ -379,8 +385,8 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
         }
 
-        const start = processedSampleCount;
-        const end = Math.min(processedSampleCount + currentChunkSizeBytes, fileSize);
+        const start = processedSampleIndex;
+        const end = Math.min(processedSampleIndex + currentChunkSizeBytes, header.size + header.data.size);
 
         const blob = file.slice(start, end);
         const buffer = await blob.arrayBuffer();
@@ -406,7 +412,7 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
         index++;
 
-        processedSampleCount += currentChunkSizeBytes;
+        processedSampleIndex += currentChunkSizeBytes;
 
         if (index === sliceCanvas.width) {
 
@@ -427,7 +433,8 @@ async function loadPreview (fileHandler, lengthSeconds, pSampleRate, callback, c
 
         }
 
-        const completion = processedSampleCount / fileSize;
+        const completion = processedSampleIndex / (header.size + header.data.size);
+
         drawSliceLoadingBar(completion);
 
     }
@@ -447,7 +454,7 @@ function getSecondWidth () {
 
         let finalPageLength = previewLength % HOUR_SECONDS;
 
-        // If lengthSeconds is divisible by 1 hour, then the last page will be a full length page
+        // If previewLength is divisible by 1 hour, then the last page will be a full length page
 
         finalPageLength = (finalPageLength === 0) ? HOUR_SECONDS : finalPageLength;
 
@@ -567,7 +574,7 @@ function convertPreviewPixelsToSeconds (x) {
 
         let finalPageLength = previewLength % HOUR_SECONDS;
 
-        // If lengthSeconds is divisible by 1 hour, then the last page will be a full length page
+        // If previewLength is divisible by 1 hour, then the last page will be a full length page
 
         finalPageLength = (finalPageLength === 0) ? HOUR_SECONDS : finalPageLength;
 
@@ -641,71 +648,43 @@ sliceSelectionCanvas.addEventListener('mousemove', (e) => {
 
 });
 
-/**
- * Add functionality to a button which runs a function every delay ms while it is held
- * @param {Element} button Button to apply functionality to
- * @param {number} delay Amount of time between each firing of the action
- * @param {function} action Function to be run every delay ms
- */
-function holdButton (button, delay, action) {
+function moveSliceSelectionLeft () {
 
-    let t;
+    updateSliceSelection(sliceSelection - 30);
 
-    const repeat = () => {
+    if (sliceSelection < currentPage * HOUR_SECONDS) {
 
-        if (button.disabled) {
+        updatePreviewPage(currentPage - 1);
 
-            clearTimeout(t);
-            return;
+        drawPreviewWaveform();
 
-        }
-
-        action();
-        t = setTimeout(repeat, delay);
-
-    };
-
-    button.addEventListener('mousedown', () => {
-
-        repeat();
-
-    });
-
-    button.addEventListener('mouseup', () => {
-
-        clearTimeout(t);
-
-    });
+    }
 
 }
 
-holdButton(sliceSelectionLeftButton, 300, () => {
+function moveSliceSelectionRight () {
 
-    // Add 30 seconds to check if middle overlaps start of page
+    updateSliceSelection(sliceSelection + 30);
 
-    if (sliceSelection - 30 + 30 >= currentPage * HOUR_SECONDS) {
+    // Check if the end of the newly moved slice crosses over to the new page
 
-        updateSliceSelection(sliceSelection - 30);
+    const endOfSlice = sliceSelection + 30;
 
-    }
+    if (endOfSlice > (currentPage + 1) * HOUR_SECONDS) {
 
-});
+        updatePreviewPage(currentPage + 1);
 
-holdButton(sliceSelectionRightButton, 300, () => {
-
-    // Selection is recorded from start of 60 second period, so add 30 seconds to check if middle overlaps end of page
-
-    if (sliceSelection + 30 + 30 <= (currentPage + 1) * HOUR_SECONDS) {
-
-        updateSliceSelection(sliceSelection + 30);
+        drawPreviewWaveform();
 
     }
 
-});
+}
 
 slicePageLeftButton.addEventListener('click', () => {
 
     updatePreviewPage(currentPage - 1);
+
+    updateSliceSelection(pageStarts[currentPage]);
 
     drawPreviewWaveform();
 
@@ -714,6 +693,8 @@ slicePageLeftButton.addEventListener('click', () => {
 slicePageRightButton.addEventListener('click', () => {
 
     updatePreviewPage(currentPage + 1);
+
+    updateSliceSelection(pageStarts[currentPage]);
 
     drawPreviewWaveform();
 
@@ -730,9 +711,29 @@ function setSliceSelectButtonEventHandler (eventHandler) {
 }
 
 /**
+ * Set function used by cancel button
+ * @param {function} eventHandler Cancel function
+ */
+function setSliceCancelButtonListener (eventHandler) {
+
+    sliceCancelButton.addEventListener('click', () => {
+
+        currentPage = savedPage;
+        updatePreviewPage(currentPage);
+        drawPreviewWaveform();
+
+        updateSliceSelection(savedSliceSelection);
+
+        eventHandler();
+
+    });
+
+}
+
+/**
  * If sliceSelectEventHandler has been set, run it with the current selection
  */
-function usePreviewSelection () {
+function usePreviewSelection (setTransformations) {
 
     if (sliceSelectEventHandler) {
 
@@ -740,7 +741,7 @@ function usePreviewSelection () {
 
         const length = sliceSelection + 60 > previewLength ? previewLength - sliceSelection : 60;
 
-        sliceSelectEventHandler(sliceSelection, length);
+        sliceSelectEventHandler(sliceSelection, length, setTransformations);
 
     }
 
@@ -752,5 +753,18 @@ sliceLoadingCancelButton.addEventListener('click', () => {
 
 });
 
-sliceSelectButton.addEventListener('click', usePreviewSelection);
-sliceSelectionCanvas.addEventListener('dblclick', usePreviewSelection);
+function sliceClickEvent () {
+
+    usePreviewSelection(false);
+
+}
+
+function saveCurrentSlicePosition () {
+
+    savedPage = currentPage;
+    savedSliceSelection = sliceSelection;
+
+}
+
+sliceSelectButton.addEventListener('click', sliceClickEvent);
+sliceSelectionCanvas.addEventListener('dblclick', sliceClickEvent);

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>AudioMoth Filter Playground</title>
+        <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+        <title>AudioMoth Play</title>
         <link rel="icon" type="image/png" href="assets/favicon.png">
         <link rel="stylesheet" href="css/external/bootstrap.min.css">
         <link rel="stylesheet" href="css/external/bootstrap-slider.css">
@@ -22,7 +23,8 @@
 
             <div class="row justify-content-md-center">
                 <div class="col total-width">
-                    <h3 style="margin-bottom: 5px;">AudioMoth Filter Playground</h3>
+                    <h3 style="margin-bottom: 5px; display: inline-block;">AudioMoth Play</h3>
+                    <a href="#" id="launch-app-link" style="margin-left: 10px;">Launch as app</a>
                 </div>
             </div>
 
@@ -31,7 +33,8 @@
             <div id="file-selection-title-div" class="row justify-content-md-center" style="margin-top: 0px;">
                 <div class="col total-width">
                     <span id="file-selection-title-span">Select an AudioMoth WAV file:</span>
-                    <span id="browser-error-span" style="color: red; display: none;">Switch to Google Chrome or Microsoft Edge to load your own recordings or select one of the <a href="#examples" style="text-decoration: underline;">example</a> files.</span>
+                    <span id="browser-error-span" style="color: rgb(52, 93, 164); display: none;">Switch to Google Chrome or Microsoft Edge to load your own recordings or select one of the <a href="#examples">example</a> files.</span>
+                    <span id="browser-error-span-app" style="color: rgb(52, 93, 164); display: none;">Switch to Google Chrome or Microsoft Edge to load your own recordings or load an <a href="#" id="app-example-link">example</a> file.</span>
                 </div>
             </div>
 
@@ -39,7 +42,7 @@
 
             <div id="file-selection-div" class="row justify-content-md-center" style="margin-top: 5px;">
                 <div class="col total-width">
-                    <button class="btn btn-primary" id="file-button" style="vertical-align: middle; display: none;">Select File</button>
+                    <button class="btn btn-primary" id="file-button" style="vertical-align: middle; display: none;" disabled>Select File</button>
                     <button class="btn btn-primary" id="disabled-file-button" style="vertical-align: middle;" disabled>Select File</button>
                     <span id="file-span" style="margin-left: 10px; vertical-align: middle; display: none;"></span>
                     <span id="slice-reselect-span" style="margin-left: 2px; vertical-align: middle; display: none;">(<a href="#" id="slice-reselect-link">00:00:00 - 00:00:00</a>)</span>
@@ -82,11 +85,13 @@
                                 <button class="btn btn-primary nav-button" id="zoom-out-button" disabled>
                                     <img class="button-icon" src="./assets/zoom-out.svg" alt="Bootstrap">
                                 </button>
-                                <button class="btn btn-secondary nav-button" id="pan-left-button" disabled>
-                                    <img class="button-icon" src="./assets/chevron-left.svg" alt="Bootstrap">
+                                <button class="btn btn-secondary nav-button" id="pan-left-button" style="display: inline-flex; align-items: center;" disabled>
+                                    <img class="button-icon" src="./assets/chevron-left.svg" alt="Bootstrap" id="pan-left-icon">
+                                    <img class="button-icon" src="./assets/chevron-double-left.svg" alt="Bootstrap" id="pan-double-left-icon" style="display: none;">
                                 </button>
-                                <button class="btn btn-secondary nav-button" id="pan-right-button" disabled>
-                                    <img class="button-icon" src="./assets/chevron-right.svg" alt="Bootstrap">
+                                <button class="btn btn-secondary nav-button" id="pan-right-button" style="display: inline-flex; align-items: center;" disabled>
+                                    <img class="button-icon" src="./assets/chevron-right.svg" alt="Bootstrap" id="pan-right-icon">
+                                    <img class="button-icon" src="./assets/chevron-double-right.svg" alt="Bootstrap" id="pan-double-right-icon" style="display: none;">
                                 </button>
                             </div>
                         </div>
@@ -464,7 +469,7 @@
                                                             <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio6" value="6" name="amplitude-threshold-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio6" value="7" name="amplitude-threshold-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="amplitude-threshold-duration-radio7" value="7" name="amplitude-threshold-duration-radio">
                                                         </td>
                                                     </tr>
                                                 </table>
@@ -528,7 +533,7 @@
                                                             <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="5" name="goertzel-filter-window-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio6" value="6" name="goertzel-filter-window-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-filter-window-radio7" value="6" name="goertzel-filter-window-radio">
                                                         </td>
                                                     </tr>
                                                 </table>
@@ -595,7 +600,7 @@
                                                             <input class="settings-inputs" type="radio" id="goertzel-duration-radio6" value="6" name="goertzel-duration-radio">
                                                         </td>
                                                         <td align="center" style="padding-top: 0px; padding-bottom: 0px">
-                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio6" value="7" name="goertzel-duration-radio">
+                                                            <input class="settings-inputs" type="radio" id="goertzel-duration-radio7" value="7" name="goertzel-duration-radio">
                                                         </td>
                                                     </tr>
                                                 </table>
@@ -736,11 +741,27 @@
                         </div>
                         <div class="modal-body">
                             <input type="checkbox" id="settings-file-time-checkbox" style="vertical-align: middle;">
-                            <label for="settings-file-time-checkbox">Display real time on x axis</label>
+                            <label for="settings-file-time-checkbox" id="settings-file-time-label">Display real time on x axis</label>
+                            <br>
+                            <input type="checkbox" id="settings-video-line-checkbox" style="vertical-align: middle;">
+                            <label for="settings-video-line-checkbox" id="settings-video-line-label">Enable tracking line on exported video</label>
+                            <br>
+                            <input type="checkbox" id="settings-video-fixed-fps-checkbox" style="vertical-align: middle;">
+                            <label for="settings-video-fixed-fps-checkbox" id="settings-video-fixed-fps-label">Favour frame rate over file size when generating videos</label>
+                            <hr>
+                            <label for="settings-monochrome-select" id="settings-monochrome-label" style="margin-right: 5px; margin-top: 3px;">Colour palette:</label>
+                            <select id="settings-monochrome-select">
+                                <option value="0">Default</option>
+                                <option value="1">Monochrome</option>
+                                <option value="2">Inverse monochrome</option>
+                            </select>
+                            <br>
+                            <input type="checkbox" id="settings-dynamic-colours-checkbox" style="vertical-align: middle;">
+                            <label for="settings-dynamic-colours-checkbox" id="settings-dynamic-colours-label">Use dynamic spectrogram colouring</label>
                         </div>
                         <div class="modal-footer">
-                            <button id="settings-apply-button" type="button" class="btn btn-success">Apply</button>
                             <button id="settings-cancel-button" type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button id="settings-apply-button" type="button" class="btn btn-success">Apply</button>
                         </div>
                     </div>
                 </div>
@@ -751,7 +772,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                         <h5 class="modal-title" id="exportModalLabel">Export Image</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="export-close-button">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         </div>
@@ -891,21 +912,21 @@
                 </div>
                 <div class="row justify-content-md-center" style="margin-top: 15px;">
                     <div class="col total-width">
-                        <p>The AudioMoth Filter Playground allows you to explore filter and trigger settings on existing AudioMoth WAV files before applying them in the files.</p>
-                        
-                        <p>Select a file recorded on an AudioMoth which is up to 60 seconds in length. Longer files, up to 43.9 MB, will still load but will be truncated. Once the file has loaded, you can navigate through your recording using the buttons above the plot, or by clicking and dragging to select the area you wish to see in detail. You can also double click on either plot to zoom in and centre on specific features of interest.</p>
-                        
+                        <p>AudioMoth Play allows you to explore filter and trigger settings on existing AudioMoth WAV files before applying them in the files.</p>
+
+                        <p>Select a .WAV recording. Files longer than 60 seconds will open as a preview, allowing you to select a 60 second section to load. Once the file has loaded, you can navigate through your recording using the buttons above the plot, or by clicking and dragging to select the area you wish to see in detail. You can also double click on either plot to zoom in and centre on specific features of interest.</p>
+
                         <p>Add a low, high, or band pass filter using the controls on the right; selecting a radio button besides "None" to add a filter and then dragging the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
-
+                        
                         <p>Apply an amplitude threshold trigger by clicking the corresponding radio button on the right and then dragging the slider to set the threshold. The threshold will be drawn onto the waveform plot to show you which parts of the signal will trigger. You can change the units used to display this threshold using the drop-down menu at the top left of the plots. Once a threshold has been set, the plot will automatically grey out parts of the recording which fall below the threshold.</p>
-                        
+
                         <p>Selecting the frequency trigger will change the waveform to a frequency response plot. Use the radio buttons and slider to set the frequency band shown on this plot. Once you've chosen a band, drag the lower slider to set the frequency response threshold.</p>
-
-                        <p>Selecting either the amplitude trigger or no trigger will allow you to add a low, high, or band pass filter; tick the checkbox to enable the filter and then drag the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
                         
-                        <p>Once you are happy with the filter and amplitude threshold settings, click <b>Export Configuration</b> to download a .config which can be loaded in the AudioMoth Configuration App (version 1.6.0 onwards).</p>
+                        <p>Selecting either the amplitude trigger or no trigger will allow you to add a low, high, or band pass filter; tick the checkbox to enable the filter and then drag the sliders to set the required filter frequency. The plots update in real time to show the effect of the filter.</p>
 
-                        <p>You can use the controls beneath the plots to export WAV sound files, PNG, JPG, and PDF images, and MP4 videos of your AudioMoth recordings.</p> 
+                        <p>Once you are happy with the filter and amplitude threshold settings, click <b>Export Configuration</b> to download a .config which can be loaded in the AudioMoth Configuration App (version 1.6.0 onwards).</p>
+                        
+                        <p>You can use the controls beneath the plots to export WAV sound files, PNG, JPG, and PDF images, and MP4 videos of your AudioMoth recordings.</p>
                     </div>
                 </div>
 
@@ -938,18 +959,7 @@
                 </div>
                 <div class="row justify-content-md-center" style="margin-top: 5px;">
                     <div class="col total-width">
-                        The AudioMoth Filter Playground will open any 16-bit PCM WAV files recorded at a sample rate supported by AudioMoth (8, 16, 32, 48, 96, 192, 250, and 384 kHz). Files recorded at 44.1 and 312.5 kHz will be automatically resampled to 48 and 384 kHz respectively.
-                    </div>
-                </div>
-
-                <div class="row justify-content-md-center" style="margin-top: 15px;">
-                    <div class="col total-width">
-                        <h5>How do I reduce the size of my recordings?</h5>
-                    </div>
-                </div>
-                <div class="row justify-content-md-center" style="margin-top: 5px;">
-                    <div class="col total-width">
-                        The AudioMoth Filter Playground will read the first 60 seconds of any file. If you file is longer than 60 seconds, you can split it in any audio software, or use the AudioMoth Configuration App to split AudioMoth recordings into shorter length files. Select "<b>File</b>" and then "<b>Split AudioMoth WAV Recordings</b>" to access it.
+                        AudioMoth Play will open any 16-bit PCM WAV files recorded at a sample rate supported by AudioMoth (8, 16, 32, 48, 96, 192, 250, and 384 kHz). Files recorded at 44.1, 125, and 312.5 kHz will be automatically resampled to 48, 192, and 384 kHz respectively.
                     </div>
                 </div>
 

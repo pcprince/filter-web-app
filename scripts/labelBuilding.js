@@ -6,7 +6,6 @@
 
 /* global DISPLAYED_TIME_AMOUNTS */
 
-
 /**
  * Given the current duration being displayed, what level of precision and increment should be used to draw x axis labels
  * @param {number} length Displayed length in samples
@@ -25,7 +24,7 @@ function getIncrementAndPrecision (length, currentSampleRate) {
         xLabelIncrementSecs = DISPLAYED_TIME_AMOUNTS[i].labelIncrement;
         xLabelDecimalPlaces = DISPLAYED_TIME_AMOUNTS[i].precision;
 
-        if (length > displayedTimeSamples) {
+        if (length >= displayedTimeSamples) {
 
             break;
 
@@ -39,14 +38,11 @@ function getIncrementAndPrecision (length, currentSampleRate) {
 
 /**
  * Get a string which represents the format of the tick labels
- * @param {number} overallLength Overall file length in samples
- * @param {number} displayedLength Displayed length in samples
- * @param {number} currentSampleRate Sample rate
+ * @param {number} overallLength Overall file length in seconds
+ * @param {number} decimalPlaces Number of millisecond places being displayed
  * @returns String to put in axis heading
  */
-function formatAxisUnits (overallLength, displayedLength, currentSampleRate) {
-
-    const overallLengthSeconds = overallLength / currentSampleRate;
+function formatAxisUnits (overallLengthSeconds, decimalPlaces) {
 
     if (overallLengthSeconds < 60) {
 
@@ -58,13 +54,10 @@ function formatAxisUnits (overallLength, displayedLength, currentSampleRate) {
     format += (overallLengthSeconds >= 60) ? 'mm:' : '';
     format += 'ss';
 
-    const incrementPrecision = getIncrementAndPrecision(displayedLength, currentSampleRate);
-    const xLabelDecimalPlaces = incrementPrecision.xLabelDecimalPlaces;
-
-    if (xLabelDecimalPlaces > 0) {
+    if (decimalPlaces > 0) {
 
         format += '.';
-        format += 's'.repeat(xLabelDecimalPlaces);
+        format += 's'.repeat(decimalPlaces);
 
     }
 
@@ -97,7 +90,7 @@ function formatTimeLabel (time, maxTime, decimalPlaces, displayAll) {
     // If the value is a decimal, 2 characters are used to display the integer value + 1 character for the decimal point
 
     let secsPadding = decimalPlaces > 0 ? decimalPlaces + 3 : 2;
-    secsPadding = maxTime < 60 ? secsPadding - 1 : secsPadding;
+    secsPadding = (maxTime >= 60 || displayAll) ? secsPadding : 0;
 
     const hours = Math.floor(time / 3600);
     time -= hours * 3600;

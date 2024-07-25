@@ -93,19 +93,25 @@ function exportPDF (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yAxis0SVG,
     const yOffset0 = topSpacing + canvas0.height;
     const yOffset1 = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
-    pdfDoc.setFontSize(8);
+    pdfDoc.setFontSize(7);
     pdfDoc.setTextColor('#000000');
 
     for (let i = 0; i < xLines.length; i++) {
 
-        let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
+        let tickX = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
+
+        tickX = (i === xLines.length - 1) ? tickX + 0.5 : tickX;
+
+        pdfDoc.line(tickX, yOffset0, tickX, yOffset0 + 5);
+        pdfDoc.line(tickX, yOffset1, tickX, yOffset1 + 5);
+
         const labelText = xLabels[i].innerHTML;
+        const labelX = parseFloat(xLabels[i].getAttribute('x')) + yAxisW - xOffset;
 
-        x = (i === xLines.length - 1) ? x + 0.5 : x;
+        let labelAnchor = xLabels[i].getAttribute('text-anchor');
+        labelAnchor = (labelAnchor === 'start') ? 'left' : (labelAnchor === 'middle') ? 'center' : 'right';
 
-        pdfDoc.line(x, yOffset0, x, yOffset0 + 5);
-        pdfDoc.line(x, yOffset1, x, yOffset1 + 5);
-        pdfDoc.text(labelText, x, yOffset1 + 15, {align: 'center'});
+        pdfDoc.text(labelText, labelX, yOffset1 + 15, {align: labelAnchor});
 
     }
 
@@ -269,32 +275,36 @@ function createImageCanvas (canvas0array, canvas1array, xAxisSVG, xAxisTitle, yA
     const xLabels = xAxisSVG.getElementsByTagName('text');
 
     // Y axis labels give an offset to the plots on the site
+
     const xOffset = 45;
 
     const yOffset0 = topSpacing + canvas0.height;
     const yOffset1 = topSpacing + canvas0.height + plotSpacing + canvas1.height;
 
-    ctx.font = '11px Helvetica';
+    ctx.font = '10px Helvetica';
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
 
     for (let i = 0; i < xLines.length; i++) {
 
-        let x = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
-        x = x - (x % 1) + 0.5;
+        let tickX = parseFloat(xLines[i].getAttribute('x1')) + yAxisW - xOffset;
+        tickX = tickX - (tickX % 1) + 0.5;
 
+        ctx.beginPath();
+        ctx.moveTo(tickX, yOffset0);
+        ctx.lineTo(tickX, yOffset0 + 5);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(tickX, yOffset1);
+        ctx.lineTo(tickX, yOffset1 + 5);
+        ctx.stroke();
+
+        const labelX = parseFloat(xLabels[i].getAttribute('x')) + yAxisW - xOffset;
         const labelText = xLabels[i].innerHTML;
 
-        ctx.beginPath();
-        ctx.moveTo(x, yOffset0);
-        ctx.lineTo(x, yOffset0 + 5);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x, yOffset1);
-        ctx.lineTo(x, yOffset1 + 5);
-        ctx.stroke();
-        ctx.fillText(labelText, x, yOffset1 + 15);
+        ctx.textAlign = xLabels[i].getAttribute('text-anchor');
+        ctx.fillText(labelText, labelX, yOffset1 + 15);
 
     }
 

@@ -4,7 +4,7 @@
  * October 2021
  *****************************************************************************/
 
-/* global TWO_PI, GOERTZEL_THRESHOLD_BUFFER_LENGTH */
+/* global TWO_PI, GOERTZEL_THRESHOLD_BUFFER_LENGTH, INT16_MAX */
 
 // Drawing canvas
 
@@ -199,7 +199,7 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, 
 
     if (valuesPerPixel <= 1) {
 
-        console.log('Plotting raw Goertzel data on plot');
+        // console.log('Plotting raw Goertzel data on plot');
 
         const pointData = new Array((windowedLength * 2) + 2).fill(0);
 
@@ -228,7 +228,7 @@ function drawGoertzelPlot (goertzelValues, windowLength, offset, length, yZoom, 
 
     } else {
 
-        console.log('Plotting max and min sample per pixel column on Goertzel plot');
+        // console.log('Plotting max and min sample per pixel column on Goertzel plot');
 
         const pointData = new Array(2 * GOERTZEL_PIXEL_WIDTH).fill(0);
 

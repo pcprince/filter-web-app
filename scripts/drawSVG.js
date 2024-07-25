@@ -23,7 +23,7 @@ function addSVGText (parent, content, x, y, anchor, baseline) {
     textElement.setAttributeNS(null, 'y', y);
     textElement.setAttributeNS(null, 'dominant-baseline', baseline);
     textElement.setAttributeNS(null, 'text-anchor', anchor);
-    textElement.setAttributeNS(null, 'font-size', '10px');
+    textElement.setAttributeNS(null, 'font-size', '9px');
 
     textElement.textContent = content;
 
@@ -107,6 +107,35 @@ function clearSVG (parent) {
     while (parent.firstChild) {
 
         parent.removeChild(parent.lastChild);
+
+    }
+
+}
+
+/**
+ * Check if a text element overlaps the edge of the label canvas and shift it on if it is
+ * @param {SVGElement} elem SVG element of label text
+ */
+function checkSVGLabelCutOff (elem) {
+
+    const maxWidth = elem.parentElement.width.baseVal.value;
+
+    const bbox = elem.getBBox();
+
+    const currentX0 = bbox.x;
+    const currentX1 = bbox.x + bbox.width;
+
+    const cutOffAmount = currentX1 - maxWidth;
+
+    if (cutOffAmount > 0) {
+
+        elem.setAttribute('text-anchor', 'end');
+        elem.setAttribute('x', maxWidth);
+
+    } else if (currentX0 < 0) {
+
+        elem.setAttribute('text-anchor', 'start');
+        elem.setAttribute('x', 0);
 
     }
 

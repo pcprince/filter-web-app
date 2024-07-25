@@ -4,9 +4,17 @@
  * June 2022
  *****************************************************************************/
 
+// TODO: Update this with changes, along with the version in worker.js
+const VERSION = 1;
+
 /* Regex used to extract timestamp from header comment */
 
-const DATE_REGEX = /^Recorded at (\d\d):(\d\d):(\d\d) (\d\d)\/(\d\d)\/(\d\d\d\d) \(UTC((\+|\-)\d+)?\)/;
+const DATE_REGEX = /^Recorded at (\d\d):(\d\d):(\d\d)(\.\d\d\d)? (\d\d)\/(\d\d)\/(\d\d\d\d) \(UTC(((\+|\-)\d{1,2}(:\d{1,2})?)?)?\)/;
+const TIMESTAMP_REGEX = /(\d\d\d\d\d\d\d\d|\d\d\d\d\d\d)_(\d\d)(\d\d)(\d\d)(_(\d\d\d))?/;
+
+/* Number of seconds in 24 hours */
+
+const SECONDS_IN_DAY = 24 * 60 * 60;
 
 /* Downsample constants */
 
@@ -36,6 +44,8 @@ const LENGTH_OF_ARTIST = 32;
 const LENGTH_OF_COMMENT = 384;
 const LENGTH_OF_WAV_HEADER = 488;
 
+const MAXIMUM_LENGTH_OF_WAV_HEADER = 32 * 1024;
+
 /* WAV format constants */
 
 const PCM_WAV_FORMAT = 1;
@@ -58,7 +68,7 @@ const AMPLITUDE_THRESHOLD_BUFFER_LENGTH = 16384;
 
 /* Valid sample rate */
 
-const VALID_RESAMPLE_RATES = [44100, 125000, 312500];
+const VALID_RESAMPLE_RATES = [4000, 7812, 44100, 125000, 312500];
 
 const VALID_AUDIOMOTH_SAMPLE_RATES = [8000, 16000, 32000, 48000, 96000, 192000, 250000, 384000];
 
@@ -79,8 +89,13 @@ const DISPLAYED_TIME_AMOUNTS = [
         precision: 0
     },
     {
+        amount: 600,
+        labelIncrement: 120,
+        precision: 0
+    },
+    {
         amount: 300,
-        labelIncrement: 100,
+        labelIncrement: 60,
         precision: 0
     },
     {
@@ -144,13 +159,11 @@ const DISPLAYED_TIME_AMOUNTS = [
         precision: 3
     },
     {
-        amount: 0.015,
-        labelIncrement: 0.003,
-        precision: 3
-    },
-    {
         amount: 0.01,
         labelIncrement: 0.002,
         precision: 3
     }
 ];
+
+const STATIC_COLOUR_MIN = 2.0;
+const STATIC_COLOUR_MAX = 15.0;
