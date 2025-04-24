@@ -4,12 +4,14 @@
  * June 2021
  *****************************************************************************/
 
-/* global VERSION */
 /* global XMLHttpRequest, bootstrap */
-/* global INT16_MAX, LENGTH_OF_WAV_HEADER, DATE_REGEX, TIMESTAMP_REGEX, SECONDS_IN_DAY */
+/* global INT16_MAX, LENGTH_OF_WAV_HEADER, DATE_REGEX, TIMESTAMP_REGEX, SECONDS_IN_DAY, MIN_SAMPLE_RATE */
 /* global STATIC_COLOUR_MIN, STATIC_COLOUR_MAX */
+/* global Y_LABEL_COUNTS */
 
-/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readExampleWav, checkHeader */
+/* global showLowFrequencyTabButton, hideLowFrequencyTabButton, addLowFrequencyRadioButtonListeners, isLowFrequencyTabEnabled, addLowFrequencyTabCloseListener, addLowFrequencyTabOpenListener, enableLowFrequencyControls, disableLowFrequencyControls */
+
+/* global calculateSpectrogramFrames, drawSpectrogram, drawWaveform, readWav, readExampleWav, checkHeader, readGuano */
 /* global showSliceLoadingUI, hideSliceLoadingUI, loadPreview, drawPreviewWaveform, updateSelectionSpan, drawSliceSelection, showSliceModal, hideSliceModal, setSliceSelectButtonEventHandler, setSliceCancelButtonListener, saveCurrentSlicePosition, usePreviewSelection, moveSliceSelectionLeft, moveSliceSelectionRight */
 /* global applyLowPassFilter, applyHighPassFilter, applyBandPassFilter, FILTER_NONE, FILTER_LOW, FILTER_BAND, FILTER_HIGH, applyAmplitudeThreshold */
 /* global playAudio, stopAudio, getTimestamp, PLAYBACK_MODE_SKIP, PLAYBACK_MODE_ALL, AMPLITUDE_THRESHOLD_BUFFER_LENGTH, createAudioContext */
@@ -34,6 +36,10 @@
 /* global enableSampleRateControl, disableSampleRateControl, updateSampleRateUI, getSampleRateSelection, addSampleRateUIListeners */
 
 /* global downsample, resampleOutputLength */
+
+/* global displayFileFolderModal, fileFolderMode, fileFolderModal, loadFolder, setDisplayFileFolderModal, setRememberTransformations, getDisplayFileFolderModal, getRememberTransformations, openFileFromFolderButton, fileList */
+
+/* global filesTabButton, triggerTabButton, lowFrequencyTabButton */
 
 // Launch page as app without instructions
 
@@ -65,8 +71,15 @@ const loadingSpan = document.getElementById('loading-span');
 let isExampleFile = true;
 
 // File information modal
+const informationModalDialog = document.getElementById('information-modal-dialog');
 const artistSpan = document.getElementById('artist-span');
 const commentSpan = document.getElementById('comment-span');
+const guanoHolder = document.getElementById('guano-holder');
+const informationDownloadButton = document.getElementById('information-download-button');
+const informationClipboardButton = document.getElementById('information-clipboard-button');
+
+const DEFAULT_INFORMATION_MODAL_WIDTH = 400;
+const INFORMATION_MODAL_PADDING = 40;
 
 // Recording slice UI
 const sliceLoadingBorderSVG = document.getElementById('slice-loading-border-svg');
@@ -81,8 +94,11 @@ let sliceSelectionCallback;
 const settingsModalButton = document.getElementById('settings-modal-button');
 const settingsApplyButton = document.getElementById('settings-apply-button');
 const settingsModal = new bootstrap.Modal(document.getElementById('settings-modal'));
+const settingsFileFolderCheckbox = document.getElementById('settings-file-folder-checkbox');
+const settingsRememberTransformationsCheckbox = document.getElementById('settings-remember-transformations-checkbox');
 const settingsFileTimeCheckbox = document.getElementById('settings-file-time-checkbox');
 const settingsFileTimeLabel = document.getElementById('settings-file-time-label');
+const settingsLowFrequencyCheckbox = document.getElementById('settings-low-frequency-checkbox');
 const settingsDynamicColoursCheckbox = document.getElementById('settings-dynamic-colours-checkbox');
 const settingsVideoLineCheckbox = document.getElementById('settings-video-line-checkbox');
 const settingsVideoFixedFPSCheckbox = document.getElementById('settings-video-fixed-fps-checkbox');
@@ -226,6 +242,8 @@ let firstFile = true;
 
 let artist = '';
 let comment = '';
+let possibleGuano = false;
+let guanoData = [];
 
 let resampledFile = false;
 
@@ -260,6 +278,10 @@ let useFileTime = false;
 let videoLineEnabled = true;
 let fixedFpsEnabled = false;
 
+// Low frequency setting
+
+let lowFrequencyEnabled = false;
+
 // Drawing/processing flag
 
 let drawing = false;
@@ -274,6 +296,10 @@ let samplesAboveThreshold;
 let samplesAboveGoertzelThreshold;
 let thresholdedValueCount = 0;
 
+// When low frequency panel is switched to, disable the threshold UI but remember what it was on
+
+let previousTriggerSetting = 0;
+
 // Panel which states how much size reduction the amplitude threshold settings chosen will do
 
 const sizeInformationPanel = document.getElementById('size-information-panel');
@@ -282,6 +308,7 @@ const sizeInformationPanel = document.getElementById('size-information-panel');
 
 const resetButton = document.getElementById('reset-button');
 const exportButton = document.getElementById('export-button');
+const disabledExportButton = document.getElementById('disabled-export-button');
 
 // Audio playback controls
 
@@ -347,6 +374,16 @@ const instructionsContent = document.getElementById('instructions-content');
 
 let isNewFile = false;
 
+// Warning modal which displays when window is too narrow
+
+const resizeModal = new bootstrap.Modal(document.getElementById('resize-modal'));
+const resizeModalDontTellAgainCheckbox = document.getElementById('resize-modal-dont-tell-again-checkbox');
+
+// Warning modal which displays when the file loaded was recorded on a device without the clock set
+
+const unsetClockModal = new bootstrap.Modal(document.getElementById('unset-clock-modal'));
+const unsetClockModalDontTellAgainCheckbox = document.getElementById('unset-clock-modal-dont-tell-again-checkbox');
+
 /**
  * @returns Boolean check if currently loaded file is a T.WAV AudioMoth file
  */
@@ -366,13 +403,29 @@ function getFilterType () {
 
 }
 
+function disableTabButtons () {
+
+    filesTabButton.classList.add('disabled');
+    triggerTabButton.classList.add('disabled');
+    lowFrequencyTabButton.classList.add('disabled');
+
+}
+
+function enableTabButtons () {
+
+    filesTabButton.classList.remove('disabled');
+    triggerTabButton.classList.remove('disabled');
+    lowFrequencyTabButton.classList.remove('disabled');
+
+}
+
 /**
  * 0 - Default
  * 1 - Loading
  * 2 - Error
  * @param {number} index Which span to show
  */
-function displaySpans (index) {
+async function displaySpans (index) {
 
     if (resampledFile) {
 
@@ -392,6 +445,9 @@ function displaySpans (index) {
         loadingSpan.style.display = 'none';
         errorSpan.style.display = 'none';
         fileButton.disabled = false;
+        openFileFromFolderButton.disabled = false;
+        fileList.disabled = false;
+        enableTabButtons();
 
         if (isExampleFile) {
 
@@ -399,13 +455,110 @@ function displaySpans (index) {
 
         } else {
 
+            // Find the AudioMoth recording line and make sure it fits in the window
+
+            const recordedRegex0 = /^Recorded at (\d\d:\d\d:\d\d \d\d\/\d\d\/\d{4}) \(UTC([-|+]\d+)?:?(\d\d)?\) by AudioMoth [A-F0-9]{16}/;
+            const found0 = comment.match(recordedRegex0);
+            const recordedRegex1 = /^Recorded at (\d\d:\d\d:\d\d \d\d\/\d\d\/\d{4}) \(UTC([-|+]\d+)?:?(\d\d)?\) during deployment [A-F0-9]{16}/;
+            const found1 = comment.match(recordedRegex1);
+
+            let line = found0 ? found0[0] : '';
+            line = found1 ? found1[0] : line;
+
+            // Create an offscreen canvas to measure
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const computedStyle = window.getComputedStyle(fileSpan);
+            const font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+            ctx.font = font;
+
+            const recordingTextWidth = ctx.measureText(line).width;
+
+            let newModalWidth = Math.max(DEFAULT_INFORMATION_MODAL_WIDTH, recordingTextWidth + INFORMATION_MODAL_PADDING);
+
+            // If GUANO data exists, check the widest line fits in the window
+
+            guanoData = [];
+
+            guanoHolder.innerHTML = '';
+
+            if (possibleGuano) {
+
+                const result = await readGuano(fileHandler);
+
+                if (result.success) {
+
+                    guanoHolder.innerHTML = '';
+
+                    guanoData = result.guano;
+
+                    let longestLineWidth = 0;
+
+                    const boldFont = 'bold ' + font;
+
+                    for (let i = 0; i < guanoData.length; i++) {
+
+                        const titleSpan = document.createElement('span');
+                        titleSpan.style = 'font-weight: bold; display: inline;';
+                        titleSpan.innerText = guanoData[i][0] + ': ';
+
+                        guanoHolder.appendChild(titleSpan);
+
+                        const valueSpan = document.createElement('span');
+                        valueSpan.style = 'display: inline;';
+
+                        if (guanoData[i][0] === 'Loc Position') {
+
+                            const [latitude, longitude] = guanoData[i][1].split(' ');
+                            const googleMapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                            valueSpan.innerHTML = `<a href="${googleMapsLink}" target="_blank">${latitude}, ${longitude}</a>`;
+
+                        } else {
+
+                            valueSpan.innerText = guanoData[i][1];
+
+                        }
+
+                        guanoHolder.appendChild(valueSpan);
+
+                        const breakElement = document.createElement('br');
+
+                        guanoHolder.appendChild(breakElement);
+
+                        ctx.font = boldFont;
+                        const titleWidth = ctx.measureText(guanoData[i][0] + ': ').width;
+
+                        ctx.font = font;
+                        const valueWidth = ctx.measureText(guanoData[i][1]).width;
+
+                        const totalWidth = titleWidth + valueWidth;
+
+                        longestLineWidth = Math.max(longestLineWidth, totalWidth);
+
+                    }
+
+                    newModalWidth = Math.max(newModalWidth, longestLineWidth + INFORMATION_MODAL_PADDING);
+
+                }
+
+            }
+
+            informationModalDialog.style = `min-width: ${newModalWidth}px !important; max-width: ${newModalWidth}px !important;`;
+
+            guanoHolder.style.display = !guanoData ? 'none' : '';
+
             artistSpan.innerText = artist;
             commentSpan.innerText = comment;
 
-            if (artist !== '' || comment !== '') fileInformationLink.style.display = '';
+            if (artist !== '' || comment !== '' || guanoData) fileInformationLink.style.display = '';
 
             artistSpan.style.display = (artist === '') ? 'none' : '';
             commentSpan.style.display = (comment === '') ? 'none' : '';
+
+            informationDownloadButton.disabled = artist === '';
+            informationClipboardButton.disabled = artist === '';
 
         }
 
@@ -430,11 +583,55 @@ function displaySpans (index) {
         resampledSpan.style.display = 'none';
         sliceReselectSpan.style.display = 'none';
         fileButton.disabled = false;
+        openFileFromFolderButton.disabled = false;
+        fileList.disabled = false;
+        enableTabButtons();
         break;
 
     }
 
 }
+
+function getInformationString () {
+
+    let str = '';
+
+    str += artist + '\n';
+    str += comment + '\n';
+
+    for (let i = 0; i < guanoData.length; i++) {
+
+        str += guanoData[i][0] + ': ' + guanoData[i][1] + '\n';
+
+    }
+
+    return str;
+
+}
+
+informationDownloadButton.addEventListener('click', () => {
+
+    const downloadElement = document.createElement('a');
+    downloadElement.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getInformationString()));
+
+    const infoFileName = fileSpan.innerText.replace(/\.wav|\.WAV/, '.txt');
+
+    downloadElement.setAttribute('download', infoFileName);
+
+    downloadElement.style.display = 'none';
+    document.body.appendChild(downloadElement);
+
+    downloadElement.click();
+
+    document.body.removeChild(downloadElement);
+
+});
+
+informationClipboardButton.addEventListener('click', () => {
+
+    navigator.clipboard.writeText(getInformationString());
+
+});
 
 /**
  * Update UI based on which threshold type is selected
@@ -731,18 +928,7 @@ function drawAxisLabels () {
 
     clearSVG(spectrogramLabelSVG);
 
-    const yLabelCounts = {
-        8000: 4,
-        16000: 4,
-        32000: 4,
-        48000: 4,
-        96000: 4,
-        192000: 4,
-        250000: 5,
-        384000: 4
-    };
-
-    const yLabelCount = yLabelCounts[getSampleRate()];
+    const yLabelCount = Y_LABEL_COUNTS[getSampleRate()];
 
     const ySpecLabelIncrement = getSampleRate() / 2 / yLabelCount;
 
@@ -753,7 +939,17 @@ function drawAxisLabels () {
 
     for (let i = 0; i <= yLabelCount; i++) {
 
-        const labelText = (i * ySpecLabelIncrement / 1000) + 'kHz';
+        let labelText;
+
+        if (getSampleRate() <= 1000) {
+
+            labelText = (i * ySpecLabelIncrement) + 'Hz';
+
+        } else {
+
+            labelText = (i * ySpecLabelIncrement / 1000) + 'kHz';
+
+        }
 
         const y = spectrogramLabelSVG.height.baseVal.value - (i * ySpecIncrement);
 
@@ -1660,6 +1856,9 @@ function reenableUI () {
     uiDisabled = false;
 
     fileButton.disabled = false;
+    openFileFromFolderButton.disabled = false;
+    fileList.disabled = false;
+    enableTabButtons();
 
     for (let i = 0; i < exampleLinks.length; i++) {
 
@@ -1668,6 +1867,7 @@ function reenableUI () {
     }
 
     enableSampleRateControl();
+    enableLowFrequencyControls();
 
     updateNavigationUI();
     updateYZoomUI();
@@ -1757,6 +1957,9 @@ function drawWaveformPlot (samples, isInitialRender, spectrogramCompletionTime) 
         drawing = false;
 
         fileButton.disabled = false;
+        openFileFromFolderButton.disabled = false;
+        fileList.disabled = false;
+        enableTabButtons();
         if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
 
             resetCanvas(goertzelCanvas);
@@ -1830,6 +2033,9 @@ function disableUI (startUp) {
     if (!startUp) {
 
         fileButton.disabled = true;
+        openFileFromFolderButton.disabled = true;
+        fileList.disabled = true;
+        disableTabButtons();
 
         for (let i = 0; i < exampleLinks.length; i++) {
 
@@ -3054,12 +3260,41 @@ function updateFileSizePanel () {
 
 }
 
+function checkFileDate () {
+
+    if (unsetClockModalDontTellAgainCheckbox.checked) {
+
+        return;
+
+    }
+
+    const regex = /^Recorded at (\d\d:\d\d:\d\d \d\d\/\d\d\/\d{4}) \(UTC([-|+]\d+)?:?(\d\d)?\)/;
+    const match = comment.match(regex);
+
+    if (match) {
+
+        const dateStr = match[1];
+        const date = new Date(dateStr);
+
+        if (date.getFullYear() === 1970) {
+
+            unsetClockModal.show();
+
+        }
+
+    }
+
+}
+
 /**
  * Load a file either from a user-selected location or a hosted example file
  * @param {string} exampleFilePath Path of an example recording if file isn't chosen by user
  * @param {string} exampleName Name of example file if file isn't chosen by user
+ * @param {File} folderFile File in selected folder
+ * @param {number} selectedFileOffset Offset in seconds of the file to display
+ * @param {number} selectedFileDisplayLength Length to display in seconds
  */
-async function loadFile (exampleFilePath, exampleName) {
+async function loadFile (exampleFilePath, exampleName, folderFile, selectedFileOffset, selectedFileDisplayLength) {
 
     let fileName;
 
@@ -3069,6 +3304,14 @@ async function loadFile (exampleFilePath, exampleName) {
 
         fileName = exampleName;
         isExampleFile = true;
+
+    } else if (folderFile) {
+
+        fileHandler = folderFile;
+
+        fileName = fileHandler.name;
+
+        isExampleFile = false;
 
     } else {
 
@@ -3158,6 +3401,14 @@ async function loadFile (exampleFilePath, exampleName) {
 
         comment = result.comment;
 
+        // Check if file had date set correctly
+
+        checkFileDate();
+
+        // Collect possibility of GUANO data
+
+        possibleGuano = result.possibleGuano;
+
         // Reset threshold arrays
 
         samplesAboveThreshold = new Array(Math.ceil(samples.length / AMPLITUDE_THRESHOLD_BUFFER_LENGTH));
@@ -3178,7 +3429,20 @@ async function loadFile (exampleFilePath, exampleName) {
 
             const downsampledDisplayLength = displayLength;
 
-            resetTransformations();
+            if (folderFile && selectedFileOffset !== -1 && selectedFileDisplayLength !== -1) {
+
+                console.log('Loading offset and display length from last time file was loaded');
+
+                offset = selectedFileOffset;
+                displayLength = selectedFileDisplayLength;
+
+            } else {
+
+                console.log('Resetting offset and display length');
+
+                resetTransformations();
+
+            }
 
             // If the sample rate was changed in another slice, don't reset the displayLength
 
@@ -3200,7 +3464,7 @@ async function loadFile (exampleFilePath, exampleName) {
 
         downsampledUnfilteredSamples = new Int16Array(sampleCount);
 
-        const downsampleResult = downsample(unfilteredSamples, getTrueSampleRate(), downsampledUnfilteredSamples, getSampleRate());
+        const downsampleResult = downsample(unfilteredSamples, getTrueSampleRate(), downsampledUnfilteredSamples, getSampleRate(), isLowFrequencyTabEnabled());
 
         if (!downsampleResult.success) {
 
@@ -3232,20 +3496,16 @@ async function loadFile (exampleFilePath, exampleName) {
         spectrumMin = Number.MAX_SAFE_INTEGER;
         spectrumMax = Number.MIN_SAFE_INTEGER;
 
-        // Update filter range, resetting values if it's the first file loaded or the sliders have been observed
-
-        const resetSliders = firstFile || prevSampleRate === undefined;
-
-        const passFiltersObserved = getPassFiltersObserved();
-        const centreObserved = getCentreObserved();
-
-        sampleRateChange(resetSliders || !passFiltersObserved, resetSliders || !centreObserved, getSampleRate());
-
         if (!setTransformations && isNewFile) {
 
             updateSampleRateUI(getTrueSampleRate());
 
         }
+
+        // Update filter range, resetting values if it's the first file loaded or the sliders have been observed
+
+        const resetSliders = firstFile || prevSampleRate === undefined;
+        sampleRateChangeListener(resetSliders);
 
         if (resetSliders) {
 
@@ -3372,13 +3632,29 @@ fileButton.addEventListener('click', () => {
 
     if (!drawing && !playing) {
 
-        try {
+        if (displayFileFolderModal) {
 
-            loadFile();
+            fileFolderModal.show();
 
-        } catch (error) {
+            return;
 
-            showErrorDisplay('File could not be opened.');
+        }
+
+        if (fileFolderMode) {
+
+            try {
+
+                loadFile();
+
+            } catch (error) {
+
+                showErrorDisplay('File could not be opened.');
+
+            }
+
+        } else {
+
+            loadFolder();
 
         }
 
@@ -3914,7 +4190,7 @@ function reset () {
         sampleRateChange(true, true, getSampleRate());
         updateSampleRateUI(getTrueSampleRate());
 
-        const downsampleResult = downsample(unfilteredSamples, getTrueSampleRate(), downsampledUnfilteredSamples, sampleRate);
+        const downsampleResult = downsample(unfilteredSamples, getTrueSampleRate(), downsampledUnfilteredSamples, sampleRate, false);
 
         if (!downsampleResult.success) {
 
@@ -3953,16 +4229,16 @@ resetButton.addEventListener('click', reset);
 
 // Add sample rate UI listeners
 
-addSampleRateUIListeners(() => {
+function sampleRateChangeListener (resetSliders) {
 
     const oldSampleRate = sampleRate;
     sampleRate = getSampleRateSelection();
 
     const passFiltersObserved = getPassFiltersObserved();
     const centreObserved = getCentreObserved();
-    sampleRateChange(!passFiltersObserved, !centreObserved, getSampleRate());
+    sampleRateChange(resetSliders || !passFiltersObserved, resetSliders || !centreObserved, getSampleRate());
 
-    const downsampleResult = downsample(unfilteredSamples, trueSampleRate, downsampledUnfilteredSamples, sampleRate);
+    const downsampleResult = downsample(unfilteredSamples, trueSampleRate, downsampledUnfilteredSamples, sampleRate, isLowFrequencyTabEnabled());
 
     if (!downsampleResult.success) {
 
@@ -4001,6 +4277,37 @@ addSampleRateUIListeners(() => {
     updateThresholdUI();
 
     updatePlots(false, true, true, true, true);
+
+}
+
+addLowFrequencyRadioButtonListeners(sampleRateChangeListener);
+addSampleRateUIListeners(sampleRateChangeListener);
+
+addLowFrequencyTabCloseListener(() => {
+
+    thresholdTypeRadioButtons[previousTriggerSetting].checked = true;
+
+    exportButton.style.display = '';
+    disabledExportButton.style.display = 'none';
+
+    sampleRateChangeListener();
+
+});
+
+addLowFrequencyTabOpenListener(() => {
+
+    // Disable triggering but remember setting
+
+    previousTriggerSetting = getThresholdTypeIndex();
+    thresholdTypeRadioButtons[0].checked = true;
+
+    disabledExportButton.style.display = '';
+    exportButton.style.display = 'none';
+
+    updateThresholdTypeUI();
+    updateThresholdUI();
+
+    sampleRateChangeListener();
 
 });
 
@@ -4466,6 +4773,97 @@ function convertSkipArray (inputArray, maxValue, outputSize) {
 }
 
 /**
+ * Create a set of samples at a sample rate of MIN_SAMPLE_RATE with a user-selected filter applied as well as a Nyquist low-pass filter
+ * @param {Array} outputArray Where to store the samples
+ * @returns success: true if successful, false otherwise. error: error message if not successful
+ */
+function createMinSampleRateSamples (outputArray) {
+
+    const targetSampleRate = getSampleRate();
+
+    const downsampledMinSamples = new Int16Array(trueSampleCount);
+
+    /* Downsample to minimum sample rate (8 kHz) */
+
+    const downsampleResult = downsample(unfilteredSamples, getTrueSampleRate(), downsampledMinSamples, MIN_SAMPLE_RATE, false);
+
+    if (!downsampleResult.success) {
+
+        return {
+            success: false,
+            error: downsampleResult.error
+        };
+
+    }
+
+    /* Apply low-pass filter at Nyquist limit of targeted sample rate (e.g. 500 Hz). If user-selected filters are also required, combine them */
+
+    let lowPassFilterValue;
+    let highPassFilterValue;
+    let bandPassFilterValue0, bandPassFilterValue1;
+
+    const nyquistLimit = targetSampleRate / 2;
+
+    const filterIndex = getFilterType();
+
+    switch (filterIndex) {
+
+    case FILTER_NONE:
+    case FILTER_LOW:
+
+        if (filterIndex === FILTER_LOW) {
+
+            console.log('Attempting to apply low-pass filter at ' + lowPassFilterValue + ' Hz and Nyquist low-pass filter at ' + nyquistLimit + ' Hz');
+
+            lowPassFilterValue = Math.min(lowPassFilterSlider.getValue(), nyquistLimit);
+
+        } else {
+
+            console.log('Attempting to apply Nyquist low-pass filter at ' + nyquistLimit + ' Hz');
+
+            lowPassFilterValue = nyquistLimit;
+
+        }
+
+        console.log('Applying low-pass filter at ' + lowPassFilterValue + ' Hz');
+
+        applyLowPassFilter(downsampledMinSamples, trueSampleCount, outputArray, MIN_SAMPLE_RATE, lowPassFilterValue);
+
+        break;
+    case FILTER_HIGH:
+
+        highPassFilterValue = highPassFilterSlider.getValue();
+
+        console.log('Combined high-pass filter at ' + highPassFilterValue + ' Hz and Nyquist low-pass filter at ' + nyquistLimit + ' Hz');
+        console.log('Applying band-pass filter between ' + highPassFilterValue + ' and ' + nyquistLimit + ' Hz');
+
+        applyBandPassFilter(downsampledMinSamples, trueSampleCount, outputArray, MIN_SAMPLE_RATE, highPassFilterValue, nyquistLimit);
+
+        break;
+    case FILTER_BAND:
+
+        bandPassFilterValue0 = Math.min(...bandPassFilterSlider.getValue());
+        bandPassFilterValue1 = Math.max(...bandPassFilterSlider.getValue());
+
+        console.log('Attempting to apply band-pass filter between ' + bandPassFilterValue0 + ' and ' + bandPassFilterValue1 + ' Hz and Nyquist low-pass filter at ' + nyquistLimit + 'Hz');
+
+        bandPassFilterValue1 = Math.min(bandPassFilterValue1, nyquistLimit);
+
+        console.log('Applying band-pass filter between ' + bandPassFilterValue0 + ' and ' + bandPassFilterValue1 + ' Hz');
+
+        applyBandPassFilter(downsampledMinSamples, trueSampleCount, outputArray, MIN_SAMPLE_RATE, bandPassFilterValue0, bandPassFilterValue1);
+
+        break;
+
+    }
+
+    return {
+        success: true
+    };
+
+}
+
+/**
  * Play audio button
  */
 playButton.addEventListener('click', () => {
@@ -4499,6 +4897,9 @@ playButton.addEventListener('click', () => {
         if (displayLength / getSampleRate() / playbackRate > DISABLE_BUTTON_BUSY_LENGTH) {
 
             fileButton.disabled = true;
+            openFileFromFolderButton.disabled = true;
+            fileList.disabled = true;
+            disableTabButtons();
 
             homeButton.disabled = true;
             zoomInButton.disabled = true;
@@ -4517,6 +4918,7 @@ playButton.addEventListener('click', () => {
             }
 
             disableSampleRateControl();
+            disableLowFrequencyControls();
 
             resetButton.disabled = true;
             exportButton.disabled = true;
@@ -4555,7 +4957,29 @@ playButton.addEventListener('click', () => {
 
         const filterIndex = getFilterType();
 
-        const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
+        let samples;
+
+        if (getSampleRate() < MIN_SAMPLE_RATE) {
+
+            samples = new Int16Array(trueSampleCount);
+            const minSampleRateSamplesResult = createMinSampleRateSamples(samples);
+
+            if (!minSampleRateSamplesResult.success) {
+
+                console.error(minSampleRateSamplesResult.error);
+                showErrorDisplay('Failed to downsample audio.');
+
+                stopEvent();
+
+                return;
+
+            }
+
+        } else {
+
+            samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
+
+        }
 
         let playbackBufferLength = displayLength;
 
@@ -4573,15 +4997,22 @@ playButton.addEventListener('click', () => {
 
         if (playbackBufferLength > 0) {
 
-            if (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) {
+            // If sample rate is below minimum, rescale values to match altered sample rate
 
-                playAudio(samples, samplesAboveGoertzelThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, getVolume(), stopEvent);
+            const unthresholdedSamples = (getSampleRate() >= MIN_SAMPLE_RATE && thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold;
 
-            } else {
+            const lowSampleRateMultiplier = getSampleRate() < MIN_SAMPLE_RATE ? MIN_SAMPLE_RATE / getSampleRate() : 1;
 
-                playAudio(samples, samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackRate, playbackMode, playbackBufferLength, getVolume(), stopEvent);
+            const playOffset = offset * lowSampleRateMultiplier;
+            const playDisplayLength = displayLength * lowSampleRateMultiplier;
 
-            }
+            const playSampleRate = Math.max(MIN_SAMPLE_RATE, getSampleRate());
+
+            const playPlaybackBufferLength = playbackBufferLength * lowSampleRateMultiplier;
+
+            const playPlaybackMode = getSampleRate() < MIN_SAMPLE_RATE ? PLAYBACK_MODE_ALL : playbackMode;
+
+            playAudio(samples, unthresholdedSamples, playOffset, playDisplayLength, playSampleRate, playbackRate, playPlaybackMode, playPlaybackBufferLength, getVolume(), stopEvent);
 
             // Start animation loop
 
@@ -4728,7 +5159,7 @@ function handleExportAudioResult (err) {
 
 }
 
-function getAudioForExport () {
+function getAudioForExport (useLowSampleRateProcessing) {
 
     // Get mode which dictates how amplitude thresholded periods are handled
 
@@ -4738,15 +5169,39 @@ function getAudioForExport () {
 
     const filterIndex = getFilterType();
 
-    const samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
-
+    let samples;
     let playbackBufferLength = displayLength;
+
+    if (useLowSampleRateProcessing) {
+
+        samples = new Int16Array(trueSampleCount);
+        const minSampleRateSamplesResult = createMinSampleRateSamples(samples);
+
+        if (!minSampleRateSamplesResult.success) {
+
+            console.error(minSampleRateSamplesResult.error);
+            showErrorDisplay('Failed to downsample audio.');
+
+            return {
+                success: false,
+                error: minSampleRateSamplesResult.error
+            };
+
+        }
+
+        playbackBufferLength = MIN_SAMPLE_RATE / getSampleRate() * displayLength;
+
+    } else {
+
+        samples = filterIndex !== FILTER_NONE ? filteredSamples : downsampledUnfilteredSamples;
+
+    }
 
     const thresholdTypeIndex = getThresholdTypeIndex();
 
     // If playback mode is to skip thresholded periods, build an array of X axis locations which map to playback progress
 
-    if (playbackMode === PLAYBACK_MODE_SKIP) {
+    if (!useLowSampleRateProcessing && playbackMode === PLAYBACK_MODE_SKIP) {
 
         // Create x coordinate map
 
@@ -4801,17 +5256,18 @@ function getAudioForExport () {
     }
 
     return {
+        success: true,
         samples: samples,
-        thresholdTypeIndex: thresholdTypeIndex,
+        thresholdTypeIndex: useLowSampleRateProcessing ? THRESHOLD_TYPE_NONE : thresholdTypeIndex,
         playbackBufferLength: playbackBufferLength,
-        playbackMode: playbackMode
+        playbackMode: useLowSampleRateProcessing ? PLAYBACK_MODE_ALL : playbackMode
     };
 
 }
 
 exportAudioButton.addEventListener('click', () => {
 
-    const audioData = getAudioForExport();
+    const audioData = getAudioForExport(false);
 
     const playbackBufferLength = audioData.playbackBufferLength;
     const thresholdTypeIndex = audioData.thresholdTypeIndex;
@@ -4847,16 +5303,29 @@ exportVideoButton.addEventListener('click', () => {
 
     // Create audio blob
 
-    const audioData = getAudioForExport();
+    const exportAudioDataResult = getAudioForExport(getSampleRate() < MIN_SAMPLE_RATE);
 
-    const playbackBufferLength = audioData.playbackBufferLength;
-    const thresholdTypeIndex = audioData.thresholdTypeIndex;
-    const samples = audioData.samples;
-    const playbackMode = audioData.playbackMode;
+    if (!exportAudioDataResult.success) {
+
+        showErrorDisplay('File was not written. Failed to downsample audio.');
+
+        reenableUI();
+
+        exportVideoIcon.style.display = '';
+        exportVideoSpinner.style.display = 'none';
+
+        return;
+
+    }
+
+    const playbackBufferLength = exportAudioDataResult.playbackBufferLength;
+    const thresholdTypeIndex = exportAudioDataResult.thresholdTypeIndex;
+    const samples = exportAudioDataResult.samples;
+    const playbackMode = exportAudioDataResult.playbackMode;
 
     if (playbackBufferLength <= 0) {
 
-        showErrorDisplay('File was not written. File length would be 0 samples.');
+        // showErrorDisplay('File was not written. File length would be 0 samples.');
 
         reenableUI();
 
@@ -4869,7 +5338,18 @@ exportVideoButton.addEventListener('click', () => {
 
     // Prepare audio data
 
-    const audioArray = createAudioArray(samples, (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold, offset, displayLength, getSampleRate(), playbackMode, playbackBufferLength, getVolume(), getPlaybackRate());
+    const unthresholdedSamples = (thresholdTypeIndex === THRESHOLD_TYPE_GOERTZEL) ? samplesAboveGoertzelThreshold : samplesAboveThreshold;
+
+    // If sample rate is below minimum, rescale values to match altered sample rate
+
+    const minSampleRateMultiplier = MIN_SAMPLE_RATE / getSampleRate();
+
+    const videoSampleRate = Math.max(MIN_SAMPLE_RATE, getSampleRate());
+    const videoPlaybackMode = getSampleRate() < MIN_SAMPLE_RATE ? PLAYBACK_MODE_ALL : playbackMode;
+    const videoDisplayLength = getSampleRate() < MIN_SAMPLE_RATE ? displayLength * minSampleRateMultiplier : displayLength;
+    const videoOffset = getSampleRate() < MIN_SAMPLE_RATE ? offset * minSampleRateMultiplier : offset;
+
+    const audioArray = createAudioArray(samples, unthresholdedSamples, videoOffset, videoDisplayLength, videoSampleRate, videoPlaybackMode, playbackBufferLength, getVolume(), getPlaybackRate());
 
     const header = new Uint8Array(audioArray[0]);
 
@@ -4951,10 +5431,13 @@ exportVideoButton.addEventListener('click', () => {
 
 settingsModalButton.addEventListener('click', () => {
 
+    settingsFileFolderCheckbox.checked = getDisplayFileFolderModal();
+    settingsRememberTransformationsCheckbox.checked = getRememberTransformations();
     settingsFileTimeCheckbox.checked = useFileTime;
     settingsDynamicColoursCheckbox.checked = useDynamicColours;
     settingsVideoLineCheckbox.checked = videoLineEnabled;
     settingsVideoFixedFPSCheckbox.checked = fixedFpsEnabled;
+    settingsLowFrequencyCheckbox.checked = lowFrequencyEnabled;
 
     // Warn user that setting will do nothing to current file
 
@@ -4975,12 +5458,16 @@ settingsApplyButton.addEventListener('click', () => {
     const changedUseFileTime = useFileTime !== settingsFileTimeCheckbox.checked;
     const changedUseDynamicColours = useDynamicColours !== settingsDynamicColoursCheckbox.checked;
     const changedColourMap = colourMapIndex !== parseInt(settingsMonochromeSelect.value);
+    const changedLowFrequency = lowFrequencyEnabled !== settingsLowFrequencyCheckbox.checked;
 
+    setDisplayFileFolderModal(settingsFileFolderCheckbox.checked);
+    setRememberTransformations(settingsRememberTransformationsCheckbox.checked);
     useFileTime = settingsFileTimeCheckbox.checked;
     useDynamicColours = settingsDynamicColoursCheckbox.checked;
     videoLineEnabled = settingsVideoLineCheckbox.checked;
     fixedFpsEnabled = settingsVideoFixedFPSCheckbox.checked;
     colourMapIndex = parseInt(settingsMonochromeSelect.value);
+    lowFrequencyEnabled = settingsLowFrequencyCheckbox.checked;
 
     // If setting has been changed, update the relevant UI
 
@@ -4998,6 +5485,21 @@ settingsApplyButton.addEventListener('click', () => {
             updatePlots(false, true, false, false, false);
 
         }, 0);
+
+    }
+
+    if (changedLowFrequency) {
+
+        if (lowFrequencyEnabled) {
+
+            showLowFrequencyTabButton();
+
+        } else {
+
+            triggerTabButton.click();
+            hideLowFrequencyTabButton();
+
+        }
 
     }
 
@@ -5100,6 +5602,19 @@ function loadPage () {
 
     }
 
+    // Check for low frequency mode
+
+    if (urlParams.get('infra')) {
+
+        lowFrequencyEnabled = true;
+        showLowFrequencyTabButton();
+
+    } else {
+
+        hideLowFrequencyTabButton();
+
+    }
+
     // Check for dev mode
 
     instructionsContent.style.display = '';
@@ -5111,6 +5626,9 @@ function loadPage () {
         waveformLoadingSVG.style.display = 'none';
 
         fileButton.disabled = false;
+        openFileFromFolderButton.disabled = false;
+        fileList.disabled = false;
+        enableTabButtons();
 
     } else if (urlParams.get('app')) {
 
@@ -5123,6 +5641,9 @@ function loadPage () {
         waveformLoadingSVG.style.display = 'none';
 
         fileButton.disabled = false;
+        openFileFromFolderButton.disabled = false;
+        fileList.disabled = false;
+        enableTabButtons();
 
     } else {
 
@@ -5146,10 +5667,34 @@ window.addEventListener('load', () => {
 
         // Ensure service worker is updated
 
-        navigator.serviceWorker.register('./worker.js?v=' + VERSION).then(
-            () => {
+        navigator.serviceWorker.register('./worker.js').then(
+            (registration) => {
 
-                console.log('Service worker registered');
+                registration.update();
+
+                registration.onupdatefound = () => {
+
+                    const installingWorker = registration.installing;
+
+                    installingWorker.onstatechange = () => {
+
+                        if (installingWorker.state === 'installed') {
+
+                            if (navigator.serviceWorker.controller) {
+
+                                console.log('New or updated content is available.');
+
+                            } else {
+
+                                console.log('Content is now available offline!');
+
+                            }
+
+                        }
+
+                    };
+
+                };
 
             },
             (err) => {
@@ -5171,3 +5716,47 @@ window.addEventListener('load', () => {
     }
 
 });
+
+/* Check column tops match up and warn users to resize if needed */
+
+document.addEventListener('DOMContentLoaded', checkColumnLayout);
+window.addEventListener('resize', debounce(checkColumnLayout, 200));
+
+function checkColumnLayout () {
+
+    if (/Mobi|Android/i.test(navigator.userAgent) || resizeModalDontTellAgainCheckbox.checked) {
+
+        return;
+
+    }
+
+    const column0 = document.getElementById('main-column0');
+    const column1 = document.getElementById('main-column1');
+
+    if (column0 && column1) {
+
+        const column0Rect = column0.getBoundingClientRect();
+        const column1Rect = column1.getBoundingClientRect();
+
+        if (column0Rect.top !== column1Rect.top) {
+
+            resizeModal.show();
+
+        }
+
+    }
+
+}
+
+function debounce (func, wait) {
+
+    let timeout;
+
+    return (...args) => {
+
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+
+    };
+
+}

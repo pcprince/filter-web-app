@@ -4,9 +4,6 @@
  * June 2022
  *****************************************************************************/
 
-// TODO: Update this with changes, along with the version in worker.js
-const VERSION = 1;
-
 /* Regex used to extract timestamp from header comment */
 
 const DATE_REGEX = /^Recorded at (\d\d):(\d\d):(\d\d)(\.\d\d\d)? (\d\d)\/(\d\d)\/(\d\d\d\d) \(UTC(((\+|\-)\d{1,2}(:\d{1,2})?)?)?\)/;
@@ -70,7 +67,25 @@ const AMPLITUDE_THRESHOLD_BUFFER_LENGTH = 16384;
 
 const VALID_RESAMPLE_RATES = [4000, 7812, 44100, 125000, 312500];
 
+const LOW_FREQUENCY_SAMPLE_RATES = [250, 500, 1000, 2000, 4000];
+
 const VALID_AUDIOMOTH_SAMPLE_RATES = [8000, 16000, 32000, 48000, 96000, 192000, 250000, 384000];
+
+const Y_LABEL_COUNTS = {
+    250: 5,
+    500: 5,
+    1000: 4,
+    2000: 4,
+    4000: 4,
+    8000: 4,
+    16000: 4,
+    32000: 4,
+    48000: 4,
+    96000: 4,
+    192000: 4,
+    250000: 5,
+    384000: 4
+};
 
 const DISPLAYED_TIME_AMOUNTS = [
     {
