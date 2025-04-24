@@ -115,28 +115,33 @@ async function updateFileInformationPanel (index) {
 
     const f = fileInformation[index];
 
-    let displayName = f.name;
-
     const maxDisplayNameLength = 30;
     const startLength = 10;
 
-    if (f.name.length > maxDisplayNameLength) {
+    let displayName = '-';
 
-        const start = f.name.substring(0, startLength);
-        const end = f.name.substring(f.name.length - (maxDisplayNameLength - startLength - 3));
-        displayName = `${start}...${end}`;
+    if (f.name) {
+
+        displayName = f.name;
+
+        if (f.name.length > maxDisplayNameLength) {
+
+            const start = f.name.substring(0, startLength);
+            const end = f.name.substring(f.name.length - (maxDisplayNameLength - startLength - 3));
+            displayName = `${start}...${end}`;
+
+        }
 
     }
 
     fileNameSpan.innerText = displayName;
-    fileNameSpan.title = f.name; // Set full name as hover-over text
-    fileDateSpan.innerText = f.date;
-    fileTimeSpan.innerText = f.time;
-    fileSizeSpan.innerText = f.size;
-    fileLengthSpan.innerText = f.formattedLength;
+    fileNameSpan.title = f.name ? f.name : ''; // Set full name as hover-over text
+    fileDateSpan.innerText = f.date ? f.date : '--/--/----';
+    fileTimeSpan.innerText = f.time ? f.time : '--:--:--';
+    fileSizeSpan.innerText = f.size ? f.size : '-';
+    fileLengthSpan.innerText = f.formattedLength ? f.formattedLength : '--:--:--';
 
-    const sampleRate = (f.sampleRate / 1000).toFixed(1);
-    fileSampleRateSpan.innerText = sampleRate + ' kHz';
+    fileSampleRateSpan.innerText = f.sampleRate ? (f.sampleRate / 1000).toFixed(1) + ' kHz' : '-';
 
 }
 
@@ -190,7 +195,6 @@ async function loadFolder () {
     getWavFilesFromDirectory(folderHandler).then(async (files) => {
 
         folderNameSpan.innerText = folderHandler.name;
-        fileCountSpan.innerText = files.length;
 
         if (files.length === 0) {
 
@@ -231,6 +235,7 @@ async function loadFolder () {
             if (!checkResult.success) {
 
                 console.error(file, checkResult.error);
+                continue;
 
             } else {
 
@@ -318,6 +323,10 @@ async function loadFolder () {
 
         }
 
+        fileCountSpan.innerText = i.toString();
+
+        openFileFromFolderButton.disabled = i === 0;
+
         // Adjust padding and align formatted lengths
         const paddingRight = parseInt(window.getComputedStyle(fileList).paddingRight, 10) || 0;
         const averageCharWidth = 8; // Approximate average width of a character in pixels
@@ -325,7 +334,9 @@ async function loadFolder () {
 
         Array.from(fileList.options).forEach((listItem, index) => {
 
-            const padding = charW - listItem.innerHTML.length - formattedLengths[index].length - 1;
+            const fileSizeLength = formattedLengths[index] ? formattedLengths[index].length : 8;
+
+            const padding = charW - listItem.innerHTML.length - fileSizeLength - 1;
 
             for (let j = 0; j < padding; j++) {
 
@@ -333,7 +344,7 @@ async function loadFolder () {
 
             }
 
-            listItem.innerHTML += formattedLengths[index];
+            listItem.innerHTML += formattedLengths[index] ? formattedLengths[index] : '--:--:--';
 
         });
 
