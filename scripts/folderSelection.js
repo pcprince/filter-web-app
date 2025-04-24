@@ -100,6 +100,7 @@ filesTabButton.addEventListener('click', () => {
 function resetFileInformationPanel () {
 
     fileNameSpan.innerText = 'No file selected';
+    fileNameSpan.title = '';
     fileDateSpan.innerText = '--/--/----';
     fileTimeSpan.innerText = '--:--:--';
     fileSizeSpan.innerText = '-';
@@ -114,7 +115,21 @@ async function updateFileInformationPanel (index) {
 
     const f = fileInformation[index];
 
-    fileNameSpan.innerText = f.name;
+    let displayName = f.name;
+
+    const maxDisplayNameLength = 20;
+    const startLength = 8;
+
+    if (f.name.length > maxDisplayNameLength) {
+
+        const start = f.name.substring(0, startLength);
+        const end = f.name.substring(f.name.length - (maxDisplayNameLength - startLength - 3));
+        displayName = `${start}...${end}`;
+
+    }
+
+    fileNameSpan.innerText = displayName;
+    fileNameSpan.title = f.name; // Set full name as hover-over text
     fileDateSpan.innerText = f.date;
     fileTimeSpan.innerText = f.time;
     fileSizeSpan.innerText = f.size;
@@ -203,6 +218,8 @@ async function loadFolder () {
 
         const regex = /^\d{8}_\d{6}\.wav$/i;
 
+        const formattedLengths = []; // Array to store formatted lengths
+
         for (const file of folderFiles) {
 
             const newFileInformation = {
@@ -279,14 +296,36 @@ async function loadFolder () {
 
             }
 
-            fileInformation.push(newFileInformation);
+            formattedLengths.push(newFileInformation.formattedLength);
 
             const listItem = document.createElement('option');
+            let displayName = file.name;
+            if (file.name.length > 40) {
 
-            const charW = 65;
-            const padding = charW - file.name.length - newFileInformation.formattedLength.length;
+                const start = file.name.substring(0, 20);
+                const end = file.name.substring(file.name.length - (40 - 23)); // 23 = 20 (start) + 3 ("...")
+                displayName = `${start}...${end}`;
 
-            listItem.innerHTML = file.name;
+            }
+            listItem.innerHTML = displayName;
+            listItem.value = i;
+
+            fileList.appendChild(listItem);
+
+            fileInformation.push(newFileInformation);
+
+            i++;
+
+        }
+
+        // Adjust padding and align formatted lengths
+        const paddingRight = parseInt(window.getComputedStyle(fileList).paddingRight, 10) || 0;
+        const averageCharWidth = 8; // Approximate average width of a character in pixels
+        const charW = Math.floor((fileList.clientWidth - paddingRight) / averageCharWidth);
+
+        Array.from(fileList.options).forEach((listItem, index) => {
+
+            const padding = charW - listItem.innerHTML.length - formattedLengths[index].length - 1;
 
             for (let j = 0; j < padding; j++) {
 
@@ -294,15 +333,9 @@ async function loadFolder () {
 
             }
 
-            listItem.innerHTML += newFileInformation.formattedLength;
+            listItem.innerHTML += formattedLengths[index];
 
-            listItem.value = i;
-
-            fileList.appendChild(listItem);
-
-            i++;
-
-        }
+        });
 
         fileList.addEventListener('change', () => {
 
