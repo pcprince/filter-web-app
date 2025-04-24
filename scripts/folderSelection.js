@@ -117,8 +117,8 @@ async function updateFileInformationPanel (index) {
 
     let displayName = f.name;
 
-    const maxDisplayNameLength = 20;
-    const startLength = 8;
+    const maxDisplayNameLength = 30;
+    const startLength = 10;
 
     if (f.name.length > maxDisplayNameLength) {
 
@@ -431,3 +431,4 @@ function openFileFromFolder () {
 }
 
 openFileFromFolderButton.addEventListener('click', openFileFromFolder);
+fileList.addEventListener('dblclick', openFileFromFolder);
